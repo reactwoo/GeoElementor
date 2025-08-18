@@ -21,6 +21,9 @@ class EGP_Popup_Editor {
      */
     public function __construct() {
         add_action('elementor/init', array($this, 'init_popup_editor'));
+        // Admin list column for Elementor Library (Popup) – show geo targeting summary
+        add_filter('manage_edit-elementor_library_columns', array($this, 'add_geo_column'));
+        add_action('manage_elementor_library_posts_custom_column', array($this, 'render_geo_column'), 10, 2);
     }
     
     /**
@@ -268,6 +271,62 @@ class EGP_Popup_Editor {
                 'usePreferred' => __('Use Preferred Countries', 'elementor-geo-popup'),
             )
         ));
+    }
+
+    /**
+     * Add a GEO column to Elementor Library list
+     */
+    public function add_geo_column($columns) {
+        // Insert after the 'type' column if present
+        $new = array();
+        foreach ($columns as $key => $label) {
+            $new[$key] = $label;
+            if ($key === 'type') {
+                $new['egp_geo'] = __('Geo Targeting', 'elementor-geo-popup');
+            }
+        }
+        if (!isset($new['egp_geo'])) {
+            $new['egp_geo'] = __('Geo Targeting', 'elementor-geo-popup');
+        }
+        return $new;
+    }
+
+    /**
+     * Render GEO column content
+     */
+    public function render_geo_column($column, $post_id) {
+        if ($column !== 'egp_geo') {
+            return;
+        }
+        // Only relevant for popups
+        $type = get_post_meta($post_id, '_elementor_template_type', true);
+        if ($type !== 'popup') {
+            echo '—';
+            return;
+        }
+        $settings = get_post_meta($post_id, '_elementor_page_settings', true);
+        $enabled = is_array($settings) && isset($settings['egp_enable_geo_targeting']) && $settings['egp_enable_geo_targeting'] === 'yes';
+        if (!$enabled) {
+            echo '<span title="' . esc_attr__('No explicit targeting set on this popup', 'elementor-geo-popup') . '">ALL</span>';
+            return;
+        }
+        $countries = array();
+        if (!empty($settings['egp_countries']) && is_array($settings['egp_countries'])) {
+            foreach ($settings['egp_countries'] as $c) {
+                $code = strtoupper(sanitize_text_field($c));
+                if (class_exists('EGP_Geo_Detect')) {
+                    $label = EGP_Geo_Detect::get_country_name($code);
+                    $countries[] = esc_html($label) . ' (' . esc_html($code) . ')';
+                } else {
+                    $countries[] = esc_html($code);
+                }
+            }
+        }
+        if (empty($countries)) {
+            echo 'ALL';
+        } else {
+            echo wp_kses_post(implode(', ', $countries));
+        }
     }
     
     // No manual AJAX saving needed; Elementor stores these settings with the popup document

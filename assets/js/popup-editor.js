@@ -179,7 +179,7 @@
 
     function tryInjectAdvancedRule() {
         // Find Advanced Rules list container (Elementor markup can vary across versions)
-        var $advancedLists = $('.elementor-publish__modal .elementor-publish__requirements, .elementor-publish__modal .elementor-publish__rules, .elementor-conditions-modal .elementor-conditions-list');
+        var $advancedLists = $('.elementor-publish__modal .elementor-publish__requirements, .elementor-publish__modal .elementor-publish__rules, .elementor-conditions-modal .elementor-conditions-list, .dialog-lightbox-widget .elementor-publish__requirements, .dialog-lightbox-widget .elementor-conditions-list');
         if (!$advancedLists.length) return;
 
         // Prevent duplicate injection
