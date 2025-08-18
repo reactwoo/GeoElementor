@@ -121,6 +121,30 @@
             });
         }
 
+        // Add quick-fill Preferred Countries button when geo targeting is enabled
+        var $countriesControl = $('.elementor-control-egp_countries');
+        if ($countriesControl.length && Array.isArray(window.egpPopupEditor && egpPopupEditor.preferredCountries)) {
+            var $btn = $('<button type="button" class="button button-secondary" style="margin-top:8px;">' + (egpPopupEditor.strings && egpPopupEditor.strings.usePreferred || 'Use Preferred Countries') + '</button>');
+            $btn.on('click', function () {
+                var preferred = egpPopupEditor.preferredCountries || [];
+                var $select = $countriesControl.find('select');
+                $select.val(preferred).trigger('change');
+            });
+            $countriesControl.append($btn);
+        }
+
+        // Auto-prefill countries with Preferred on enable
+        var $enableSwitch = $('.elementor-control-egp_enable_geo_targeting input[type="checkbox"]');
+        $enableSwitch.on('change', function () {
+            var on = $(this).is(':checked');
+            if (on && Array.isArray(egpPopupEditor.preferredCountries)) {
+                var $select = $('.elementor-control-egp_countries select');
+                if ($select && (!$select.val() || $select.val().length === 0)) {
+                    $select.val(egpPopupEditor.preferredCountries).trigger('change');
+                }
+            }
+        });
+
         // Add validation
         addValidation();
 
@@ -139,7 +163,7 @@
             if (selectedCountries && selectedCountries.length > 0) {
                 $description.html('Popup will be shown to visitors from: ' + selectedCountries.join(', '));
             } else {
-                $description.html('No countries selected. Popup will not be shown to any visitors.');
+                $description.html('No countries selected. Popup will be shown to all visitors (unless restricted by global preferred-countries setting for untargeted popups).');
             }
         });
 

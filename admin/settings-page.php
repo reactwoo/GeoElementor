@@ -78,11 +78,7 @@ class EGP_Admin_Settings {
             'default' => ''
         ));
         
-        register_setting('egp_settings', 'egp_database_path', array(
-            'type' => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
-            'default' => ''
-        ));
+        // Do not register egp_database_path: it's managed programmatically by the updater.
         
         register_setting('egp_settings', 'egp_auto_update', array(
             'type' => 'boolean',

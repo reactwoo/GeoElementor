@@ -395,22 +395,22 @@ class EGP_Geo_Detect {
             var egpPreferredCountries = <?php echo wp_json_encode($preferred); ?>;
             try { window.egpCountry = egpCountry; window.egpRules = egpRules; } catch(e){}
             var cssHider = document.getElementById('egp-hide-popups');
-            try { console.log('[EGP] init guard; country:', egpCountry, 'rules:', Object.keys(egpRules||{}).length, 'applyPreferredToUntargeted:', egpApplyPreferredToUntargeted, 'preferred:', egpPreferredCountries); } catch(e){}
+            if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] init guard; country:', egpCountry, 'rules:', Object.keys(egpRules||{}).length, 'applyPreferredToUntargeted:', egpApplyPreferredToUntargeted, 'preferred:', egpPreferredCountries); } catch(e){} }
             function shouldAllow(id){
                 try{ id = parseInt(id, 10); }catch(e){}
-                try { console.log('[EGP] shouldAllow? id=', id); } catch(e){}
+                if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] shouldAllow? id=', id); } catch(e){} }
                 var r = egpRules[id];
                 if(!r || !r.enabled){
                     if (!egpApplyPreferredToUntargeted) { return true; }
                     var t = String(egpCountry || '').toUpperCase();
                     var allowUntargeted = Array.isArray(egpPreferredCountries) && egpPreferredCountries.indexOf(t) !== -1;
-                    try { console.log('[EGP] untargeted popup decision for', id, 'country', t, 'allow?', allowUntargeted); } catch(e){}
+                    if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] untargeted popup decision for', id, 'country', t, 'allow?', allowUntargeted); } catch(e){} }
                     return allowUntargeted;
                 }
                 if(!egpCountry){ return r.fallback === 'show_to_all'; }
                 var target = String(egpCountry || '').toUpperCase();
                 var allowed = Array.isArray(r.countries) && r.countries.indexOf(target) !== -1;
-                try { console.log('[EGP] decision for', id, 'target=', target, 'in rules?', allowed, 'rule:', r); } catch(e){}
+                if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] decision for', id, 'target=', target, 'in rules?', allowed, 'rule:', r); } catch(e){} }
                 return allowed;
             }
             function getPopupIdFromInstance(inst){
@@ -425,14 +425,14 @@ class EGP_Geo_Detect {
             function onPopupShow(evt, id, instance){
                     var pid = (id && id.id) ? id.id : id;
                     if(!pid){ pid = getPopupIdFromInstance(instance); }
-                    try { console.log('[EGP] event: elementor/popup/show', pid); } catch(e){}
+                    if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] event: elementor/popup/show', pid); } catch(e){} }
                     if(!shouldAllow(pid)){
                         try { instance && instance.hide && instance.hide(); } catch(e){}
-                        if (window.console && console.log){ console.log('[EGP] blocked popup', pid, 'for country', egpCountry); }
+                        if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?> && window.console && console.log){ console.log('[EGP] blocked popup', pid, 'for country', egpCountry); }
                         if (evt && evt.preventDefault){ evt.preventDefault(); }
                         return false;
                     }
-                    try { console.log('[EGP] allowed popup via event', pid); } catch(e){}
+                    if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] allowed popup via event', pid); } catch(e){} }
             }
             if ($w && typeof $w.on === 'function'){
                 $w.on('elementor/popup/show', onPopupShow);
@@ -445,20 +445,20 @@ class EGP_Geo_Detect {
                 try {
                     var mod = window.elementorProFrontend && window.elementorProFrontend.modules && window.elementorProFrontend.modules.popup;
                     if (mod && typeof mod.showPopup === 'function' && !mod.__egpPatched) {
-                        try { console.log('[EGP] patching showPopup'); } catch(e){}
+                        if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] patching showPopup'); } catch(e){} }
                         var originalShow = mod.showPopup.bind(mod);
                         mod.showPopup = function(args){
                             var pid = args && (args.id || (args.popup && args.popup.id)) || null;
-                            try { console.log('[EGP] showPopup called with', args, 'pid', pid); } catch(e){}
+                            if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] showPopup called with', args, 'pid', pid); } catch(e){} }
                             if(!shouldAllow(pid)){
-                                if (window.console && console.log){ console.log('[EGP] blocked showPopup', pid, 'for country', egpCountry); }
+                                if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?> && window.console && console.log){ console.log('[EGP] blocked showPopup', pid, 'for country', egpCountry); }
                                 return;
                             }
-                            try { console.log('[EGP] proceeding showPopup', pid); } catch(e){}
+                            if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] proceeding showPopup', pid); } catch(e){} }
                             return originalShow(args);
                         };
                         mod.__egpPatched = true;
-                        try { console.log('[EGP] showPopup patched'); } catch(e){}
+                        if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] showPopup patched'); } catch(e){} }
                         return true;
                     }
                 } catch(e) { if (window.console && console.warn){ console.warn('[EGP] guard patch error', e); } }
@@ -466,7 +466,7 @@ class EGP_Geo_Detect {
             }
 
             function unhidePopups(){
-                try { console.log('[EGP] unhidePopups'); } catch(e){}
+                if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] unhidePopups'); } catch(e){} }
                 if (cssHider && cssHider.parentNode){ cssHider.parentNode.removeChild(cssHider); }
                 var modals = document.querySelectorAll('.elementor-popup-modal,.dialog-widget');
                 modals.forEach(function(m){ m.style.removeProperty('display'); m.style.removeProperty('visibility'); });
@@ -478,9 +478,9 @@ class EGP_Geo_Detect {
                     open.forEach(function(el){
                         var idAttr = el.getAttribute('data-elementor-id') || el.id || '';
                         var pid = parseInt(idAttr.replace(/\D+/g,'') || '0', 10);
-                        try { console.log('[EGP] scan open popup element', pid); } catch(e){}
+                        if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] scan open popup element', pid); } catch(e){} }
                         if (pid && !shouldAllow(pid)){
-                            if (window.console && console.log){ console.log('[EGP] closing disallowed already-open popup', pid); }
+                            if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?> && window.console && console.log){ console.log('[EGP] closing disallowed already-open popup', pid); }
                             if (window.elementorProFrontend && elementorProFrontend.modules && elementorProFrontend.modules.popup){
                                 try { elementorProFrontend.modules.popup.closePopup({ id: pid }); } catch(e){}
                             }
@@ -492,17 +492,17 @@ class EGP_Geo_Detect {
             }
 
             function setupGuards(){
-                try { console.log('[EGP] setupGuards start'); } catch(e){}
+                if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] setupGuards start'); } catch(e){} }
                 var patched = patchShow();
                 if (!patched){
-                    try { console.log('[EGP] showPopup not ready; retry'); } catch(e){}
+                    if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] showPopup not ready; retry'); } catch(e){} }
                     setTimeout(setupGuards, 100);
                     return;
                 }
                 // After patching, unhide and close any disallowed that might have rendered early
                 closeDisallowedIfOpen();
                 unhidePopups();
-                try { console.log('[EGP] guards active'); } catch(e){}
+                if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] guards active'); } catch(e){} }
             }
 
             // Start as soon as possible
