@@ -247,7 +247,22 @@
                     $advancedLists = $wrap; // inject into our wrap placed in the list
                 }
             }
-            if (!$advancedLists.length) return;
+            // Final fallback: inject a container near the modal footer/top even if list not found
+            if (!$advancedLists.length) {
+                var $visibleModal = $modals.filter(':visible').first();
+                if ($visibleModal.length) {
+                    var $wrap2 = $('<div class="egp-advanced-rules-wrap"></div>');
+                    var $footer = $visibleModal.find('.elementor-publish__footer, .dialog-buttons-wrapper, .e-footer').first();
+                    if ($footer.length) {
+                        $wrap2.insertBefore($footer);
+                    } else {
+                        $visibleModal.children().first().before($wrap2);
+                    }
+                    $advancedLists = $wrap2;
+                } else {
+                    return;
+                }
+            }
         }
 
         // Prevent duplicate injection
