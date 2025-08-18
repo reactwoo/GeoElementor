@@ -222,7 +222,11 @@
             '.dialog-lightbox-widget .elementor-publish__requirements',
             '.dialog-lightbox-widget .elementor-conditions-list',
             '.elementor-conditions-modal .e-conditions__rules',
-            '.elementor-publish__modal .e-advanced-rules'
+            '.elementor-publish__modal .e-advanced-rules',
+            // Elementor Pro Advanced Rules container in some versions
+            '.elementor-publish__modal .elementor-popup-timing__controls',
+            '.dialog-lightbox-widget .elementor-popup-timing__controls',
+            '.elementor-popup-timing__controls'
         ];
         var $advancedLists = $();
         getSearchRoots().forEach(function (rootDoc) {
@@ -265,13 +269,15 @@
             }
         }
 
-        // Prevent duplicate injection
+        // If already injected inside a correct container, do nothing
         if ($advancedLists.find('.egp-advanced-rule').length) return;
+        // If advanced rule exists elsewhere (e.g., top of modal), relocate it into target container instead of duplicating
+        var $existingLoose = $('.egp-advanced-rule').first();
 
         var isEnabled = $('.elementor-control-egp_enable_geo_targeting input[type="checkbox"]').is(':checked');
 
         // Build a lightweight row that matches Elementor's list look-and-feel
-        var $row = $('<div class="egp-advanced-rule" style="display:flex;align-items:center;justify-content:space-between;border:1px solid #e5e7eb;border-radius:6px;padding:10px 12px;margin:10px 0;">\
+        var $row = $existingLoose.length ? $existingLoose.detach() : $('<div class="egp-advanced-rule" style="display:flex;align-items:center;justify-content:space-between;border:1px solid #e5e7eb;border-radius:6px;padding:10px 12px;margin:10px 0;">\
             <div style="display:flex;align-items:center;gap:10px;">\
                 <i class="eicon-globe" style="font-size:16px;opacity:.75;"></i>\
                 <div>\
