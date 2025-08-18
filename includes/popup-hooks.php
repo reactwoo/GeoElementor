@@ -74,8 +74,9 @@ class EGP_Popup_Hooks {
             return $this->handle_fallback_behavior($geo_settings['fallback_behavior']);
         }
         
-        // Check if visitor's country is in target countries
-        if (in_array($visitor_country, $geo_settings['countries'])) {
+        // Normalize codes and check if visitor's country (ISO-2) is in target countries
+        $targets = array_map('strtoupper', (array) $geo_settings['countries']);
+        if (in_array(strtoupper($visitor_country), $targets, true)) {
             return true; // Country matches, show popup
         }
         
@@ -87,24 +88,37 @@ class EGP_Popup_Hooks {
      * Get popup geo settings
      */
     private function get_popup_geo_settings($popup_id) {
+        // Prefer Elementor document settings stored on the popup
+        $page_settings = get_post_meta($popup_id, '_elementor_page_settings', true);
+        if (is_array($page_settings) && !empty($page_settings['egp_enable_geo_targeting']) && $page_settings['egp_enable_geo_targeting'] === 'yes') {
+            $countries = array();
+            if (!empty($page_settings['egp_countries']) && is_array($page_settings['egp_countries'])) {
+                $countries = array_map('sanitize_text_field', $page_settings['egp_countries']);
+            }
+            $fallback = !empty($page_settings['egp_fallback_behavior']) ? sanitize_text_field($page_settings['egp_fallback_behavior']) : 'inherit';
+            return array(
+                'enabled' => true,
+                'countries' => $countries,
+                'fallback_behavior' => $fallback,
+            );
+        }
+
+        // Fallback to legacy DB mapping if present
         global $wpdb;
-        
         $table_name = $wpdb->prefix . 'egp_popup_countries';
-        
         $row = $wpdb->get_row($wpdb->prepare(
             "SELECT * FROM $table_name WHERE popup_id = %d",
             $popup_id
         ));
-        
-        if (!$row) {
-            return false;
+        if ($row) {
+            return array(
+                'enabled' => (bool) $row->enabled,
+                'countries' => json_decode($row->countries, true) ?: array(),
+                'fallback_behavior' => $row->fallback_behavior ?: 'inherit'
+            );
         }
         
-        return array(
-            'enabled' => (bool) $row->enabled,
-            'countries' => json_decode($row->countries, true) ?: array(),
-            'fallback_behavior' => $row->fallback_behavior ?: 'inherit'
-        );
+        return false;
     }
     
     /**
