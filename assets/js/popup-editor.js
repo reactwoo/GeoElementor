@@ -164,8 +164,10 @@
                 $(m.addedNodes).each(function () {
                     var $node = $(this);
                     // Detect Elementor Publish Settings modal
-                    if ($node.is('.elementor-publish__dropdown') || $node.find('.elementor-publish__dropdown').length ||
-                        $node.is('.elementor-conditions-modal') || $node.find('.elementor-conditions-modal').length) {
+                    if (
+                        $node.is('.elementor-publish__modal, .elementor-publish__dropdown, .elementor-conditions-modal, .dialog-lightbox-widget') ||
+                        $node.find('.elementor-publish__modal, .elementor-publish__dropdown, .elementor-conditions-modal, .dialog-lightbox-widget').length
+                    ) {
                         tryInjectAdvancedRule();
                     }
                 });
@@ -174,12 +176,23 @@
         observer.observe(document.body, { childList: true, subtree: true });
 
         // Also try immediately in case modal already open
-        setTimeout(tryInjectAdvancedRule, 500);
+        setTimeout(tryInjectAdvancedRule, 300);
+        setTimeout(tryInjectAdvancedRule, 1200);
     }
 
     function tryInjectAdvancedRule() {
-        // Find Advanced Rules list container (Elementor markup can vary across versions)
-        var $advancedLists = $('.elementor-publish__modal .elementor-publish__requirements, .elementor-publish__modal .elementor-publish__rules, .elementor-conditions-modal .elementor-conditions-list, .dialog-lightbox-widget .elementor-publish__requirements, .dialog-lightbox-widget .elementor-conditions-list');
+        // Find Advanced Rules list container (Elementor markup varies by version)
+        var selectors = [
+            '.elementor-publish__modal .elementor-publish__requirements',
+            '.elementor-publish__modal .elementor-publish__rules',
+            '.elementor-publish__modal .elementor-advanced-rules',
+            '.elementor-conditions-modal .elementor-conditions-list',
+            '.dialog-lightbox-widget .elementor-publish__requirements',
+            '.dialog-lightbox-widget .elementor-conditions-list',
+            '.elementor-conditions-modal .e-conditions__rules',
+            '.elementor-publish__modal .e-advanced-rules'
+        ];
+        var $advancedLists = $(selectors.join(','));
         if (!$advancedLists.length) return;
 
         // Prevent duplicate injection
@@ -222,8 +235,13 @@
             $(this).closest('label').find('span').text(on ? 'On' : 'Off');
         });
 
-        // Insert the row at the top of Advanced Rules
-        $advancedLists.first().prepend($row);
+        // Insert the row at the top of Advanced Rules; prefer rules container with list items
+        var $target = $advancedLists.filter(function () {
+            var $el = $(this);
+            return $el.find('> *').length > 0;
+        }).first();
+        if (!$target.length) { $target = $advancedLists.first(); }
+        $target.prepend($row);
     }
 
     /**
