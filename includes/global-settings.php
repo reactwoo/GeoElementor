@@ -210,9 +210,15 @@ class EGP_Global_Settings {
      * Enqueue global scripts
      */
     public function enqueue_global_scripts() {
+        // Only enqueue if file is readable and response is JS (avoid 404/HTML causing SyntaxError in console)
+        $script_url = EGP_PLUGIN_URL . 'assets/js/global-settings.js';
+        $script_path = EGP_PLUGIN_DIR . 'assets/js/global-settings.js';
+        if (!file_exists($script_path)) {
+            return;
+        }
         wp_enqueue_script(
             'egp-global-settings',
-            EGP_PLUGIN_URL . 'assets/js/global-settings.js',
+            $script_url,
             ['jquery', 'elementor-editor'],
             EGP_VERSION,
             true
