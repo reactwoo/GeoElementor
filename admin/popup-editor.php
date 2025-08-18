@@ -134,7 +134,7 @@ class EGP_Popup_Editor {
             'IT' => __('Italy', 'elementor-geo-popup'),
             'ES' => __('Spain', 'elementor-geo-popup'),
             'NL' => __('Netherlands', 'elementor-geo-popup'),
-            'BE' => __('Belgium', 'elementor-geopopup'),
+            'BE' => __('Belgium', 'elementor-geo-popup'),
             'CH' => __('Switzerland', 'elementor-geo-popup'),
             'AT' => __('Austria', 'elementor-geo-popup'),
             'SE' => __('Sweden', 'elementor-geo-popup'),
@@ -236,6 +236,11 @@ class EGP_Popup_Editor {
             'MZ' => __('Mozambique', 'elementor-geo-popup'),
             'MW' => __('Malawi', 'elementor-geo-popup'),
         );
+
+        // Enhance labels for UX to include ISO code, e.g., "United Kingdom (GB)"
+        foreach ($countries as $code => $name) {
+            $countries[$code] = sprintf('%s (%s)', $name, $code);
+        }
         
         return $countries;
     }
