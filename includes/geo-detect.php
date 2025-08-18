@@ -378,7 +378,7 @@ class EGP_Geo_Detect {
                 } catch(e) {}
                 return null;
             }
-            // Intercept show events
+            // Intercept event bus shows
             var $w = window.jQuery ? window.jQuery(window) : null;
             if ($w && typeof $w.on === 'function'){
                 $w.on('elementor/popup/show', function(evt, id, instance){
@@ -392,6 +392,23 @@ class EGP_Geo_Detect {
                     }
                 });
             }
+
+            // Monkey-patch showPopup to guard programmatic opens (including on-load triggers)
+            try {
+                var mod = window.elementorProFrontend && window.elementorProFrontend.modules && window.elementorProFrontend.modules.popup;
+                if (mod && typeof mod.showPopup === 'function' && !mod.__egpPatched) {
+                    var originalShow = mod.showPopup.bind(mod);
+                    mod.showPopup = function(args){
+                        var pid = args && (args.id || (args.popup && args.popup.id)) || null;
+                        if(!shouldAllow(pid)){
+                            if (window.console && console.log){ console.log('[EGP] blocked showPopup', pid, 'for country', egpCountry); }
+                            return;
+                        }
+                        return originalShow(args);
+                    };
+                    mod.__egpPatched = true;
+                }
+            } catch(e) { if (window.console && console.warn){ console.warn('[EGP] guard patch error', e); } }
         })();
         </script>
         <?php
