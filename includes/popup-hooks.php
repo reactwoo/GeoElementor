@@ -70,8 +70,13 @@ class EGP_Popup_Hooks {
         $visitor_country = $this->get_visitor_country();
         
         if (!$visitor_country) {
-            // Couldn't determine country, check fallback behavior
-            return $this->handle_fallback_behavior($geo_settings['fallback_behavior']);
+            // Couldn't determine country: do not show this specific popup unless fallback explicitly says show_to_all
+            $fallback = isset($geo_settings['fallback_behavior']) ? $geo_settings['fallback_behavior'] : 'inherit';
+            if ($fallback === 'show_to_all') {
+                return true;
+            }
+            // For 'show_default' and others, do not show this popup here
+            return false;
         }
         
         // Normalize codes and check if visitor's country (ISO-2) is in target countries
