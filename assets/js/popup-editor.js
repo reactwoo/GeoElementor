@@ -357,7 +357,13 @@
             return $el.find('> *').length > 0;
         }).first();
         if (!$target.length) { $target = $advancedLists.first(); }
-        $target.prepend($row);
+        // Prefer inserting after the first known rule row inside the container for visual consistency
+        var $firstRuleRow = $target.find('.elementor-repeater-row, li, .elementor-requirement, .elementor-rule, .e-advanced-rule').first();
+        if ($firstRuleRow.length) {
+            $firstRuleRow.before($row);
+        } else {
+            $target.prepend($row);
+        }
     }
 
     /**
