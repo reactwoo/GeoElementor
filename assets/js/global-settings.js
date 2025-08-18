@@ -132,8 +132,8 @@
             '<select id="egp_target_countries_colors" multiple class="elementor-select2">' +
             generateCountriesOptions() +
             '</select>' +
-                    </div > ' +
-        '</div>' +
+            '</div>' +
+            '</div>' +
             '<div class="elementor-control elementor-control-type-color" id="egp_alternative_color_wrapper" style="display: none;">' +
             '<label class="elementor-control-title">Alternative Color</label>' +
             '<div class="elementor-control-input-wrapper">' +
