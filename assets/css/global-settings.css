@@ -1,0 +1,331 @@
+/**
+ * Elementor Geo Popup - Global Settings Styles
+ *
+ * @package ElementorGeoPopup
+ * @since 1.0.0
+ */
+
+/* Global Settings Panel Styling */
+.elementor-panel-box.egp-geo-panel {
+    margin-top: 15px;
+    border-top: 1px solid #d5d8dc;
+}
+
+.elementor-panel-box.egp-geo-panel .elementor-panel-box-title {
+    background: #f1f3f4;
+    color: #495057;
+    font-weight: 600;
+    padding: 12px 15px;
+    border-bottom: 1px solid #d5d8dc;
+}
+
+.elementor-panel-box.egp-geo-panel .elementor-panel-box-content {
+    padding: 15px;
+}
+
+/* Geo Controls Styling */
+.egp-geo-control {
+    margin-bottom: 15px;
+}
+
+.egp-geo-control:last-child {
+    margin-bottom: 0;
+}
+
+.egp-geo-control .elementor-control-title {
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: #495057;
+}
+
+.egp-geo-control .elementor-control-input-wrapper {
+    margin-bottom: 0;
+}
+
+/* Country Selection Styling */
+.egp-countries-select {
+    min-height: 120px;
+}
+
+.egp-countries-select .select2-selection--multiple {
+    border: 1px solid #d5d8dc;
+    border-radius: 3px;
+    min-height: 35px;
+}
+
+.egp-countries-select .select2-selection--multiple .select2-selection__choice {
+    background: #0073aa;
+    color: #fff;
+    border: none;
+    border-radius: 2px;
+    padding: 2px 8px;
+    margin: 2px;
+}
+
+.egp-countries-select .select2-selection--multiple .select2-selection__choice__remove {
+    color: #fff;
+    margin-right: 5px;
+    font-weight: bold;
+}
+
+.egp-countries-select .select2-selection--multiple .select2-selection__choice__remove:hover {
+    color: #f0f0f0;
+}
+
+/* Fallback Behavior Styling */
+.egp-fallback-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d5d8dc;
+    border-radius: 3px;
+    background: #fff;
+    color: #495057;
+}
+
+.egp-fallback-select:focus {
+    outline: none;
+    border-color: #0073aa;
+    box-shadow: 0 0 0 1px #0073aa;
+}
+
+/* Alternative Content Styling */
+.egp-alternative-content {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.egp-alternative-content .elementor-control-title {
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Debug Mode Styling */
+.egp-debug-mode {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    padding: 10px;
+    margin-top: 15px;
+}
+
+.egp-debug-mode .elementor-control-title {
+    color: #856404;
+    font-weight: 600;
+}
+
+/* Global Widget Integration */
+.elementor-global-widget .egp-geo-controls {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.elementor-global-widget .egp-geo-controls .elementor-control-title {
+    color: #495057;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+/* Global Colors Integration */
+.elementor-global-colors .egp-geo-controls {
+    background: #fff;
+    border: 1px solid #d5d8dc;
+    border-radius: 4px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.elementor-global-colors .egp-alternative-color {
+    margin-top: 10px;
+}
+
+/* Global Typography Integration */
+.elementor-global-typography .egp-geo-controls {
+    background: #fff;
+    border: 1px solid #d5d8dc;
+    border-radius: 4px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.elementor-global-typography .egp-alternative-font {
+    margin-top: 10px;
+}
+
+.elementor-global-typography .egp-alternative-size {
+    margin-top: 10px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .egp-geo-control {
+        margin-bottom: 12px;
+    }
+
+    .egp-countries-select {
+        min-height: 100px;
+    }
+}
+
+@media (max-width: 768px) {
+    .elementor-panel-box.egp-geo-panel .elementor-panel-box-content {
+        padding: 12px;
+    }
+
+    .egp-geo-control {
+        margin-bottom: 10px;
+    }
+
+    .egp-countries-select {
+        min-height: 80px;
+    }
+}
+
+/* Elementor Editor Integration */
+.elementor-editor-active .egp-geo-panel {
+    position: relative;
+}
+
+.elementor-editor-active .egp-geo-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #0073aa, #00a0d2);
+}
+
+/* Hover Effects */
+.egp-geo-control:hover {
+    background: #f8f9fa;
+    border-radius: 4px;
+    padding: 5px;
+    margin: -5px;
+}
+
+/* Focus States */
+.egp-geo-control input:focus,
+.egp-geo-control select:focus,
+.egp-geo-control textarea:focus {
+    outline: none;
+    border-color: #0073aa;
+    box-shadow: 0 0 0 1px #0073aa;
+}
+
+/* Loading States */
+.egp-geo-control.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.egp-geo-control.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: egp-spin 1s linear infinite;
+}
+
+@keyframes egp-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Success/Error States */
+.egp-geo-control.success {
+    border-left: 3px solid #28a745;
+}
+
+.egp-geo-control.error {
+    border-left: 3px solid #dc3545;
+}
+
+.egp-geo-control.success .elementor-control-title {
+    color: #28a745;
+}
+
+.egp-geo-control.error .elementor-control-title {
+    color: #dc3545;
+}
+
+/* Tooltip Styling */
+.egp-help-tip {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background: #0073aa;
+    color: #fff;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 16px;
+    font-size: 10px;
+    margin-left: 5px;
+    cursor: help;
+}
+
+.egp-help-tip:hover {
+    background: #005a87;
+}
+
+/* Country Flag Icons (Optional Enhancement) */
+.egp-country-option {
+    display: flex;
+    align-items: center;
+}
+
+.egp-country-flag {
+    width: 20px;
+    height: 15px;
+    margin-right: 8px;
+    border-radius: 2px;
+}
+
+/* Advanced Options Toggle */
+.egp-advanced-toggle {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 10px;
+    margin-top: 15px;
+    cursor: pointer;
+}
+
+.egp-advanced-toggle:hover {
+    background: #e9ecef;
+}
+
+.egp-advanced-toggle .elementor-control-title {
+    margin: 0;
+    color: #6c757d;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.egp-advanced-options {
+    display: none;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e9ecef;
+}
+
+.egp-advanced-options.active {
+    display: block;
+}

@@ -1,0 +1,163 @@
+/**
+ * Elementor Geo Popup - Geo Widget Styles
+ *
+ * @package ElementorGeoPopup
+ * @since 1.0.0
+ */
+
+/* Geo Widget Content Styling */
+.egp-geo-content {
+    position: relative;
+    width: 100%;
+}
+
+.egp-geo-content.egp-alternative-content {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+/* Template Placeholder Styling */
+.egp-template-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 4px;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.egp-template-placeholder i {
+    margin-right: 10px;
+    font-size: 24px;
+    color: #0073aa;
+}
+
+/* Debug Information Styling */
+.egp-debug-info {
+    background: #f0f0f0;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.egp-debug-info strong {
+    color: #333;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .egp-geo-content {
+        padding: 10px;
+    }
+
+    .egp-template-placeholder {
+        padding: 15px;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .egp-template-placeholder i {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+}
+
+/* Animation for content transitions */
+.egp-geo-content {
+    transition: opacity 0.3s ease-in-out;
+}
+
+.egp-geo-content.fade-in {
+    opacity: 1;
+}
+
+.egp-geo-content.fade-out {
+    opacity: 0;
+}
+
+/* Loading state */
+.egp-geo-content.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.egp-geo-content.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: egp-spin 1s linear infinite;
+}
+
+@keyframes egp-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Error state */
+.egp-geo-content.error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* Success state */
+.egp-geo-content.success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* Country-specific styling (optional enhancement) */
+.egp-geo-content[data-country="US"] {
+    border-left: 3px solid #0073aa;
+}
+
+.egp-geo-content[data-country="CA"] {
+    border-left: 3px solid #dc3545;
+}
+
+.egp-geo-content[data-country="GB"] {
+    border-left: 3px solid #28a745;
+}
+
+/* Print styles */
+@media print {
+
+    .egp-debug-info,
+    .egp-template-placeholder {
+        display: none;
+    }
+
+    .egp-geo-content {
+        border: none;
+        background: none;
+    }
+}

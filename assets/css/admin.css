@@ -1,0 +1,473 @@
+/**
+ * Elementor Geo Popup - Admin Styles
+ * 
+ * @package ElementorGeoPopup
+ * @since 1.0.0
+ */
+
+/* Admin Settings Page */
+.egp-database-actions {
+    margin-top: 30px;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+}
+
+.egp-database-actions h2 {
+    margin-top: 0;
+    color: #23282d;
+    font-size: 18px;
+}
+
+.egp-action-buttons {
+    margin: 20px 0;
+}
+
+.egp-action-buttons .button {
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+
+.egp-action-buttons .button:last-child {
+    margin-right: 0;
+}
+
+#egp-status-message {
+    margin: 20px 0;
+}
+
+.egp-database-info {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f9f9f9;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+}
+
+.egp-database-info h3 {
+    margin-top: 0;
+    color: #23282d;
+    font-size: 16px;
+}
+
+.egp-database-info p {
+    margin: 10px 0;
+    color: #555;
+}
+
+.egp-database-info strong {
+    color: #23282d;
+}
+
+/* License Page Styles */
+.egp-license-container {
+    max-width: 800px;
+}
+
+.egp-license-info,
+.egp-license-actions,
+.egp-license-help {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+}
+
+.egp-license-info h2,
+.egp-license-actions h2,
+.egp-license-help h2 {
+    margin-top: 0;
+    color: #23282d;
+    font-size: 18px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.egp-license-status {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.egp-status-valid {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.egp-status-invalid {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.egp-status-expired {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.egp-status-inactive {
+    background-color: #e2e3e5;
+    color: #383d41;
+    border: 1px solid #d6d8db;
+}
+
+.egp-action-buttons {
+    margin: 20px 0;
+}
+
+.egp-action-buttons .button {
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+
+#egp-license-message {
+    margin: 20px 0;
+}
+
+.egp-license-help p {
+    margin: 15px 0;
+    color: #555;
+    line-height: 1.6;
+}
+
+.egp-license-help a {
+    color: #0073aa;
+    text-decoration: none;
+}
+
+.egp-license-help a:hover {
+    color: #005a87;
+    text-decoration: underline;
+}
+
+/* Form Enhancements */
+.form-table th {
+    width: 200px;
+}
+
+.form-table td {
+    padding: 15px 10px;
+}
+
+.form-table .description {
+    margin-top: 8px;
+    color: #666;
+    font-style: italic;
+}
+
+/* Settings Sections */
+.egp-settings-section {
+    margin-bottom: 30px;
+}
+
+.egp-settings-section h3 {
+    margin-top: 0;
+    color: #23282d;
+    font-size: 16px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+/* Enhanced Input Styles */
+.egp-enhanced-input {
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    padding: 8px 12px;
+    transition: border-color 0.3s ease;
+}
+
+.egp-enhanced-input:focus {
+    border-color: #0073aa;
+    outline: none;
+    box-shadow: 0 0 0 1px #0073aa;
+}
+
+/* Button Enhancements */
+.egp-button-primary {
+    background: #0073aa;
+    border-color: #0073aa;
+    color: #fff;
+    text-shadow: none;
+    box-shadow: none;
+}
+
+.egp-button-primary:hover {
+    background: #005a87;
+    border-color: #005a87;
+}
+
+.egp-button-secondary {
+    background: #f7f7f7;
+    border-color: #ccc;
+    color: #555;
+}
+
+.egp-button-secondary:hover {
+    background: #eee;
+    border-color: #999;
+}
+
+/* Status Indicators */
+.egp-status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.egp-status-indicator.success {
+    background-color: #46b450;
+}
+
+.egp-status-indicator.warning {
+    background-color: #ffb900;
+}
+
+.egp-status-indicator.error {
+    background-color: #dc3232;
+}
+
+.egp-status-indicator.info {
+    background-color: #00a0d2;
+}
+
+/* Responsive Design */
+@media (max-width: 782px) {
+    .egp-license-container {
+        max-width: 100%;
+    }
+
+    .form-table th {
+        width: auto;
+        display: block;
+        padding-bottom: 0;
+    }
+
+    .form-table td {
+        display: block;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .egp-action-buttons .button {
+        display: block;
+        width: 100%;
+        margin-right: 0;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+
+    .egp-database-actions,
+    .egp-license-info,
+    .egp-license-actions,
+    .egp-license-help {
+        padding: 15px;
+    }
+}
+
+/* Loading States */
+.egp-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.egp-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: egp-spin 1s linear infinite;
+}
+
+@keyframes egp-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Tooltips */
+.egp-tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.egp-tooltip .egp-tooltiptext {
+    visibility: hidden;
+    width: 200px;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -100px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.egp-tooltip:hover .egp-tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Success/Error Messages */
+.egp-message {
+    padding: 12px 15px;
+    margin: 15px 0;
+    border-radius: 4px;
+    border-left: 4px solid;
+}
+
+.egp-message.egp-success {
+    background-color: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+.egp-message.egp-error {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+.egp-message.egp-warning {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    color: #856404;
+}
+
+.egp-message.egp-info {
+    background-color: #d1ecf1;
+    border-color: #17a2b8;
+    color: #0c5460;
+}
+
+/* Database Status */
+.egp-db-status {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+}
+
+.egp-db-status-icon {
+    margin-right: 10px;
+    font-size: 18px;
+}
+
+.egp-db-status-text {
+    flex: 1;
+}
+
+.egp-db-status-actions {
+    margin-left: auto;
+}
+
+/* License Key Input */
+#egp-license-key {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+}
+
+/* Country Selection */
+.egp-country-select {
+    min-height: 100px;
+}
+
+.egp-country-select option {
+    padding: 5px 10px;
+}
+
+/* Fallback Behavior */
+.egp-fallback-select {
+    min-width: 200px;
+}
+
+/* Debug Mode Toggle */
+.egp-debug-toggle {
+    margin-top: 10px;
+}
+
+.egp-debug-toggle .description {
+    margin-top: 5px;
+    font-size: 12px;
+    color: #888;
+}
+
+/* Auto-update Settings */
+.egp-auto-update-settings {
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.egp-auto-update-settings .description {
+    margin-top: 5px;
+    color: #666;
+}
+
+/* Help Section */
+.egp-help-section {
+    background: #f0f6fc;
+    border: 1px solid #c3d4e7;
+    border-radius: 4px;
+    padding: 20px;
+    margin-top: 30px;
+}
+
+.egp-help-section h3 {
+    color: #0073aa;
+    margin-top: 0;
+}
+
+.egp-help-section ul {
+    margin: 15px 0;
+    padding-left: 20px;
+}
+
+.egp-help-section li {
+    margin: 8px 0;
+    line-height: 1.5;
+}
+
+/* Version Info */
+.egp-version-info {
+    text-align: center;
+    margin-top: 30px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 4px;
+    color: #666;
+    font-size: 12px;
+}
+
+.egp-version-info a {
+    color: #0073aa;
+    text-decoration: none;
+}
+
+.egp-version-info a:hover {
+    text-decoration: underline;
+}
+
+
