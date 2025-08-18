@@ -37,11 +37,7 @@ class EGP_Geo_Detect {
     public function inject_geo_popup_script() {
         // Only inject on frontend pages
         if (is_admin() || wp_doing_ajax()) {
-            return;
-        }
-        
-        // Check if we have any geo-targeted popups
-        if (!$this->has_geo_targeted_popups()) {
+            if (get_option('egp_debug_mode')) { error_log('EGP: Skipping guard injection (admin or ajax)'); }
             return;
         }
         
@@ -49,13 +45,16 @@ class EGP_Geo_Detect {
         $country = $this->get_visitor_country();
         
         if (!$country) {
+            if (get_option('egp_debug_mode')) { error_log('EGP: Skipping guard injection (no country)'); }
             return;
         }
         
         // Prevent early popup flashes before the guard is active
         echo '<style id="egp-hide-popups">.elementor-popup-modal,.dialog-widget{display:none!important;visibility:hidden!important;}</style>';
+        if (get_option('egp_debug_mode')) { error_log('EGP: Head guard style injected'); }
 
         // Inject guard to prevent non-matching popups from showing
+        if (get_option('egp_debug_mode')) { error_log('EGP: Injecting head guard for country ' . $country); }
         $this->render_popup_guard_script($country);
 
         // Optionally trigger a specifically matched popup (if you want auto-open behavior)
@@ -357,20 +356,46 @@ class EGP_Geo_Detect {
         }
         wp_reset_postdata();
 
+        if (get_option('egp_debug_mode')) {
+            error_log('EGP: Built ' . count($rules) . ' geo rules for head guard');
+        }
         $json_rules = wp_json_encode($rules);
+        // Server-side CSS guard: hide popups that do not include this country
+        $disallowed = array();
+        foreach ($rules as $pid => $rule) {
+            if (!isset($rule['enabled']) || !$rule['enabled']) {
+                continue;
+            }
+            $countries = isset($rule['countries']) && is_array($rule['countries']) ? array_map('strtoupper', $rule['countries']) : array();
+            if (!in_array($country, $countries, true)) {
+                $disallowed[] = (int) $pid;
+            }
+        }
+        if (!empty($disallowed)) {
+            echo '<style id="egp-popup-css-guard">';
+            foreach ($disallowed as $pid) {
+                $pid = (int) $pid;
+                echo '.elementor-popup-modal[data-elementor-id="' . $pid . '"],.dialog-widget[data-elementor-id="' . $pid . '"]{display:none!important;visibility:hidden!important;}';
+            }
+            echo '</style>';
+        }
         ?>
         <script type="text/javascript">
         (function(){
             var egpCountry = <?php echo json_encode($country); ?>;
             var egpRules = <?php echo $json_rules ? $json_rules : '{}'; ?>;
             var cssHider = document.getElementById('egp-hide-popups');
+            try { console.log('[EGP] init guard; country:', egpCountry, 'rules:', Object.keys(egpRules||{}).length); } catch(e){}
             function shouldAllow(id){
                 try{ id = parseInt(id, 10); }catch(e){}
+                try { console.log('[EGP] shouldAllow? id=', id); } catch(e){}
                 var r = egpRules[id];
                 if(!r || !r.enabled){ return true; } // no rule => allow
                 if(!egpCountry){ return r.fallback === 'show_to_all'; }
                 var target = String(egpCountry || '').toUpperCase();
-                return Array.isArray(r.countries) && r.countries.indexOf(target) !== -1;
+                var allowed = Array.isArray(r.countries) && r.countries.indexOf(target) !== -1;
+                try { console.log('[EGP] decision for', id, 'target=', target, 'in rules?', allowed, 'rule:', r); } catch(e){}
+                return allowed;
             }
             function getPopupIdFromInstance(inst){
                 try {
@@ -380,33 +405,44 @@ class EGP_Geo_Detect {
             }
             // Intercept event bus shows
             var $w = window.jQuery ? window.jQuery(window) : null;
-            if ($w && typeof $w.on === 'function'){
-                $w.on('elementor/popup/show', function(evt, id, instance){
+            var $d = window.jQuery ? window.jQuery(document) : null;
+            function onPopupShow(evt, id, instance){
                     var pid = (id && id.id) ? id.id : id;
                     if(!pid){ pid = getPopupIdFromInstance(instance); }
+                    try { console.log('[EGP] event: elementor/popup/show', pid); } catch(e){}
                     if(!shouldAllow(pid)){
                         try { instance && instance.hide && instance.hide(); } catch(e){}
                         if (window.console && console.log){ console.log('[EGP] blocked popup', pid, 'for country', egpCountry); }
                         if (evt && evt.preventDefault){ evt.preventDefault(); }
                         return false;
                     }
-                });
+                    try { console.log('[EGP] allowed popup via event', pid); } catch(e){}
+            }
+            if ($w && typeof $w.on === 'function'){
+                $w.on('elementor/popup/show', onPopupShow);
+            }
+            if ($d && typeof $d.on === 'function'){
+                $d.on('elementor/popup/show', onPopupShow);
             }
 
             function patchShow(){
                 try {
                     var mod = window.elementorProFrontend && window.elementorProFrontend.modules && window.elementorProFrontend.modules.popup;
                     if (mod && typeof mod.showPopup === 'function' && !mod.__egpPatched) {
+                        try { console.log('[EGP] patching showPopup'); } catch(e){}
                         var originalShow = mod.showPopup.bind(mod);
                         mod.showPopup = function(args){
                             var pid = args && (args.id || (args.popup && args.popup.id)) || null;
+                            try { console.log('[EGP] showPopup called with', args, 'pid', pid); } catch(e){}
                             if(!shouldAllow(pid)){
                                 if (window.console && console.log){ console.log('[EGP] blocked showPopup', pid, 'for country', egpCountry); }
                                 return;
                             }
+                            try { console.log('[EGP] proceeding showPopup', pid); } catch(e){}
                             return originalShow(args);
                         };
                         mod.__egpPatched = true;
+                        try { console.log('[EGP] showPopup patched'); } catch(e){}
                         return true;
                     }
                 } catch(e) { if (window.console && console.warn){ console.warn('[EGP] guard patch error', e); } }
@@ -414,6 +450,7 @@ class EGP_Geo_Detect {
             }
 
             function unhidePopups(){
+                try { console.log('[EGP] unhidePopups'); } catch(e){}
                 if (cssHider && cssHider.parentNode){ cssHider.parentNode.removeChild(cssHider); }
                 var modals = document.querySelectorAll('.elementor-popup-modal,.dialog-widget');
                 modals.forEach(function(m){ m.style.removeProperty('display'); m.style.removeProperty('visibility'); });
@@ -425,6 +462,7 @@ class EGP_Geo_Detect {
                     open.forEach(function(el){
                         var idAttr = el.getAttribute('data-elementor-id') || el.id || '';
                         var pid = parseInt(idAttr.replace(/\D+/g,'') || '0', 10);
+                        try { console.log('[EGP] scan open popup element', pid); } catch(e){}
                         if (pid && !shouldAllow(pid)){
                             if (window.console && console.log){ console.log('[EGP] closing disallowed already-open popup', pid); }
                             if (window.elementorProFrontend && elementorProFrontend.modules && elementorProFrontend.modules.popup){
@@ -438,14 +476,17 @@ class EGP_Geo_Detect {
             }
 
             function setupGuards(){
+                try { console.log('[EGP] setupGuards start'); } catch(e){}
                 var patched = patchShow();
                 if (!patched){
+                    try { console.log('[EGP] showPopup not ready; retry'); } catch(e){}
                     setTimeout(setupGuards, 100);
                     return;
                 }
                 // After patching, unhide and close any disallowed that might have rendered early
                 closeDisallowedIfOpen();
                 unhidePopups();
+                try { console.log('[EGP] guards active'); } catch(e){}
             }
 
             // Start as soon as possible
