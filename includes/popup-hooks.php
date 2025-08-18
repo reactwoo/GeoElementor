@@ -53,7 +53,19 @@ class EGP_Popup_Hooks {
     /**
      * Filter popup display based on geo conditions
      */
-    public function filter_popup_display($should_show, $popup_id) {
+    public function filter_popup_display($should_show, $popup) {
+        // Resolve popup ID from different possible types
+        $popup_id = null;
+        if (is_object($popup) && method_exists($popup, 'get_id')) {
+            $popup_id = (int) $popup->get_id();
+        } elseif (is_array($popup) && isset($popup['id'])) {
+            $popup_id = (int) $popup['id'];
+        } elseif (is_numeric($popup)) {
+            $popup_id = (int) $popup;
+        }
+        if (!$popup_id) {
+            return $should_show;
+        }
         // If popup shouldn't show for other reasons, don't override
         if (!$should_show) {
             return false;
@@ -82,10 +94,16 @@ class EGP_Popup_Hooks {
         // Normalize codes and check if visitor's country (ISO-2) is in target countries
         $targets = array_map('strtoupper', (array) $geo_settings['countries']);
         if (in_array(strtoupper($visitor_country), $targets, true)) {
+            if (get_option('egp_debug_mode')) {
+                error_log(sprintf('EGP should_show popup %d: country %s matched in [%s]', $popup_id, $visitor_country, implode(',', $targets)));
+            }
             return true; // Country matches, show popup
         }
         
         // Country doesn't match: do not show this popup
+        if (get_option('egp_debug_mode')) {
+            error_log(sprintf('EGP should_hide popup %d: country %s not in [%s]', $popup_id, $visitor_country ?: 'Unknown', implode(',', $targets)));
+        }
         return false;
     }
     
