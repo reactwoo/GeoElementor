@@ -64,6 +64,9 @@
         // Add custom controls to the popup editor
         addCustomControls();
 
+        // Enhance Publish Settings → Advanced Rules with a Geo entry point
+        installAdvancedRulesEntryPoint();
+
     }
 
     /**
@@ -148,6 +151,79 @@
         // Add validation
         addValidation();
 
+    }
+
+    /**
+     * Install a secondary entry point in Publish Settings → Advanced Rules
+     * Adds a "Show on country" row with a globe icon that toggles EGP and focuses the control
+     */
+    function installAdvancedRulesEntryPoint() {
+        var observer = new MutationObserver(function (mutations) {
+            mutations.forEach(function (m) {
+                if (!m.addedNodes) return;
+                $(m.addedNodes).each(function () {
+                    var $node = $(this);
+                    // Detect Elementor Publish Settings modal
+                    if ($node.is('.elementor-publish__dropdown') || $node.find('.elementor-publish__dropdown').length ||
+                        $node.is('.elementor-conditions-modal') || $node.find('.elementor-conditions-modal').length) {
+                        tryInjectAdvancedRule();
+                    }
+                });
+            });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        // Also try immediately in case modal already open
+        setTimeout(tryInjectAdvancedRule, 500);
+    }
+
+    function tryInjectAdvancedRule() {
+        // Find Advanced Rules list container (Elementor markup can vary across versions)
+        var $advancedLists = $('.elementor-publish__modal .elementor-publish__requirements, .elementor-publish__modal .elementor-publish__rules, .elementor-conditions-modal .elementor-conditions-list');
+        if (!$advancedLists.length) return;
+
+        // Prevent duplicate injection
+        if ($advancedLists.find('.egp-advanced-rule').length) return;
+
+        var isEnabled = $('.elementor-control-egp_enable_geo_targeting input[type="checkbox"]').is(':checked');
+
+        // Build a lightweight row that matches Elementor's list look-and-feel
+        var $row = $('<div class="egp-advanced-rule" style="display:flex;align-items:center;justify-content:space-between;border:1px solid #e5e7eb;border-radius:6px;padding:10px 12px;margin:10px 0;">\
+            <div style="display:flex;align-items:center;gap:10px;">\
+                <i class="eicon-globe" style="font-size:16px;opacity:.75;"></i>\
+                <div>\
+                    <div style="font-weight:600;">Show on country</div>\
+                    <div style="font-size:12px;opacity:.7;">Limit this popup to specific countries</div>\
+                </div>\
+            </div>\
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">\
+                <span style="font-size:12px;opacity:.8;">'+ (isEnabled ? 'On' : 'Off') + '</span>\
+                <input type="checkbox" '+ (isEnabled ? 'checked' : '') + '/>\
+            </label>\
+        </div>');
+
+        $row.find('input[type="checkbox"]').on('change', function () {
+            var on = $(this).is(':checked');
+            var $switch = $('.elementor-control-egp_enable_geo_targeting input[type="checkbox"]');
+            if ($switch.length) {
+                if ($switch.is(':checked') !== on) {
+                    $switch.prop('checked', on).trigger('change');
+                }
+            }
+            // Focus countries control to guide the user
+            if (on) {
+                var $countries = $('.elementor-control-egp_countries');
+                if ($countries.length) {
+                    $('html,body').animate({ scrollTop: $countries.offset().top - 80 }, 200);
+                    $countries.addClass('egp-pulse');
+                    setTimeout(function () { $countries.removeClass('egp-pulse'); }, 1200);
+                }
+            }
+            $(this).closest('label').find('span').text(on ? 'On' : 'Off');
+        });
+
+        // Insert the row at the top of Advanced Rules
+        $advancedLists.first().prepend($row);
     }
 
     /**
