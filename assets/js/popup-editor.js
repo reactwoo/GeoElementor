@@ -213,6 +213,41 @@
             });
             return roots;
         }
+
+        // Find the Advanced Rules controls container reliably
+        function getControlsRoot() {
+            var $root = $();
+            getSearchRoots().forEach(function (doc) {
+                $root = $root.add($('.elementor-popup-timing__controls', doc));
+            });
+            if ($root.length) { return $root.filter(':visible').first(); }
+            // Anchor-based fallback: locate a known rule label and use its parent list
+            var anchors = [
+                'Show after X page views',
+                'Show after X sessions',
+                'Show up to X times',
+                'Show when arriving from specific URL',
+                'Show when arriving from',
+                'Hide for logged in users',
+                'Show on devices',
+                'Show on browsers',
+                'Schedule date and time'
+            ];
+            var $candidate = $();
+            getSearchRoots().forEach(function (doc) {
+                anchors.forEach(function (t) {
+                    if ($candidate.length) { return; }
+                    var $a = $(doc).find(':contains("' + t + '")').filter(function () { return $(this).is(':visible'); }).first();
+                    if ($a.length) {
+                        var $row = $a.closest('.elementor-repeater-row, li, .elementor-requirement, .elementor-rule, .e-advanced-rule');
+                        if ($row.length && $row.parent().length) {
+                            $candidate = $row.parent();
+                        }
+                    }
+                });
+            });
+            return $candidate.filter(':visible').first();
+        }
         // Find Advanced Rules list container (Elementor markup varies by version)
         var selectors = [
             '.elementor-publish__modal .elementor-publish__requirements',
@@ -232,6 +267,7 @@
         getSearchRoots().forEach(function (rootDoc) {
             $advancedLists = $advancedLists.add($(selectors.join(','), rootDoc));
         });
+        var $controlsRoot = getControlsRoot();
         if (!$advancedLists.length) {
             // Text-anchor fallback for Elementor Pro 3.29.x – look for known rule labels
             var $modals = $();
@@ -270,8 +306,12 @@
         }
 
         // If already injected inside a correct container, do nothing
-        if ($advancedLists.find('.egp-advanced-rule').length) return;
-        // If advanced rule exists elsewhere (e.g., top of modal), relocate it into target container instead of duplicating
+        if ($advancedLists.find('.egp-advanced-rule').length && $controlsRoot.length) {
+            // ensure correct placement at top of controls root
+            var $existingInContainer = $controlsRoot.find('.egp-advanced-rule');
+            if ($existingInContainer.length) { return; }
+        }
+        // If advanced rule exists elsewhere (e.g., top of modal), relocate into controls root or target container
         var $existingLoose = $('.egp-advanced-rule').first();
 
         var isEnabled = $('.elementor-control-egp_enable_geo_targeting input[type="checkbox"]').is(':checked');
@@ -312,7 +352,7 @@
         });
 
         // Insert the row at the top of Advanced Rules; prefer rules container with list items
-        var $target = $advancedLists.filter(function () {
+        var $target = ($controlsRoot && $controlsRoot.length) ? $controlsRoot : $advancedLists.filter(function () {
             var $el = $(this);
             return $el.find('> *').length > 0;
         }).first();
