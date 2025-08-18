@@ -22,14 +22,26 @@
      */
     function initGlobalSettings() {
         // Listen for Elementor editor initialization
-        elementor.on('editor:init', function () {
-            setupGlobalSettings();
-        });
-
-        // Also initialize if already in edit mode
-        if (elementor.isEditMode()) {
-            setupGlobalSettings();
+        if (window.elementor && elementor.on) {
+            elementor.on('editor:init', function () {
+                setupGlobalSettings();
+            });
         }
+
+        // Also initialize if already in editor context (safe across versions)
+        try {
+            var isEditor = false;
+            if (window.elementor && typeof elementor.isEditMode === 'function') {
+                isEditor = elementor.isEditMode();
+            } else if (window.elementorCommon && elementorCommon.config && elementorCommon.config.isEditor) {
+                isEditor = true;
+            } else if (window.elementor && elementor.channels && elementor.channels.editor) {
+                isEditor = true;
+            }
+            if (isEditor) {
+                setupGlobalSettings();
+            }
+        } catch (e) { }
     }
 
     /**
