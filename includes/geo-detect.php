@@ -23,6 +23,12 @@ class EGP_Geo_Detect {
         add_action('wp_footer', array($this, 'inject_geo_popup_script'));
         add_action('wp_ajax_egp_get_visitor_country', array($this, 'ajax_get_visitor_country'));
         add_action('wp_ajax_nopriv_egp_get_visitor_country', array($this, 'ajax_get_visitor_country'));
+        // Shortcode for quick country testing
+        add_action('init', function () {
+            add_shortcode('egp_country', array($this, 'shortcode_egp_country'));
+        });
+        // Optional on-page debug badge when debug mode enabled
+        add_action('wp_footer', array($this, 'maybe_render_debug_badge'), 99);
     }
     
     /**
@@ -185,8 +191,8 @@ class EGP_Geo_Detect {
         ));
         
         if (empty($popups)) {
-            // Check fallback behavior
-            return $this->get_fallback_popup();
+            // No explicit match; do not force any popup
+            return 0;
         }
         
         // Return the first matching popup
@@ -293,6 +299,44 @@ class EGP_Geo_Detect {
         }
     }
     
+    /**
+     * Shortcode: [egp_country]
+     */
+    public function shortcode_egp_country() {
+        $ip = $this->get_visitor_ip();
+        $country = $this->get_visitor_country();
+        $country_name = $country ? self::get_country_name($country) : __('Unknown', 'elementor-geo-popup');
+        ob_start();
+        echo '<div class="egp-country-test" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:4px;display:inline-block;background:#f8fafc;">';
+        echo '<strong>' . esc_html__('Detected Country:', 'elementor-geo-popup') . '</strong> ' . esc_html($country ?: '—') . ' – ' . esc_html($country_name);
+        echo ' &nbsp; <strong>IP:</strong> ' . esc_html($ip ?: '—');
+        echo '</div>';
+        return ob_get_clean();
+    }
+
+    /**
+     * Render a small debug badge on the page when debug mode is enabled
+     */
+    public function maybe_render_debug_badge() {
+        if (!get_option('egp_debug_mode')) {
+            return;
+        }
+        // Avoid showing in admin/elementor editor previews if not desired
+        if (is_admin()) {
+            return;
+        }
+        $ip = $this->get_visitor_ip();
+        $country = $this->get_visitor_country();
+        $country_name = $country ? self::get_country_name($country) : __('Unknown', 'elementor-geo-popup');
+        ?>
+        <div style="position:fixed;z-index:2147483647;right:12px;bottom:12px;background:#111827;color:#f9fafb;border-radius:6px;padding:8px 10px;font:12px/1.4 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.2);opacity:.9;">
+            <span style="opacity:.8;">EGP</span> · <strong><?php echo esc_html($country ?: '—'); ?></strong>
+            <span style="opacity:.8;">(<?php echo esc_html($country_name); ?>)</span>
+            <span style="margin-left:8px;opacity:.8;">IP:</span> <?php echo esc_html($ip ?: '—'); ?>
+        </div>
+        <?php
+    }
+
     /**
      * Get country name from code
      */

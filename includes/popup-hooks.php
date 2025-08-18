@@ -62,7 +62,7 @@ class EGP_Popup_Hooks {
         // Check if this popup has geo targeting enabled
         $geo_settings = $this->get_popup_geo_settings($popup_id);
         
-        if (!$geo_settings || !$geo_settings['enabled']) {
+        if (!$geo_settings || empty($geo_settings['enabled'])) {
             return $should_show; // No geo targeting, show normally
         }
         
@@ -80,8 +80,8 @@ class EGP_Popup_Hooks {
             return true; // Country matches, show popup
         }
         
-        // Country doesn't match, check fallback behavior
-        return $this->handle_fallback_behavior($geo_settings['fallback_behavior']);
+        // Country doesn't match: do not show this popup
+        return false;
     }
     
     /**
