@@ -360,6 +360,10 @@ class EGP_Geo_Detect {
             error_log('EGP: Built ' . count($rules) . ' geo rules for head guard');
         }
         $json_rules = wp_json_encode($rules);
+        $applyPreferred = (bool) get_option('egp_apply_preferred_to_untargeted', false);
+        $preferred = get_option('egp_preferred_countries', array('US','CA','GB'));
+        if (!is_array($preferred)) { $preferred = array(); }
+        $preferred = array_map('strtoupper', $preferred);
         // Server-side CSS guard: hide popups that do not include this country
         $disallowed = array();
         foreach ($rules as $pid => $rule) {
@@ -371,11 +375,14 @@ class EGP_Geo_Detect {
                 $disallowed[] = (int) $pid;
             }
         }
+        if (get_option('egp_debug_mode')) {
+            error_log('EGP: Rule IDs: ' . implode(',', array_keys($rules)) . ' | Disallowed for ' . $country . ': ' . (empty($disallowed) ? '(none)' : implode(',', $disallowed)));
+        }
         if (!empty($disallowed)) {
             echo '<style id="egp-popup-css-guard">';
             foreach ($disallowed as $pid) {
                 $pid = (int) $pid;
-                echo '.elementor-popup-modal[data-elementor-id="' . $pid . '"],.dialog-widget[data-elementor-id="' . $pid . '"]{display:none!important;visibility:hidden!important;}';
+                echo '.elementor-popup-modal[data-elementor-id="' . $pid . '"],.dialog-widget[data-elementor-id="' . $pid . '"],#elementor-popup-modal-' . $pid . '{display:none!important;visibility:hidden!important;}';
             }
             echo '</style>';
         }
@@ -384,13 +391,22 @@ class EGP_Geo_Detect {
         (function(){
             var egpCountry = <?php echo json_encode($country); ?>;
             var egpRules = <?php echo $json_rules ? $json_rules : '{}'; ?>;
+            var egpApplyPreferredToUntargeted = <?php echo $applyPreferred ? 'true' : 'false'; ?>;
+            var egpPreferredCountries = <?php echo wp_json_encode($preferred); ?>;
+            try { window.egpCountry = egpCountry; window.egpRules = egpRules; } catch(e){}
             var cssHider = document.getElementById('egp-hide-popups');
-            try { console.log('[EGP] init guard; country:', egpCountry, 'rules:', Object.keys(egpRules||{}).length); } catch(e){}
+            try { console.log('[EGP] init guard; country:', egpCountry, 'rules:', Object.keys(egpRules||{}).length, 'applyPreferredToUntargeted:', egpApplyPreferredToUntargeted, 'preferred:', egpPreferredCountries); } catch(e){}
             function shouldAllow(id){
                 try{ id = parseInt(id, 10); }catch(e){}
                 try { console.log('[EGP] shouldAllow? id=', id); } catch(e){}
                 var r = egpRules[id];
-                if(!r || !r.enabled){ return true; } // no rule => allow
+                if(!r || !r.enabled){
+                    if (!egpApplyPreferredToUntargeted) { return true; }
+                    var t = String(egpCountry || '').toUpperCase();
+                    var allowUntargeted = Array.isArray(egpPreferredCountries) && egpPreferredCountries.indexOf(t) !== -1;
+                    try { console.log('[EGP] untargeted popup decision for', id, 'country', t, 'allow?', allowUntargeted); } catch(e){}
+                    return allowUntargeted;
+                }
                 if(!egpCountry){ return r.fallback === 'show_to_all'; }
                 var target = String(egpCountry || '').toUpperCase();
                 var allowed = Array.isArray(r.countries) && r.countries.indexOf(target) !== -1;

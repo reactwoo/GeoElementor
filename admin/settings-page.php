@@ -108,6 +108,11 @@ class EGP_Admin_Settings {
             'type' => 'array',
             'default' => array('US', 'CA', 'GB')
         ));
+
+        register_setting('egp_settings', 'egp_apply_preferred_to_untargeted', array(
+            'type' => 'boolean',
+            'default' => false
+        ));
         
         // Add settings sections
         add_settings_section(
@@ -183,6 +188,14 @@ class EGP_Admin_Settings {
             'egp_preferred_countries',
             __('Preferred Countries', 'elementor-geo-popup'),
             array($this, 'render_preferred_countries_field'),
+            'egp_settings',
+            'egp_preferred_countries_section'
+        );
+
+        add_settings_field(
+            'egp_apply_preferred_to_untargeted',
+            __('Apply preferred countries to untargeted popups', 'elementor-geo-popup'),
+            array($this, 'render_apply_preferred_field'),
             'egp_settings',
             'egp_preferred_countries_section'
         );
@@ -403,6 +416,20 @@ class EGP_Admin_Settings {
             <?php endforeach; ?>
         </select>
         <p class="description"><?php _e('Select countries that will be used as defaults for geo-targeting in Elementor globals and widgets. Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render apply preferred to untargeted field
+     */
+    public function render_apply_preferred_field() {
+        $value = get_option('egp_apply_preferred_to_untargeted', false);
+        ?>
+        <label>
+            <input type="checkbox" name="egp_apply_preferred_to_untargeted" value="1" <?php checked($value, 1); ?> />
+            <?php _e('Only show popups without explicit EGP targeting to visitors from Preferred Countries', 'elementor-geo-popup'); ?>
+        </label>
+        <p class="description"><?php _e('Per‑popup targeting still overrides this. Default is off to avoid breaking existing popups.', 'elementor-geo-popup'); ?></p>
         <?php
     }
 
