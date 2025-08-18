@@ -185,12 +185,34 @@
         });
         observer.observe(document.body, { childList: true, subtree: true });
 
+        // Also observe main editor iframe if present (Elementor often renders overlays in different roots)
+        setTimeout(function () {
+            var iframe = document.querySelector('#elementor-preview-iframe');
+            if (iframe && iframe.contentWindow && iframe.contentDocument) {
+                try {
+                    new MutationObserver(function () { tryInjectAdvancedRule(); })
+                        .observe(iframe.contentDocument.body, { childList: true, subtree: true });
+                } catch (e) { }
+            }
+        }, 500);
+
         // Also try immediately in case modal already open
         setTimeout(tryInjectAdvancedRule, 300);
         setTimeout(tryInjectAdvancedRule, 1200);
     }
 
     function tryInjectAdvancedRule() {
+        // Helper: collect top document and same-origin iframes
+        function getSearchRoots() {
+            var roots = [document];
+            var iframes = document.querySelectorAll('iframe');
+            iframes.forEach(function (ifr) {
+                try {
+                    if (ifr.contentDocument && ifr.contentDocument.body) { roots.push(ifr.contentDocument); }
+                } catch (e) { }
+            });
+            return roots;
+        }
         // Find Advanced Rules list container (Elementor markup varies by version)
         var selectors = [
             '.elementor-publish__modal .elementor-publish__requirements',
@@ -202,10 +224,16 @@
             '.elementor-conditions-modal .e-conditions__rules',
             '.elementor-publish__modal .e-advanced-rules'
         ];
-        var $advancedLists = $(selectors.join(','));
+        var $advancedLists = $();
+        getSearchRoots().forEach(function (rootDoc) {
+            $advancedLists = $advancedLists.add($(selectors.join(','), rootDoc));
+        });
         if (!$advancedLists.length) {
             // Text-anchor fallback for Elementor Pro 3.29.x – look for known rule labels
-            var $modals = $('.elementor-publish__modal, .elementor-conditions-modal, .dialog-lightbox-widget');
+            var $modals = $();
+            getSearchRoots().forEach(function (rootDoc) {
+                $modals = $modals.add($('.elementor-publish__modal, .elementor-conditions-modal, .dialog-lightbox-widget', rootDoc));
+            });
             if (!$modals.length) return;
             var $anchorLabel = $modals.find(':contains("Show on devices"), :contains("Show on browsers"), :contains("Hide for logged in users")').filter(function () {
                 // limit to visible elements
