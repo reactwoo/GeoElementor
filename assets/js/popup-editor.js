@@ -21,10 +21,20 @@
             initGeoPopupEditor();
         });
 
-        // Also initialize if Elementor is already ready
-        if (elementor.isEditMode()) {
-            initGeoPopupEditor();
-        }
+        // Also initialize if editor context already active (Elementor 3.x safe)
+        try {
+            var isEditor = false;
+            if (window.elementor && typeof elementor.isEditMode === 'function') {
+                isEditor = elementor.isEditMode();
+            } else if (window.elementorCommon && elementorCommon.config && elementorCommon.config.isEditor) {
+                isEditor = true;
+            } else if (window.elementor && elementor.channels && elementor.channels.editor) {
+                isEditor = true;
+            }
+            if (isEditor) {
+                initGeoPopupEditor();
+            }
+        } catch (e) { }
 
     });
 
