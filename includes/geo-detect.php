@@ -59,8 +59,11 @@ class EGP_Geo_Detect {
             return;
         }
         
-        // Inject the popup trigger script
-        $this->render_popup_script($popup_id, $country);
+        // Inject guard to prevent non-matching popups from showing
+        $this->render_popup_guard_script($country);
+
+        // Optionally trigger a specifically matched popup (if you want auto-open behavior)
+        // $this->render_popup_script($popup_id, $country);
     }
     
     /**
@@ -312,6 +315,86 @@ class EGP_Geo_Detect {
         echo ' &nbsp; <strong>IP:</strong> ' . esc_html($ip ?: '—');
         echo '</div>';
         return ob_get_clean();
+    }
+
+    /**
+     * Inject a JS guard that prevents popups from showing if geo rules do not match
+     */
+    private function render_popup_guard_script($country) {
+        $country = strtoupper($country);
+        // Build rules from popup page settings
+        $rules = array();
+        $query = new WP_Query(array(
+            'post_type' => 'elementor_library',
+            'post_status' => 'publish',
+            'posts_per_page' => 200,
+            'fields' => 'ids',
+        ));
+        if ($query->have_posts()) {
+            foreach ($query->posts as $popup_id) {
+                // Ensure this library doc is a popup
+                $type = get_post_meta($popup_id, '_elementor_template_type', true);
+                if ($type !== 'popup') {
+                    continue;
+                }
+                $settings = get_post_meta($popup_id, '_elementor_page_settings', true);
+                if (!is_array($settings)) {
+                    continue;
+                }
+                if (isset($settings['egp_enable_geo_targeting']) && $settings['egp_enable_geo_targeting'] === 'yes') {
+                    $countries = array();
+                    if (!empty($settings['egp_countries']) && is_array($settings['egp_countries'])) {
+                        foreach ($settings['egp_countries'] as $c) {
+                            $countries[] = strtoupper(sanitize_text_field($c));
+                        }
+                    }
+                    $rules[(int) $popup_id] = array(
+                        'enabled' => true,
+                        'countries' => $countries,
+                        'fallback' => isset($settings['egp_fallback_behavior']) ? sanitize_text_field($settings['egp_fallback_behavior']) : 'inherit',
+                    );
+                }
+            }
+        }
+        wp_reset_postdata();
+
+        $json_rules = wp_json_encode($rules);
+        ?>
+        <script type="text/javascript">
+        (function(){
+            var egpCountry = <?php echo json_encode($country); ?>;
+            var egpRules = <?php echo $json_rules ? $json_rules : '{}'; ?>;
+            function shouldAllow(id){
+                try{ id = parseInt(id, 10); }catch(e){}
+                var r = egpRules[id];
+                if(!r || !r.enabled){ return true; } // no rule => allow
+                if(!egpCountry){ return r.fallback === 'show_to_all'; }
+                var target = String(egpCountry || '').toUpperCase();
+                return Array.isArray(r.countries) && r.countries.indexOf(target) !== -1;
+            }
+            function getPopupIdFromInstance(inst){
+                try {
+                    if (inst && inst.getSettings){ return inst.getSettings('id'); }
+                } catch(e) {}
+                return null;
+            }
+            // Intercept show events
+            var $w = window.jQuery ? window.jQuery(window) : null;
+            if ($w && typeof $w.on === 'function'){
+                $w.on('elementor/popup/show', function(evt, id, instance){
+                    var pid = (id && id.id) ? id.id : id;
+                    if(!pid){ pid = getPopupIdFromInstance(instance); }
+                    if(!shouldAllow(pid)){
+                        try { instance && instance.hide && instance.hide(); } catch(e){}
+                        if (window.console && console.log){ console.log('[EGP] blocked popup', pid, 'for country', egpCountry); }
+                        if (evt && evt.preventDefault){ evt.preventDefault(); }
+                        return false;
+                    }
+                });
+            }
+        })();
+        </script>
+        <?php
     }
 
     /**
