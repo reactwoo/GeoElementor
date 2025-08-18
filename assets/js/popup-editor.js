@@ -193,7 +193,24 @@
             '.elementor-publish__modal .e-advanced-rules'
         ];
         var $advancedLists = $(selectors.join(','));
-        if (!$advancedLists.length) return;
+        if (!$advancedLists.length) {
+            // Text-anchor fallback for Elementor Pro 3.29.x – look for known rule labels
+            var $modals = $('.elementor-publish__modal, .elementor-conditions-modal, .dialog-lightbox-widget');
+            if (!$modals.length) return;
+            var $anchorLabel = $modals.find(':contains("Show on devices"), :contains("Show on browsers"), :contains("Hide for logged in users")').filter(function () {
+                // limit to visible elements
+                return $(this).is(':visible');
+            }).first();
+            if ($anchorLabel.length) {
+                var $rowCandidate = $anchorLabel.closest('li, .elementor-conditions__item, .elementor-conditions-list__item, .e-advanced-rule, .elementor-requirement, .elementor-rule, div');
+                if ($rowCandidate.length) {
+                    var $wrap = $('<div class="egp-advanced-rules-wrap"></div>');
+                    $rowCandidate.before($wrap);
+                    $advancedLists = $wrap; // inject into our wrap placed in the list
+                }
+            }
+            if (!$advancedLists.length) return;
+        }
 
         // Prevent duplicate injection
         if ($advancedLists.find('.egp-advanced-rule').length) return;
