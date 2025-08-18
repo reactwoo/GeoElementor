@@ -20,7 +20,7 @@ class EGP_Geo_Detect {
      * Constructor
      */
     public function __construct() {
-        add_action('wp_footer', array($this, 'inject_geo_popup_script'));
+        add_action('wp_head', array($this, 'inject_geo_popup_script'), 1);
         add_action('wp_ajax_egp_get_visitor_country', array($this, 'ajax_get_visitor_country'));
         add_action('wp_ajax_nopriv_egp_get_visitor_country', array($this, 'ajax_get_visitor_country'));
         // Shortcode for quick country testing
@@ -52,18 +52,17 @@ class EGP_Geo_Detect {
             return;
         }
         
-        // Get matching popup
-        $popup_id = $this->get_matching_popup($country);
-        
-        if (!$popup_id) {
-            return;
-        }
-        
+        // Prevent early popup flashes before the guard is active
+        echo '<style id="egp-hide-popups">.elementor-popup-modal,.dialog-widget{display:none!important;visibility:hidden!important;}</style>';
+
         // Inject guard to prevent non-matching popups from showing
         $this->render_popup_guard_script($country);
 
         // Optionally trigger a specifically matched popup (if you want auto-open behavior)
-        // $this->render_popup_script($popup_id, $country);
+        // $popup_id = $this->get_matching_popup($country);
+        // if ($popup_id) {
+        //     $this->render_popup_script($popup_id, $country);
+        // }
     }
     
     /**
@@ -364,6 +363,7 @@ class EGP_Geo_Detect {
         (function(){
             var egpCountry = <?php echo json_encode($country); ?>;
             var egpRules = <?php echo $json_rules ? $json_rules : '{}'; ?>;
+            var cssHider = document.getElementById('egp-hide-popups');
             function shouldAllow(id){
                 try{ id = parseInt(id, 10); }catch(e){}
                 var r = egpRules[id];
@@ -393,22 +393,67 @@ class EGP_Geo_Detect {
                 });
             }
 
-            // Monkey-patch showPopup to guard programmatic opens (including on-load triggers)
-            try {
-                var mod = window.elementorProFrontend && window.elementorProFrontend.modules && window.elementorProFrontend.modules.popup;
-                if (mod && typeof mod.showPopup === 'function' && !mod.__egpPatched) {
-                    var originalShow = mod.showPopup.bind(mod);
-                    mod.showPopup = function(args){
-                        var pid = args && (args.id || (args.popup && args.popup.id)) || null;
-                        if(!shouldAllow(pid)){
-                            if (window.console && console.log){ console.log('[EGP] blocked showPopup', pid, 'for country', egpCountry); }
-                            return;
+            function patchShow(){
+                try {
+                    var mod = window.elementorProFrontend && window.elementorProFrontend.modules && window.elementorProFrontend.modules.popup;
+                    if (mod && typeof mod.showPopup === 'function' && !mod.__egpPatched) {
+                        var originalShow = mod.showPopup.bind(mod);
+                        mod.showPopup = function(args){
+                            var pid = args && (args.id || (args.popup && args.popup.id)) || null;
+                            if(!shouldAllow(pid)){
+                                if (window.console && console.log){ console.log('[EGP] blocked showPopup', pid, 'for country', egpCountry); }
+                                return;
+                            }
+                            return originalShow(args);
+                        };
+                        mod.__egpPatched = true;
+                        return true;
+                    }
+                } catch(e) { if (window.console && console.warn){ console.warn('[EGP] guard patch error', e); } }
+                return false;
+            }
+
+            function unhidePopups(){
+                if (cssHider && cssHider.parentNode){ cssHider.parentNode.removeChild(cssHider); }
+                var modals = document.querySelectorAll('.elementor-popup-modal,.dialog-widget');
+                modals.forEach(function(m){ m.style.removeProperty('display'); m.style.removeProperty('visibility'); });
+            }
+
+            function closeDisallowedIfOpen(){
+                try{
+                    var open = document.querySelectorAll('.elementor-popup-modal');
+                    open.forEach(function(el){
+                        var idAttr = el.getAttribute('data-elementor-id') || el.id || '';
+                        var pid = parseInt(idAttr.replace(/\D+/g,'') || '0', 10);
+                        if (pid && !shouldAllow(pid)){
+                            if (window.console && console.log){ console.log('[EGP] closing disallowed already-open popup', pid); }
+                            if (window.elementorProFrontend && elementorProFrontend.modules && elementorProFrontend.modules.popup){
+                                try { elementorProFrontend.modules.popup.closePopup({ id: pid }); } catch(e){}
+                            }
+                            el.style.display = 'none';
+                            el.style.visibility = 'hidden';
                         }
-                        return originalShow(args);
-                    };
-                    mod.__egpPatched = true;
+                    });
+                }catch(e){}
+            }
+
+            function setupGuards(){
+                var patched = patchShow();
+                if (!patched){
+                    setTimeout(setupGuards, 100);
+                    return;
                 }
-            } catch(e) { if (window.console && console.warn){ console.warn('[EGP] guard patch error', e); } }
+                // After patching, unhide and close any disallowed that might have rendered early
+                closeDisallowedIfOpen();
+                unhidePopups();
+            }
+
+            // Start as soon as possible
+            if (document.readyState === 'loading'){
+                document.addEventListener('DOMContentLoaded', setupGuards);
+            } else {
+                setupGuards();
+            }
         })();
         </script>
         <?php
