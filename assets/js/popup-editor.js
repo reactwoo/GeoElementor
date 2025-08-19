@@ -248,6 +248,28 @@
             });
             return $candidate.filter(':visible').first();
         }
+
+        // Prefer the publish timing modal root used in your environment
+        function getPublishTimingModalRoot() {
+            var $modal = $();
+            getSearchRoots().forEach(function (doc) {
+                $modal = $modal.add($('.e-route-theme-builder-publish-timing, .elementor-publish__modal, .elementor-conditions-modal, .dialog-lightbox-container', doc));
+            });
+            return $modal.filter(':visible').first();
+        }
+
+        // From the modal root, resolve the first visible UL that holds rule rows
+        function getFirstVisibleRulesList($modalRoot) {
+            if (!$modalRoot || !$modalRoot.length) { return $(); }
+            var $known = $modalRoot.find('.elementor-popup-timing__controls, .elementor-publish__rules, .elementor-publish__requirements, .e-advanced-rules, .elementor-conditions-list').filter(':visible').first();
+            if ($known.length) { return $known; }
+            var chosen = null;
+            $modalRoot.find('ul:visible').each(function () {
+                var count = $(this).children('li, .elementor-requirement, .elementor-rule, .e-advanced-rule, .elementor-repeater-row').length;
+                if (!chosen && count >= 3) { chosen = this; }
+            });
+            return $(chosen || []);
+        }
         // Find Advanced Rules list container (Elementor markup varies by version)
         var selectors = [
             '.elementor-publish__modal .elementor-publish__requirements',
@@ -267,7 +289,8 @@
         getSearchRoots().forEach(function (rootDoc) {
             $advancedLists = $advancedLists.add($(selectors.join(','), rootDoc));
         });
-        var $controlsRoot = getControlsRoot();
+        // Compute the most accurate container for your build
+        var $controlsRoot = getFirstVisibleRulesList(getPublishTimingModalRoot());
         if (!$advancedLists.length) {
             // Text-anchor fallback for Elementor Pro 3.29.x – look for known rule labels
             var $modals = $();
@@ -357,8 +380,8 @@
             return $el.find('> *').length > 0;
         }).first();
         if (!$target.length) { $target = $advancedLists.first(); }
-        // Prefer inserting after the first known rule row inside the container for visual consistency
-        var $firstRuleRow = $target.find('.elementor-repeater-row, li, .elementor-requirement, .elementor-rule, .e-advanced-rule').first();
+        // Prefer inserting before the first known rule row inside the container for visual consistency
+        var $firstRuleRow = $target.find('li, .elementor-requirement, .elementor-rule, .e-advanced-rule, .elementor-repeater-row').first();
         if ($firstRuleRow.length) {
             $firstRuleRow.before($row);
         } else {
