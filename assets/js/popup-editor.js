@@ -351,9 +351,9 @@
                     <div style="font-size:12px;opacity:.7;">Limit this popup to specific countries</div>\
                 </div>\
             </div>\
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">\
-                <span style="font-size:12px;opacity:.8;">'+ (isEnabled ? 'On' : 'Off') + '</span>\
-                <input type="checkbox" '+ (isEnabled ? 'checked' : '') + '/>\
+            <label class="elementor-switcher" style="margin-left:8px;">\
+                <input type="checkbox" class="elementor-switcher-input" '+ (isEnabled ? 'checked' : '') + '/>\
+                <span class="elementor-switcher-label"></span>\
             </label>\
         </div>');
 
@@ -374,7 +374,7 @@
                     setTimeout(function () { $countries.removeClass('egp-pulse'); }, 1200);
                 }
             }
-            $(this).closest('label').find('span').text(on ? 'On' : 'Off');
+            // No text badge; Elementor switcher handles visuals
         });
 
         // Insert the row at the top of Advanced Rules; prefer rules container with list items
