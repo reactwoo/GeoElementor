@@ -146,6 +146,14 @@ class ElementorGeoPopup {
                 add_filter('elementor_pro/frontend/print_google_fonts', '__return_false');
             }
         });
+
+        // Extra hardening: stop Elementor from printing local Google Fonts CSS links in editor/preview
+        add_action('elementor/frontend/after_register_styles', function(){
+            add_filter('elementor/fonts/print_font_links/google', '__return_false');
+            if (wp_style_is('elementor-google-fonts', 'registered')) {
+                wp_dequeue_style('elementor-google-fonts');
+            }
+        }, 999);
         
         // Initialize core components
         new EGP_Geo_Detect();
