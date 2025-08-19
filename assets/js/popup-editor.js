@@ -179,6 +179,7 @@
                         $node.find('.elementor-publish__modal, .elementor-publish__dropdown, .elementor-conditions-modal, .dialog-lightbox-widget').length
                     ) {
                         tryInjectAdvancedRule();
+                        ensurePlacementForAShortPeriod();
                     }
                 });
             });
@@ -199,6 +200,8 @@
         // Also try immediately in case modal already open
         setTimeout(tryInjectAdvancedRule, 300);
         setTimeout(tryInjectAdvancedRule, 1200);
+        setTimeout(ensurePlacementForAShortPeriod, 300);
+        setTimeout(ensurePlacementForAShortPeriod, 1200);
     }
 
     function tryInjectAdvancedRule() {
@@ -387,6 +390,36 @@
         } else {
             $target.prepend($row);
         }
+    }
+
+    // After the modal renders/updates, Elementor may re-render the list. Gently keep our row in place for a few seconds.
+    function ensurePlacementForAShortPeriod() {
+        var attempts = 0, maxAttempts = 30; // ~6s at 200ms
+        var tick = function () {
+            attempts++;
+            try {
+                // If our row exists and is not inside the list, re-run injection
+                var $row = $('.egp-advanced-rule');
+                if ($row.length) {
+                    var $modal = $('.e-route-theme-builder-publish-timing:visible, .elementor-publish__modal:visible, .elementor-conditions-modal:visible, .dialog-lightbox-container:visible').first();
+                    if ($modal.length) {
+                        var $list = $modal.find('.elementor-popup-timing__controls:visible, .elementor-publish__rules:visible, .elementor-publish__requirements:visible, .e-advanced-rules:visible, .elementor-conditions-list:visible').first();
+                        if (!$list.length) {
+                            $modal.find('ul:visible').each(function () {
+                                var count = $(this).children('li, .elementor-requirement, .elementor-rule, .e-advanced-rule, .elementor-repeater-row').length;
+                                if (count >= 3 && !$list.length) { $list = $(this); }
+                            });
+                        }
+                        if ($list.length && $row.parent()[0] !== $list[0]) {
+                            var $first = $list.find('li, .elementor-requirement, .elementor-rule, .e-advanced-rule, .elementor-repeater-row').first();
+                            if ($first.length) { $first.before($row); } else { $list.prepend($row); }
+                        }
+                    }
+                }
+            } catch (e) { }
+            if (attempts < maxAttempts) { setTimeout(tick, 200); }
+        };
+        setTimeout(tick, 200);
     }
 
     /**

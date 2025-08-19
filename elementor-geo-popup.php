@@ -125,7 +125,27 @@ class ElementorGeoPopup {
         // Initialize admin components (Editor integration only; settings and licensing were initialized earlier)
         if (is_admin()) {
             new EGP_Popup_Editor();
+            // Reduce editor console noise: prevent cross-origin Google Fonts requests in Elementor editor
+            add_action('elementor/editor/before_enqueue_scripts', function () {
+                // Dequeue Elementor's Google fonts style if registered
+                wp_dequeue_style('elementor-google-fonts');
+                // Prevent Elementor (and Pro) from printing Google fonts in editor
+                add_filter('elementor/frontend/print_google_fonts', '__return_false');
+                add_filter('elementor_pro/frontend/print_google_fonts', '__return_false');
+            }, 999);
+            // Provide a tiny favicon to avoid 404s in editor preview
+            add_action('admin_head', function () {
+                echo '<link rel="icon" href="data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\'/>" />';
+            });
         }
+
+        // Also disable Elementor Google Fonts when viewing an Elementor preview on the frontend
+        add_action('init', function () {
+            if (isset($_GET['elementor-preview'])) {
+                add_filter('elementor/frontend/print_google_fonts', '__return_false');
+                add_filter('elementor_pro/frontend/print_google_fonts', '__return_false');
+            }
+        });
         
         // Initialize core components
         new EGP_Geo_Detect();
