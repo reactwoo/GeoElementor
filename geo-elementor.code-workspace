@@ -2,6 +2,12 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../../../../../../reactwoo/app/public/wp-content/plugins/WooAliSync-Lic"
+		},
+		{
+			"path": "../../../../../../reactwoo/app/public/wp-content/plugins/reactwoo-api"
 		}
 	],
 	"settings": {}

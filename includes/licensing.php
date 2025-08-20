@@ -318,14 +318,15 @@ class EGP_Licensing {
         $site_url = get_site_url();
         $site_name = get_bloginfo('name');
         
-        $response = wp_remote_post($this->license_server . '/api/activate', array(
-            'body' => array(
-                'license_key' => $license_key,
-                'site_url' => $site_url,
-                'site_name' => $site_name,
-                'product_id' => 'egp_elementor_geo_popup',
-                'version' => EGP_VERSION
-            ),
+        // Token-based activation (Option B)
+        $response = wp_remote_post($this->license_server . '/activate', array(
+            'headers' => array('Content-Type' => 'application/json'),
+            'body' => wp_json_encode(array(
+                'licenseKey' => $license_key,
+                'domain' => wp_parse_url($site_url, PHP_URL_HOST),
+                'pluginVersion' => defined('EGP_VERSION') ? EGP_VERSION : '1.0.0',
+                'productType' => 'geo'
+            )),
             'timeout' => 30
         ));
         
@@ -336,18 +337,37 @@ class EGP_Licensing {
         $body = wp_remote_retrieve_body($response);
         $data = json_decode($body, true);
         
-        if (!$data || !isset($data['success'])) {
+        if (!$data) {
             return new WP_Error('invalid_response', __('Invalid response from license server', 'elementor-geo-popup'));
         }
         
-        if (!$data['success']) {
-            return new WP_Error('activation_failed', $data['message'] ?? __('License activation failed', 'elementor-geo-popup'));
+        $access_token = $data['accessToken'] ?? $data['access_token'] ?? ($data['data']['access_token'] ?? '');
+        $refresh_token = $data['refreshToken'] ?? $data['refresh_token'] ?? ($data['data']['refresh_token'] ?? '');
+        $expires_at = intval($data['expires_at'] ?? ($data['data']['expires_at'] ?? 0));
+        
+        if (empty($access_token) || empty($refresh_token)) {
+            return new WP_Error('activation_failed', __('License activation failed', 'elementor-geo-popup'));
         }
         
-        // Store license data
+        // Store license data and tokens
         update_option('egp_license_key', $license_key);
+        update_option('egp_license_access_token', $access_token);
+        update_option('egp_license_refresh_token', $refresh_token);
+        update_option('egp_license_expires_at', $expires_at);
         update_option('egp_license_status', 'valid');
-        update_option('egp_license_data', $data['data'] ?? array());
+        
+        // Fetch features/limits via verify
+        $verify = wp_remote_get($this->license_server . '/verify', array(
+            'headers' => array('Authorization' => 'Bearer ' . $access_token),
+            'timeout' => 20
+        ));
+        if (!is_wp_error($verify)) {
+            $vbody = wp_remote_retrieve_body($verify);
+            $vdata = json_decode($vbody, true);
+            if (isset($vdata['valid']) && $vdata['valid']) {
+                update_option('egp_license_data', $vdata);
+            }
+        }
         
         return true;
     }
@@ -364,12 +384,12 @@ class EGP_Licensing {
         
         $site_url = get_site_url();
         
-        $response = wp_remote_post($this->license_server . '/api/deactivate', array(
-            'body' => array(
-                'license_key' => $license_key,
-                'site_url' => $site_url,
-                'product_id' => 'egp_elementor_geo_popup'
-            ),
+        $response = wp_remote_post($this->license_server . '/deactivate', array(
+            'headers' => array('Content-Type' => 'application/json'),
+            'body' => wp_json_encode(array(
+                'licenseKey' => $license_key,
+                'domain' => wp_parse_url($site_url, PHP_URL_HOST)
+            )),
             'timeout' => 30
         ));
         
@@ -377,6 +397,9 @@ class EGP_Licensing {
         delete_option('egp_license_key');
         delete_option('egp_license_status');
         delete_option('egp_license_data');
+        delete_option('egp_license_access_token');
+        delete_option('egp_license_refresh_token');
+        delete_option('egp_license_expires_at');
         
         return true;
     }
@@ -393,15 +416,15 @@ class EGP_Licensing {
         
         $site_url = get_site_url();
         
-        $response = wp_remote_post($this->license_server . '/api/check', array(
-            'body' => array(
-                'license_key' => $license_key,
-                'site_url' => $site_url,
-                'product_id' => 'egp_elementor_geo_popup',
-                'version' => EGP_VERSION
-            ),
-            'timeout' => 30
-        ));
+        $access_token = get_option('egp_license_access_token', '');
+        if ($access_token) {
+            $response = wp_remote_get($this->license_server . '/verify', array(
+                'headers' => array('Authorization' => 'Bearer ' . $access_token),
+                'timeout' => 20
+            ));
+        } else {
+            return new WP_Error('no_token', __('No license token available', 'elementor-geo-popup'));
+        }
         
         if (is_wp_error($response)) {
             return $response;
@@ -410,19 +433,45 @@ class EGP_Licensing {
         $body = wp_remote_retrieve_body($response);
         $data = json_decode($body, true);
         
-        if (!$data || !isset($data['success'])) {
-            return new WP_Error('invalid_response', __('Invalid response from license server', 'elementor-geo-popup'));
+        if (!$data || (isset($data['valid']) && !$data['valid'])) {
+            // Attempt token refresh if refresh token exists
+            $refresh_token = get_option('egp_license_refresh_token', '');
+            if ($refresh_token) {
+                $refresh = wp_remote_post($this->license_server . '/refresh', array(
+                    'headers' => array('Content-Type' => 'application/json'),
+                    'body' => wp_json_encode(array('refreshToken' => $refresh_token)),
+                    'timeout' => 20
+                ));
+                if (!is_wp_error($refresh)) {
+                    $rbody = wp_remote_retrieve_body($refresh);
+                    $rdata = json_decode($rbody, true);
+                    $new_access = $rdata['accessToken'] ?? $rdata['access_token'] ?? '';
+                    $new_refresh = $rdata['refreshToken'] ?? $rdata['refresh_token'] ?? '';
+                    $new_exp = intval($rdata['expires_at'] ?? 0);
+                    if ($new_access && $new_refresh) {
+                        update_option('egp_license_access_token', $new_access);
+                        update_option('egp_license_refresh_token', $new_refresh);
+                        update_option('egp_license_expires_at', $new_exp);
+                        // Retry verify
+                        $response = wp_remote_get($this->license_server . '/verify', array(
+                            'headers' => array('Authorization' => 'Bearer ' . $new_access),
+                            'timeout' => 20
+                        ));
+                        if (!is_wp_error($response)) {
+                            $body = wp_remote_retrieve_body($response);
+                            $data = json_decode($body, true);
+                        }
+                    }
+                }
+            }
+            if (!$data || (isset($data['valid']) && !$data['valid'])) {
+                update_option('egp_license_status', 'invalid');
+                return new WP_Error('license_invalid', __('License is invalid', 'elementor-geo-popup'));
+            }
         }
         
-        if (!$data['success']) {
-            // License is invalid, update status
-            update_option('egp_license_status', 'invalid');
-            return new WP_Error('license_invalid', $data['message'] ?? __('License is invalid', 'elementor-geo-popup'));
-        }
-        
-        // Update license data
         update_option('egp_license_status', 'valid');
-        update_option('egp_license_data', $data['data'] ?? array());
+        update_option('egp_license_data', $data);
         
         return true;
     }
