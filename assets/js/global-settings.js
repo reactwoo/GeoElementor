@@ -8,6 +8,10 @@
 (function ($) {
     'use strict';
 
+    // Prevent duplicate initialization and bindings
+    var egpGlobalBootstrapped = false;
+    var egpGlobalBindingsAdded = false;
+
     $(document).ready(function () {
         if (typeof elementor === 'undefined') {
             return;
@@ -24,6 +28,8 @@
         // Listen for Elementor editor initialization
         if (window.elementor && elementor.on) {
             elementor.on('editor:init', function () {
+                if (egpGlobalBootstrapped) { return; }
+                egpGlobalBootstrapped = true;
                 setupGlobalSettings();
             });
         }
@@ -38,7 +44,8 @@
             } else if (window.elementor && elementor.channels && elementor.channels.editor) {
                 isEditor = true;
             }
-            if (isEditor) {
+            if (isEditor && !egpGlobalBootstrapped) {
+                egpGlobalBootstrapped = true;
                 setupGlobalSettings();
             }
         } catch (e) { }
@@ -48,11 +55,15 @@
      * Setup global settings functionality
      */
     function setupGlobalSettings() {
-        // Add geo-targeting controls to global elements
-        addGeoControlsToGlobals();
+        if (!egpGlobalBindingsAdded) {
+            // Add geo-targeting controls to global elements
+            addGeoControlsToGlobals();
 
-        // Listen for global element changes
-        listenForGlobalChanges();
+            // Listen for global element changes
+            listenForGlobalChanges();
+
+            egpGlobalBindingsAdded = true;
+        }
 
         // Initialize existing global settings
         initializeExistingGlobalSettings();

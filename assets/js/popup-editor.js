@@ -8,6 +8,13 @@
 (function ($) {
     'use strict';
 
+    // Single-init and observer guards
+    var egpEditorBootstrapped = false;
+    var egpAdvancedRulesObserver = null;
+    var egpIframeObserver = null;
+    var egpChannelHandlersBound = false;
+    var egpEnsurePlacementActive = false;
+
     // Wait for Elementor to be ready
     $(document).ready(function () {
 
@@ -18,6 +25,8 @@
 
         // Initialize when Elementor is ready
         elementor.on('editor:init', function () {
+            if (egpEditorBootstrapped) { return; }
+            egpEditorBootstrapped = true;
             initGeoPopupEditor();
         });
 
@@ -31,7 +40,8 @@
             } else if (window.elementor && elementor.channels && elementor.channels.editor) {
                 isEditor = true;
             }
-            if (isEditor) {
+            if (isEditor && !egpEditorBootstrapped) {
+                egpEditorBootstrapped = true;
                 initGeoPopupEditor();
             }
         } catch (e) { }
@@ -59,14 +69,17 @@
     function setupGeoPopupEditor() {
 
         // Listen for popup settings changes
-        elementor.channels.editor.on('change:popup:settings', function (model) {
-            handlePopupSettingsChange(model);
-        });
+        if (!egpChannelHandlersBound && elementor && elementor.channels && elementor.channels.editor) {
+            egpChannelHandlersBound = true;
+            elementor.channels.editor.on('change:popup:settings', function (model) {
+                handlePopupSettingsChange(model);
+            });
 
-        // Listen for popup save
-        elementor.channels.editor.on('popup:save', function () {
-            saveGeoPopupSettings();
-        });
+            // Listen for popup save
+            elementor.channels.editor.on('popup:save', function () {
+                saveGeoPopupSettings();
+            });
+        }
 
         // Initialize existing settings
         initializeExistingSettings();
@@ -115,18 +128,22 @@
      */
     function addCustomControls() {
 
-        // Add help tooltips
-        $('.elementor-control-egp_countries .elementor-control-description').append(
-            '<span class="egp-help-tip" title="Select the countries where this popup should be displayed. Leave empty to show to all countries.">?</span>'
-        );
+        // Add help tooltips (append once)
+        if (!$('.elementor-control-egp_countries .elementor-control-description .egp-help-tip').length) {
+            $('.elementor-control-egp_countries .elementor-control-description').append(
+                '<span class="egp-help-tip" title="Select the countries where this popup should be displayed. Leave empty to show to all countries.">?</span>'
+            );
+        }
 
-        $('.elementor-control-egp_fallback_behavior .elementor-control-description').append(
-            '<span class="egp-help-tip" title="Choose what happens when a visitor\'s country doesn\'t match the selected countries.">?</span>'
-        );
+        if (!$('.elementor-control-egp_fallback_behavior .elementor-control-description .egp-help-tip').length) {
+            $('.elementor-control-egp_fallback_behavior .elementor-control-description').append(
+                '<span class="egp-help-tip" title="Choose what happens when a visitor\'s country doesn\'t match the selected countries.">?</span>'
+            );
+        }
 
         // Add country search functionality
         var $countriesSelect = $('.elementor-control-egp_countries select');
-        if ($countriesSelect.length) {
+        if ($countriesSelect.length && !$countriesSelect.hasClass('select2-hidden-accessible')) {
             $countriesSelect.select2({
                 placeholder: 'Select countries...',
                 allowClear: true,
@@ -137,18 +154,20 @@
         // Add quick-fill Preferred Countries button when geo targeting is enabled
         var $countriesControl = $('.elementor-control-egp_countries');
         if ($countriesControl.length && Array.isArray(window.egpPopupEditor && egpPopupEditor.preferredCountries)) {
-            var $btn = $('<button type="button" class="button button-secondary" style="margin-top:8px;">' + (egpPopupEditor.strings && egpPopupEditor.strings.usePreferred || 'Use Preferred Countries') + '</button>');
-            $btn.on('click', function () {
-                var preferred = egpPopupEditor.preferredCountries || [];
-                var $select = $countriesControl.find('select');
-                $select.val(preferred).trigger('change');
-            });
-            $countriesControl.append($btn);
+            if (!$countriesControl.find('button.egp-preferred').length) {
+                var $btn = $('<button type="button" class="button button-secondary egp-preferred" style="margin-top:8px;">' + (egpPopupEditor.strings && egpPopupEditor.strings.usePreferred || 'Use Preferred Countries') + '</button>');
+                $btn.on('click.egp', function () {
+                    var preferred = egpPopupEditor.preferredCountries || [];
+                    var $select = $countriesControl.find('select');
+                    $select.val(preferred).trigger('change');
+                });
+                $countriesControl.append($btn);
+            }
         }
 
         // Auto-prefill countries with Preferred on enable
         var $enableSwitch = $('.elementor-control-egp_enable_geo_targeting input[type="checkbox"]');
-        $enableSwitch.on('change', function () {
+        $enableSwitch.off('change.egp').on('change.egp', function () {
             var on = $(this).is(':checked');
             if (on && Array.isArray(egpPopupEditor.preferredCountries)) {
                 var $select = $('.elementor-control-egp_countries select');
@@ -168,40 +187,41 @@
      * Adds a "Show on country" row with a globe icon that toggles EGP and focuses the control
      */
     function installAdvancedRulesEntryPoint() {
-        var observer = new MutationObserver(function (mutations) {
-            mutations.forEach(function (m) {
-                if (!m.addedNodes) return;
-                $(m.addedNodes).each(function () {
-                    var $node = $(this);
-                    // Detect Elementor Publish Settings modal
-                    if (
-                        $node.is('.elementor-publish__modal, .elementor-publish__dropdown, .elementor-conditions-modal, .dialog-lightbox-widget') ||
-                        $node.find('.elementor-publish__modal, .elementor-publish__dropdown, .elementor-conditions-modal, .dialog-lightbox-widget').length
-                    ) {
-                        tryInjectAdvancedRule();
-                        ensurePlacementForAShortPeriod();
-                    }
+        if (!egpAdvancedRulesObserver) {
+            egpAdvancedRulesObserver = new MutationObserver(function (mutations) {
+                mutations.forEach(function (m) {
+                    if (!m.addedNodes) return;
+                    $(m.addedNodes).each(function () {
+                        var $node = $(this);
+                        // Detect Elementor Publish Settings modal
+                        if (
+                            $node.is('.elementor-publish__modal, .elementor-publish__dropdown, .elementor-conditions-modal, .dialog-lightbox-widget') ||
+                            $node.find('.elementor-publish__modal, .elementor-publish__dropdown, .elementor-conditions-modal, .dialog-lightbox-widget').length
+                        ) {
+                            tryInjectAdvancedRule();
+                            ensurePlacementForAShortPeriod();
+                        }
+                    });
                 });
             });
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
+            egpAdvancedRulesObserver.observe(document.body, { childList: true, subtree: true });
+        }
 
         // Also observe main editor iframe if present (Elementor often renders overlays in different roots)
         setTimeout(function () {
+            if (egpIframeObserver) { return; }
             var iframe = document.querySelector('#elementor-preview-iframe');
             if (iframe && iframe.contentWindow && iframe.contentDocument) {
                 try {
-                    new MutationObserver(function () { tryInjectAdvancedRule(); })
-                        .observe(iframe.contentDocument.body, { childList: true, subtree: true });
+                    egpIframeObserver = new MutationObserver(function () { tryInjectAdvancedRule(); });
+                    egpIframeObserver.observe(iframe.contentDocument.body, { childList: true, subtree: true });
                 } catch (e) { }
             }
         }, 500);
 
         // Also try immediately in case modal already open
         setTimeout(tryInjectAdvancedRule, 300);
-        setTimeout(tryInjectAdvancedRule, 1200);
         setTimeout(ensurePlacementForAShortPeriod, 300);
-        setTimeout(ensurePlacementForAShortPeriod, 1200);
     }
 
     function tryInjectAdvancedRule() {
@@ -394,7 +414,9 @@
 
     // After the modal renders/updates, Elementor may re-render the list. Gently keep our row in place for a few seconds.
     function ensurePlacementForAShortPeriod() {
-        var attempts = 0, maxAttempts = 30; // ~6s at 200ms
+        if (egpEnsurePlacementActive) { return; }
+        egpEnsurePlacementActive = true;
+        var attempts = 0, maxAttempts = 12; // ~2.4s at 200ms
         var tick = function () {
             attempts++;
             try {
@@ -417,7 +439,7 @@
                     }
                 }
             } catch (e) { }
-            if (attempts < maxAttempts) { setTimeout(tick, 200); }
+            if (attempts < maxAttempts) { setTimeout(tick, 200); } else { egpEnsurePlacementActive = false; }
         };
         setTimeout(tick, 200);
     }
@@ -428,7 +450,7 @@
     function addValidation() {
 
         // Validate countries selection
-        $('.elementor-control-egp_countries select').on('change', function () {
+        $('.elementor-control-egp_countries select').off('change.egp').on('change.egp', function () {
             var selectedCountries = $(this).val();
             var $description = $(this).closest('.elementor-control').find('.elementor-control-description');
 
@@ -440,7 +462,7 @@
         });
 
         // Validate fallback behavior
-        $('.elementor-control-egp_fallback_behavior select').on('change', function () {
+        $('.elementor-control-egp_fallback_behavior select').off('change.egp').on('change.egp', function () {
             var value = $(this).val();
             var $description = $(this).closest('.elementor-control').find('.elementor-control-description');
 
