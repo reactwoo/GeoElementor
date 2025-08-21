@@ -56,14 +56,17 @@ class EGP_Admin_Menu {
 		);
 
 		// Alternate slug in case WAF/security blocks 'license' in query strings
-		add_submenu_page(
-			'geo-elementor',
-			__('License (Alt)', 'elementor-geo-popup'),
-			__('License (Alt)', 'elementor-geo-popup'),
-			$capability,
-			'geo-keys',
-			array($this, 'render_license_inline')
-		);
+		$enable_alt = apply_filters('egp_enable_alt_license_menu', (defined('EGP_ENABLE_ALT_LICENSE_MENU') && EGP_ENABLE_ALT_LICENSE_MENU));
+		if ($enable_alt) {
+			add_submenu_page(
+				'geo-elementor',
+				__('License (Alt)', 'elementor-geo-popup'),
+				__('License (Alt)', 'elementor-geo-popup'),
+				$capability,
+				'geo-keys',
+				array($this, 'render_license_inline')
+			);
+		}
 	}
 
 	public function render_dashboard() {
