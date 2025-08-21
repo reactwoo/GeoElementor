@@ -85,8 +85,40 @@ class EGP_Licensing {
      * Render license page
      */
     public function render_license_page() {
-        if (!current_user_can('manage_options')) {
-            return;
+        // Check if user has access to either the Settings page or our custom menu
+        $allowed_caps = array('manage_options', 'manage_woocommerce');
+        $allowed_caps = apply_filters('egp_allowed_capabilities', $allowed_caps);
+        
+        $user_has_access = false;
+        foreach ($allowed_caps as $cap) {
+            if (current_user_can($cap)) {
+                $user_has_access = true;
+                break;
+            }
+        }
+        
+        if (!$user_has_access) {
+            // Allow custom capability override as last resort
+            $custom_cap = apply_filters('egp_license_capability', 'manage_options');
+            if (!current_user_can($custom_cap)) {
+                wp_die(__('You do not have sufficient permissions to access this page.', 'elementor-geo-popup'));
+            }
+        }
+
+        // Determine which capability to use for AJAX actions
+        $ajax_cap = current_user_can('manage_options') ? 'manage_options' : 'manage_woocommerce';
+        if (has_filter('egp_license_capability')) {
+            $ajax_cap = apply_filters('egp_license_capability', 'manage_options');
+        }
+
+        // Store the capability for AJAX checks
+        if (!defined('EGP_LICENSE_CAPABILITY')) {
+            define('EGP_LICENSE_CAPABILITY', $ajax_cap);
+        }
+        
+        // Debug: Log the capability being used
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('EGP License Page: User capability check - Required: ' . $ajax_cap . ', User can: ' . (current_user_can($ajax_cap) ? 'YES' : 'NO'));
         }
         
         $license_key = get_option('egp_license_key', '');
@@ -270,7 +302,8 @@ class EGP_Licensing {
     public function ajax_activate_license() {
         check_ajax_referer('egp_license_nonce', 'nonce');
         
-        if (!current_user_can('manage_options')) {
+        $required_cap = defined('EGP_LICENSE_CAPABILITY') ? EGP_LICENSE_CAPABILITY : 'manage_options';
+        if (!current_user_can($required_cap)) {
             wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
         }
         
@@ -295,7 +328,8 @@ class EGP_Licensing {
     public function ajax_deactivate_license() {
         check_ajax_referer('egp_license_nonce', 'nonce');
         
-        if (!current_user_can('manage_options')) {
+        $required_cap = defined('EGP_LICENSE_CAPABILITY') ? EGP_LICENSE_CAPABILITY : 'manage_options';
+        if (!current_user_can($required_cap)) {
             wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
         }
         
@@ -314,7 +348,8 @@ class EGP_Licensing {
     public function ajax_check_license() {
         check_ajax_referer('egp_license_nonce', 'nonce');
         
-        if (!current_user_can('manage_options')) {
+        $required_cap = defined('EGP_LICENSE_CAPABILITY') ? EGP_LICENSE_CAPABILITY : 'manage_options';
+        if (!current_user_can($required_cap)) {
             wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
         }
         
@@ -504,7 +539,8 @@ class EGP_Licensing {
      * Display license notices
      */
     public function license_notices() {
-        if (!current_user_can('manage_options')) {
+        $required_cap = defined('EGP_LICENSE_CAPABILITY') ? EGP_LICENSE_CAPABILITY : 'manage_options';
+        if (!current_user_can($required_cap)) {
             return;
         }
         
