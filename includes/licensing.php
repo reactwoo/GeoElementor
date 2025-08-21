@@ -63,6 +63,22 @@ class EGP_Licensing {
             'egp-license',
             array($this, 'render_license_page')
         );
+
+        // Also add under our top-level menu with flexible capability for non-admins (e.g., Shop Managers)
+        $default_cap = 'manage_options';
+        if (!current_user_can('manage_options') && current_user_can('manage_woocommerce')) {
+            $default_cap = 'manage_woocommerce';
+        }
+        $capability = apply_filters('egp_required_capability', $default_cap);
+
+        add_submenu_page(
+            'geo-elementor',
+            __('EGP License', 'elementor-geo-popup'),
+            __('License', 'elementor-geo-popup'),
+            $capability,
+            'egp-license-geo',
+            array($this, 'render_license_page')
+        );
     }
     
     /**
@@ -495,11 +511,15 @@ class EGP_Licensing {
         $license_status = get_option('egp_license_status');
         
         if ($license_status === 'invalid' || $license_status === 'expired') {
+            $default_url = admin_url('options-general.php?page=egp-license');
+            if (!current_user_can('manage_options')) {
+                $default_url = admin_url('admin.php?page=egp-license-geo');
+            }
             ?>
             <div class="notice notice-error">
                 <p>
                     <?php _e('Elementor Geo Popup license is invalid or expired. Please', 'elementor-geo-popup'); ?>
-                    <a href="<?php echo admin_url('options-general.php?page=egp-license'); ?>">
+                    <a href="<?php echo esc_url($default_url); ?>">
                         <?php _e('check your license', 'elementor-geo-popup'); ?>
                     </a>
                     <?php _e('to continue using all features.', 'elementor-geo-popup'); ?>
@@ -507,11 +527,15 @@ class EGP_Licensing {
             </div>
             <?php
         } elseif ($license_status === 'inactive') {
+            $default_url = admin_url('options-general.php?page=egp-license');
+            if (!current_user_can('manage_options')) {
+                $default_url = admin_url('admin.php?page=egp-license-geo');
+            }
             ?>
             <div class="notice notice-warning">
                 <p>
                     <?php _e('Elementor Geo Popup license is not activated. Please', 'elementor-geo-popup'); ?>
-                    <a href="<?php echo admin_url('options-general.php?page=egp-license'); ?>">
+                    <a href="<?php echo esc_url($default_url); ?>">
                         <?php _e('activate your license', 'elementor-geo-popup'); ?>
                     </a>
                     <?php _e('to access all features.', 'elementor-geo-popup'); ?>

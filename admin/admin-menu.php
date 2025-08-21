@@ -17,15 +17,18 @@ class EGP_Admin_Menu {
 	}
 
 	public function register_menus() {
-		if (!current_user_can('manage_options')) {
-			return;
+		// Decide capability (filterable, defaults to manage_options; falls back to manage_woocommerce for shop managers)
+		$default_cap = 'manage_options';
+		if (!current_user_can('manage_options') && current_user_can('manage_woocommerce')) {
+			$default_cap = 'manage_woocommerce';
 		}
+		$capability = apply_filters('egp_required_capability', $default_cap);
 
 		// Top-level: Geo Elementor
 		add_menu_page(
 			__('Geo Elementor', 'elementor-geo-popup'),
 			__('Geo Elementor', 'elementor-geo-popup'),
-			'manage_options',
+			$capability,
 			'geo-elementor',
 			array($this, 'render_dashboard'),
 			'dashicons-location-alt',
@@ -37,7 +40,7 @@ class EGP_Admin_Menu {
 			'geo-elementor',
 			__('Settings', 'elementor-geo-popup'),
 			__('Settings', 'elementor-geo-popup'),
-			'manage_options',
+			$capability,
 			'geo-elementor-settings',
 			array($this, 'redirect_settings')
 		);
@@ -47,15 +50,19 @@ class EGP_Admin_Menu {
 			'geo-elementor',
 			__('License', 'elementor-geo-popup'),
 			__('License', 'elementor-geo-popup'),
-			'manage_options',
+			$capability,
 			'geo-elementor-license',
 			array($this, 'redirect_license')
 		);
 	}
 
 	public function render_dashboard() {
-		// Keep it simple: redirect Dashboard to Settings for now
-		$this->redirect_settings();
+		// Redirect to the most appropriate page based on capability
+		if (current_user_can('manage_options')) {
+			$this->redirect_settings();
+		} else {
+			$this->redirect_license();
+		}
 	}
 
 	public function redirect_settings() {
@@ -64,7 +71,12 @@ class EGP_Admin_Menu {
 	}
 
 	public function redirect_license() {
-		wp_safe_redirect(admin_url('options-general.php?page=egp-license'));
+		// If user can't access Options, send to our internal license page
+		if (current_user_can('manage_options')) {
+			wp_safe_redirect(admin_url('options-general.php?page=egp-license'));
+		} else {
+			wp_safe_redirect(admin_url('admin.php?page=egp-license-geo'));
+		}
 		exit;
 	}
 }
