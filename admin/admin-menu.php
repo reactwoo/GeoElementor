@@ -71,12 +71,8 @@ class EGP_Admin_Menu {
 	}
 
 	public function redirect_license() {
-		// If user can't access Options, send to our internal license page
-		if (current_user_can('manage_options')) {
-			wp_safe_redirect(admin_url('options-general.php?page=egp-license'));
-		} else {
-			wp_safe_redirect(admin_url('admin.php?page=egp-license-geo'));
-		}
+		// Always use our internal license page to avoid host-level 403s on options-general
+		wp_safe_redirect(admin_url('admin.php?page=egp-license-geo'));
 		exit;
 	}
 }

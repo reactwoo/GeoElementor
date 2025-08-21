@@ -547,10 +547,7 @@ class EGP_Licensing {
         $license_status = get_option('egp_license_status');
         
         if ($license_status === 'invalid' || $license_status === 'expired') {
-            $default_url = admin_url('options-general.php?page=egp-license');
-            if (!current_user_can('manage_options')) {
-                $default_url = admin_url('admin.php?page=egp-license-geo');
-            }
+            $default_url = admin_url('admin.php?page=egp-license-geo');
             ?>
             <div class="notice notice-error">
                 <p>
@@ -563,10 +560,7 @@ class EGP_Licensing {
             </div>
             <?php
         } elseif ($license_status === 'inactive') {
-            $default_url = admin_url('options-general.php?page=egp-license');
-            if (!current_user_can('manage_options')) {
-                $default_url = admin_url('admin.php?page=egp-license-geo');
-            }
+            $default_url = admin_url('admin.php?page=egp-license-geo');
             ?>
             <div class="notice notice-warning">
                 <p>
