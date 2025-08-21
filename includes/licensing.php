@@ -36,6 +36,9 @@ class EGP_Licensing {
             wp_schedule_event(time(), 'daily', 'egp_daily_license_check');
         }
         add_action('egp_daily_license_check', array($this, 'check_license_status'));
+
+        // Allow rendering the license page directly without redirects
+        add_action('egp_render_license_page', array($this, 'render_license_page'));
     }
     
     /**
@@ -64,21 +67,7 @@ class EGP_Licensing {
             array($this, 'render_license_page')
         );
 
-        // Also add under our top-level menu with flexible capability for non-admins (e.g., Shop Managers)
-        $default_cap = 'manage_options';
-        if (!current_user_can('manage_options') && current_user_can('manage_woocommerce')) {
-            $default_cap = 'manage_woocommerce';
-        }
-        $capability = apply_filters('egp_required_capability', $default_cap);
-
-        add_submenu_page(
-            'geo-elementor',
-            __('EGP License', 'elementor-geo-popup'),
-            __('License', 'elementor-geo-popup'),
-            $capability,
-            'egp-license-geo',
-            array($this, 'render_license_page')
-        );
+        // License page under our own top-level menu is registered in admin/admin-menu.php
     }
     
     /**
@@ -547,7 +536,7 @@ class EGP_Licensing {
         $license_status = get_option('egp_license_status');
         
         if ($license_status === 'invalid' || $license_status === 'expired') {
-            $default_url = admin_url('admin.php?page=egp-license-geo');
+            $default_url = admin_url('admin.php?page=geo-elementor-license');
             ?>
             <div class="notice notice-error">
                 <p>
@@ -560,7 +549,7 @@ class EGP_Licensing {
             </div>
             <?php
         } elseif ($license_status === 'inactive') {
-            $default_url = admin_url('admin.php?page=egp-license-geo');
+            $default_url = admin_url('admin.php?page=geo-elementor-license');
             ?>
             <div class="notice notice-warning">
                 <p>

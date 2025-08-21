@@ -52,7 +52,17 @@ class EGP_Admin_Menu {
 			__('License', 'elementor-geo-popup'),
 			$capability,
 			'geo-elementor-license',
-			array($this, 'redirect_license')
+			array($this, 'render_license_inline')
+		);
+
+		// Alternate slug in case WAF/security blocks 'license' in query strings
+		add_submenu_page(
+			'geo-elementor',
+			__('License (Alt)', 'elementor-geo-popup'),
+			__('License (Alt)', 'elementor-geo-popup'),
+			$capability,
+			'geo-keys',
+			array($this, 'render_license_inline')
 		);
 	}
 
@@ -70,10 +80,9 @@ class EGP_Admin_Menu {
 		exit;
 	}
 
-	public function redirect_license() {
-		// Always use our internal license page to avoid host-level 403s on options-general
-		wp_safe_redirect(admin_url('admin.php?page=egp-license-geo'));
-		exit;
+	public function render_license_inline() {
+		// Render the license page directly to avoid WAF/redirection issues
+		do_action('egp_render_license_page');
 	}
 }
 
