@@ -94,16 +94,47 @@ class EGP_Centralized_License_Manager {
         
         $expires_at = get_option("{$prefix}_license_expires_at", 0);
         
-        // Check if token is expired
-        if ($expires_at && $expires_at < time()) {
+        // Check if token is expired or about to expire (within 5 minutes)
+        $token_expired = $expires_at && $expires_at < (time() + 300);
+        
+        if ($token_expired) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("[EGP License] Token expired or expiring soon, attempting refresh. Expires: " . date('Y-m-d H:i:s', $expires_at) . ", Current: " . date('Y-m-d H:i:s'));
+            }
+            
             // Try to refresh the token
             $refresh_token = get_option("{$prefix}_license_refresh_token", '');
             if ($refresh_token) {
                 $refreshed_data = $this->refresh_access_token($plugin_slug, $refresh_token);
                 if (!is_wp_error($refreshed_data)) {
-                    $access_token = $refreshed_data['access_token'] ?? $access_token;
+                    $access_token = $refreshed_data['accessToken'] ?? $access_token;
                     $expires_at = $refreshed_data['expires_at'] ?? $expires_at;
+                    
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log("[EGP License] Token refreshed successfully. New expires: " . date('Y-m-d H:i:s', $expires_at));
+                    }
+                } else {
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log("[EGP License] Token refresh failed: " . $refreshed_data->get_error_message());
+                    }
+                    
+                    // If refresh fails, clear the expired tokens
+                    delete_option("{$prefix}_license_access_token");
+                    delete_option("{$prefix}_license_refresh_token");
+                    delete_option("{$prefix}_license_expires_at");
+                    
+                    return array('valid' => false, 'error' => 'Token expired and refresh failed. Please reactivate your license.');
                 }
+            } else {
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log("[EGP License] No refresh token available, clearing expired access token");
+                }
+                
+                // No refresh token, clear the expired access token
+                delete_option("{$prefix}_license_access_token");
+                delete_option("{$prefix}_license_expires_at");
+                
+                return array('valid' => false, 'error' => 'Token expired and no refresh token available. Please reactivate your license.');
             }
         }
         
@@ -124,6 +155,10 @@ class EGP_Centralized_License_Manager {
      * Refresh access token using refresh token
      */
     private function refresh_access_token($plugin_slug, $refresh_token) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log("[EGP License] Attempting to refresh access token for plugin: {$plugin_slug}");
+        }
+        
         $response = wp_remote_post($this->license_server . '/refresh', array(
             'headers' => array('Content-Type' => 'application/json'),
             'body' => wp_json_encode(array(
@@ -134,19 +169,46 @@ class EGP_Centralized_License_Manager {
         ));
         
         if (is_wp_error($response)) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("[EGP License] Refresh request failed: " . $response->get_error_message());
+            }
             return $response;
         }
         
+        $status_code = wp_remote_retrieve_response_code($response);
         $body = wp_remote_retrieve_body($response);
+        
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log("[EGP License] Refresh response status: {$status_code}");
+            error_log("[EGP License] Refresh response body: " . substr($body, 0, 500));
+        }
+        
+        if ($status_code !== 200) {
+            return new WP_Error('refresh_failed', "Server returned status {$status_code}: {$body}");
+        }
+        
         $data = json_decode($body, true);
         
-        if (!$data || !isset($data['success']) || !$data['success']) {
-            return new WP_Error('refresh_failed', 'Failed to refresh access token');
+        if (!$data) {
+            return new WP_Error('refresh_failed', 'Invalid JSON response from server');
+        }
+        
+        if (!isset($data['success']) || !$data['success']) {
+            $error_message = isset($data['error']) ? $data['error'] : 'Unknown refresh error';
+            return new WP_Error('refresh_failed', $error_message);
         }
         
         // Store the new token data
         if (isset($data['accessToken'])) {
             $this->store_license_data($plugin_slug, $data);
+            
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("[EGP License] Access token refreshed and stored successfully");
+            }
+        } else {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("[EGP License] Warning: No accessToken in refresh response");
+            }
         }
         
         return $data;
@@ -366,6 +428,63 @@ class EGP_Centralized_License_Manager {
         
         // Clear any cached data
         wp_cache_delete("license_data_{$plugin_slug}", $this->cache_group);
+    }
+    
+    /**
+     * Clear expired tokens for a plugin
+     */
+    public function clear_expired_tokens($plugin_slug) {
+        if (!$this->is_current_plugin($plugin_slug)) {
+            return false;
+        }
+        
+        $prefix = $this->get_plugin_prefix($plugin_slug);
+        
+        // Clear all token-related options
+        delete_option("{$prefix}_license_access_token");
+        delete_option("{$prefix}_license_refresh_token");
+        delete_option("{$prefix}_license_expires_at");
+        delete_option("{$prefix}_license_data");
+        
+        // Also clear the old format options for backward compatibility
+        delete_option("{$plugin_slug}_license_access_token");
+        delete_option("{$plugin_slug}_license_refresh_token");
+        delete_option("{$plugin_slug}_license_expires_at");
+        
+        // Clear cache
+        wp_cache_delete("license_data_{$plugin_slug}", $this->cache_group);
+        
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log("[EGP License] Cleared expired tokens for plugin: {$plugin_slug}");
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Check if tokens need to be refreshed (called before operations)
+     */
+    public function check_and_refresh_tokens($plugin_slug) {
+        if (!$this->is_current_plugin($plugin_slug)) {
+            return false;
+        }
+        
+        $prefix = $this->get_plugin_prefix($plugin_slug);
+        $expires_at = get_option("{$prefix}_license_expires_at", 0);
+        
+        // If token expires within 10 minutes, refresh it
+        if ($expires_at && $expires_at < (time() + 600)) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("[EGP License] Token expiring soon, proactively refreshing for plugin: {$plugin_slug}");
+            }
+            
+            $refresh_token = get_option("{$prefix}_license_refresh_token", '');
+            if ($refresh_token) {
+                $this->refresh_access_token($plugin_slug, $refresh_token);
+            }
+        }
+        
+        return true;
     }
     
     /**

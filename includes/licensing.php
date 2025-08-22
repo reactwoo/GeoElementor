@@ -228,6 +228,7 @@ class EGP_Licensing {
         add_action('wp_ajax_egp_activate_license', array($this, 'ajax_activate_license'));
         add_action('wp_ajax_egp_deactivate_license', array($this, 'ajax_deactivate_license'));
         add_action('wp_ajax_egp_check_license', array($this, 'ajax_check_license'));
+        add_action('wp_ajax_egp_force_clear_license', array($this, 'ajax_force_clear_license'));
         
         // Schedule license checks (now handled centrally)
         if (!wp_next_scheduled('egp_daily_license_check')) {
@@ -399,6 +400,10 @@ class EGP_Licensing {
                         <button type="button" id="egp-check-license" class="button button-secondary">
                             <?php _e('Check License', 'elementor-geo-popup'); ?>
                         </button>
+                        
+                        <button type="button" id="egp-force-clear-license" class="button button-link-delete" style="margin-left: 10px;">
+                            <?php _e('Force Clear License Data', 'elementor-geo-popup'); ?>
+                        </button>
                     </div>
                     
                     <div id="egp-license-message"></div>
@@ -479,6 +484,30 @@ class EGP_Licensing {
                         $('#egp-license-message').html('<div class="notice notice-error"><p>' + response.data + '</p></div>');
                     }
                     $('#egp-check-license').prop('disabled', false).text('<?php _e('Check License', 'elementor-geo-popup'); ?>');
+                });
+            });
+            
+            // Force clear license data
+            $('#egp-force-clear-license').on('click', function() {
+                if (!confirm('<?php _e('This will completely clear all license data. This action cannot be undone. Are you sure?', 'elementor-geo-popup'); ?>')) {
+                    return;
+                }
+                
+                $(this).prop('disabled', true).text('<?php _e('Clearing...', 'elementor-geo-popup'); ?>');
+                
+                $.post(ajaxurl, {
+                    action: 'egp_force_clear_license',
+                    nonce: '<?php echo wp_create_nonce('egp_license_nonce'); ?>'
+                }, function(response) {
+                    if (response.success) {
+                        $('#egp-license-message').html('<div class="notice notice-success"><p>' + response.data + '</p></div>');
+                        setTimeout(function() {
+                            location.reload();
+                        }, 2000);
+                    } else {
+                        $('#egp-license-message').html('<div class="notice notice-error"><p>' + response.data + '</p></div>');
+                    }
+                    $('#egp-force-clear-license').prop('disabled', false).text('<?php _e('Force Clear License Data', 'elementor-geo-popup'); ?>');
                 });
             });
         });
@@ -583,6 +612,22 @@ class EGP_Licensing {
     }
     
     /**
+     * AJAX force clear license data
+     */
+    public function ajax_force_clear_license() {
+        check_ajax_referer('egp_license_nonce', 'nonce');
+        
+        $required_cap = defined('EGP_LICENSE_CAPABILITY') ? EGP_LICENSE_CAPABILITY : 'manage_options';
+        if (!current_user_can($required_cap)) {
+            wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
+        }
+        
+        $this->force_clear_license_data();
+        
+        wp_send_json_success(__('License data force cleared successfully', 'elementor-geo-popup'));
+    }
+    
+    /**
      * Activate license
      */
     public function activate_license($license_key) {
@@ -676,67 +721,71 @@ class EGP_Licensing {
     }
     
     /**
-     * Check license status using centralized manager
+     * Check license status
      */
     public function check_license_status() {
-        $license_key = get_option('egp_license_key');
-        
-        if (!$license_key) {
-            return true; // No license to check
+        if (!$this->license_manager) {
+            return false;
         }
         
-        // Debug: Log what we're checking
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('EGP License: Checking license status for key: ' . substr($license_key, 0, 8) . '...');
-            error_log('EGP License: Current stored status: ' . get_option('egp_license_status', 'none'));
-        }
+        // Check and refresh tokens before validation
+        $this->license_manager->check_and_refresh_tokens($this->plugin_slug);
         
-        // Force refresh to avoid stale cache after activation
-        $license_data = $this->license_manager->get_license_data($this->plugin_slug, $license_key, true);
+        $license_data = $this->license_manager->get_license_data($this->plugin_slug, null, true);
         
-        // Debug: Log what we got back
         if (defined('WP_DEBUG') && WP_DEBUG) {
             error_log('EGP License: Centralized manager returned: ' . print_r($license_data, true));
         }
         
-        $is_valid = false;
-        if (is_array($license_data)) {
-            if (isset($license_data['valid'])) {
-                $is_valid = (bool)$license_data['valid'];
-            } elseif (isset($license_data['success'])) {
-                $is_valid = (bool)$license_data['success'];
+        if (is_wp_error($license_data)) {
+            $error_message = $license_data->get_error_message();
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('EGP License: License check failed: ' . $error_message);
             }
+            
+            // If it's a token expiration error, clear the expired tokens
+            if (strpos($error_message, 'expired') !== false || strpos($error_message, 'Invalid or expired token') !== false) {
+                $this->license_manager->clear_expired_tokens($this->plugin_slug);
+                
+                // Also clear old format options
+                delete_option('egp_license_access_token');
+                delete_option('egp_license_refresh_token');
+                delete_option('egp_license_expires_at');
+                delete_option('egp_license_data');
+                delete_option('egp_license_status');
+                
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('EGP License: Cleared expired tokens and old options');
+                }
+            }
+            
+            return false;
         }
         
-        // Debug: Log the validation result
+        $is_valid = isset($license_data['valid']) && $license_data['valid'];
+        
         if (defined('WP_DEBUG') && WP_DEBUG) {
             error_log('EGP License: Validation result - is_valid: ' . ($is_valid ? 'true' : 'false'));
         }
         
         if ($is_valid) {
-            // Extract and format the license data for display
-            $formatted_license_data = $this->format_license_data_for_display($license_data);
-            
             update_option('egp_license_status', 'valid');
-            update_option('egp_license_data', $formatted_license_data);
+            update_option('egp_license_data', $license_data);
+            
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 error_log('EGP License: Status updated to valid');
-                error_log('EGP License: Formatted data: ' . print_r($formatted_license_data, true));
             }
         } else {
-            $error_msg = 'License is invalid';
-            if (is_array($license_data) && isset($license_data['error'])) {
-                $reason = isset($license_data['reason']) ? trim($license_data['reason']) : '';
-                $error_msg = $license_data['error'] . ($reason !== '' ? (': ' . $reason) : '');
-            }
+            $error_message = isset($license_data['error']) ? $license_data['error'] : 'Unknown error';
             update_option('egp_license_status', 'invalid');
+            update_option('egp_license_error', $error_message);
+            
             if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('EGP License: Status updated to invalid - ' . $error_msg);
+                error_log('EGP License: Status updated to invalid - ' . $error_message);
             }
-            return new WP_Error('license_invalid', __($error_msg, 'elementor-geo-popup'));
         }
         
-        return true;
+        return $is_valid;
     }
     
     /**
@@ -927,6 +976,31 @@ class EGP_Licensing {
         //     'body' => wp_json_encode($tracking_data),
         //     'timeout' => 10
         // ));
+    }
+
+    /**
+     * Force clear all license data (useful for troubleshooting)
+     */
+    public function force_clear_license_data() {
+        // Clear all license-related options
+        delete_option('egp_license_key');
+        delete_option('egp_license_status');
+        delete_option('egp_license_data');
+        delete_option('egp_license_error');
+        delete_option('egp_license_access_token');
+        delete_option('egp_license_refresh_token');
+        delete_option('egp_license_expires_at');
+        
+        // Also clear the centralized manager's data
+        if ($this->license_manager && method_exists($this->license_manager, 'clear_expired_tokens')) {
+            $this->license_manager->clear_expired_tokens($this->plugin_slug);
+        }
+        
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('EGP License: Force cleared all license data');
+        }
+        
+        return true;
     }
 
     /**
