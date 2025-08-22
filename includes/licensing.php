@@ -182,15 +182,14 @@ class EGP_Centralized_License_Manager {
      * Perform shared license check (called by cron)
      */
     public function perform_shared_license_check() {
-        // Get all plugins that might have licenses
-        $plugins = array('geo-elementor', 'ali2woo', 'other-plugin');
+        // Only check licenses for the current plugin to avoid conflicts
+        // Each plugin should manage its own license independently
+        $current_plugin = $this->plugin_slug;
         
-        foreach ($plugins as $plugin_slug) {
-            $access_token = get_option("{$plugin_slug}_license_access_token", '');
-            if ($access_token) {
-                // Force refresh of license data
-                $this->get_license_data($plugin_slug, null, true);
-            }
+        $access_token = get_option("{$current_plugin}_license_access_token", '');
+        if ($access_token) {
+            // Only refresh license data for current plugin
+            $this->check_license_status();
         }
     }
     
@@ -584,48 +583,23 @@ class EGP_Licensing {
     }
     
     /**
-     * Activate license using centralized manager
+     * Activate license
      */
-    private function activate_license($license_key) {
-        $site_url = get_site_url();
-        $domain = wp_parse_url($site_url, PHP_URL_HOST);
-        $plugin_version = defined('EGP_VERSION') ? EGP_VERSION : '1.0.0';
+    public function activate_license($license_key) {
+        if (!$this->license_manager) {
+            return new WP_Error('no_manager', 'License manager not available');
+        }
         
-        // Debug logging
+        $domain = get_site_url();
+        $plugin_version = $this->get_plugin_version();
+        
         if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('EGP License: Starting activation process for domain: ' . $domain);
-            error_log('EGP License: Plugin version: ' . $plugin_version);
-            error_log('EGP License: License manager instance: ' . (is_object($this->license_manager) ? 'Valid' : 'Invalid'));
+            error_log("EGP License: Attempting to activate license key: " . substr($license_key, 0, 8) . "...");
+            error_log("EGP License: Starting activation process for domain: " . $domain);
+            error_log("EGP License: Plugin version: " . $plugin_version);
         }
         
-        // Check if license manager is available
-        if (!$this->license_manager || !method_exists($this->license_manager, 'activate_license')) {
-            // Fallback: Basic license activation (for testing/development)
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('EGP License: License manager not available, using fallback activation');
-            }
-            
-            // Simple validation - just store the key and mark as valid
-            if (strlen($license_key) >= 8) {
-                update_option('egp_license_key', $license_key);
-                update_option('egp_license_status', 'valid');
-                update_option('egp_license_data', array(
-                    'valid' => true,
-                    'product_name' => 'Geo Elementor (Development)',
-                    'expires_at' => time() + (365 * 24 * 60 * 60), // 1 year from now
-                    'features' => array('basic_geo_targeting', 'page_targeting', 'popup_targeting')
-                ));
-                
-                if (defined('WP_DEBUG') && WP_DEBUG) {
-                    error_log('EGP License: Fallback activation successful');
-                }
-                
-                return true;
-            }
-            
-            return new WP_Error('invalid_key', __('License key must be at least 8 characters long', 'elementor-geo-popup'));
-        }
-        
+        // Use centralized license manager
         $result = $this->license_manager->activate_license(
             $this->plugin_slug,
             $license_key,
@@ -634,64 +608,34 @@ class EGP_Licensing {
             'geo'
         );
         
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('EGP License: License manager response: ' . print_r($result, true));
-        }
-        
         if (is_wp_error($result)) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("EGP License: Activation failed with error: " . $result->get_error_message());
+            }
             return $result;
         }
         
-        $access_token = $result['accessToken'] ?? $result['access_token'] ?? '';
-        $refresh_token = $result['refreshToken'] ?? $result['refresh_token'] ?? '';
-        $expires_at = intval($result['expires_at'] ?? 0);
-        
-        if (empty($access_token) || empty($refresh_token)) {
-            return new WP_Error('activation_failed', __('License activation failed', 'elementor-geo-popup'));
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log("EGP License: Activation successful");
         }
         
-        // Store license data and tokens (both generic and slugged, for verifier compatibility)
-        update_option('egp_license_key', $license_key);
-        update_option('egp_license_access_token', $access_token);
-        update_option('egp_license_refresh_token', $refresh_token);
-        update_option('egp_license_expires_at', $expires_at);
-        update_option("{$this->plugin_slug}_license_access_token", $access_token);
-        update_option("{$this->plugin_slug}_license_refresh_token", $refresh_token);
-        update_option('egp_license_status', 'valid');
-        
-        // Store complete license data from server response
-        $license_data_to_store = array(
-            'valid' => true,
-            'success' => true,
-            'packageType' => $result['packageType'] ?? 'geo-free',
-            'version' => $result['version'] ?? '1.0.0',
-            'expires_at' => $expires_at,
-            'accessToken' => $access_token,
-            'refreshToken' => $refresh_token,
-            'product_name' => 'Geo Elementor ' . ucfirst(($result['packageType'] ?? 'free')),
-            'sites_count' => $result['sitesCount'] ?? 1,
-            'sites_limit' => $result['sitesLimit'] ?? 'unlimited',
-            'features' => array('basic_geo_targeting', 'page_targeting', 'popup_targeting')
-        );
-        
-        // Merge with any additional data from server
-        if (is_array($result)) {
-            $license_data_to_store = array_merge($license_data_to_store, $result);
-        }
-        
-        update_option('egp_license_data', $license_data_to_store);
-        
-        // Fetch features/limits via centralized manager (if available)
-        if ($this->license_manager && method_exists($this->license_manager, 'get_license_data')) {
-            $license_data = $this->license_manager->get_license_data($this->plugin_slug, $license_key, true);
-            if (isset($license_data['valid']) && $license_data['valid']) {
-                // Merge server data with our stored data
-                $merged_data = array_merge($license_data_to_store, $license_data);
-                update_option('egp_license_data', $merged_data);
+        // Store license data locally for backward compatibility
+        if (isset($result['success']) && $result['success']) {
+            if (isset($result['accessToken'])) {
+                update_option('egp_license_access_token', $result['accessToken']);
             }
+            if (isset($result['refreshToken'])) {
+                update_option('egp_license_refresh_token', $result['refreshToken']);
+            }
+            if (isset($result['expires_at'])) {
+                update_option('egp_license_expires_at', $result['expires_at']);
+            }
+            
+            // Store complete license data
+            update_option('egp_license_data', $result);
         }
         
-        return true;
+        return $result;
     }
     
     /**
@@ -983,6 +927,17 @@ class EGP_Licensing {
         //     'body' => wp_json_encode($tracking_data),
         //     'timeout' => 10
         // ));
+    }
+
+    /**
+     * Get plugin version for activation
+     */
+    private function get_plugin_version() {
+        if (defined('EGP_VERSION')) {
+            return EGP_VERSION;
+        }
+        // Fallback to a default if EGP_VERSION is not defined
+        return '1.0.0';
     }
 }
 
