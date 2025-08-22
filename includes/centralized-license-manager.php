@@ -140,6 +140,16 @@ class EGP_Centralized_License_Manager {
         
         // If we have a valid token, try to verify with server
         if ($access_token && (!$expires_at || $expires_at > time())) {
+            // First try to get the stored license data
+            $stored_data = get_option("{$prefix}_license_data", array());
+            
+            if (!empty($stored_data) && isset($stored_data['valid']) && $stored_data['valid']) {
+                // Return the stored data if it's valid
+                wp_cache_set($cache_key, $stored_data, $this->cache_group, 3600);
+                return $stored_data;
+            }
+            
+            // If no stored data or it's invalid, try server verification
             $verification_result = $this->verify_license_with_server($access_token, $expires_at);
             
             // Cache the result
@@ -405,11 +415,14 @@ class EGP_Centralized_License_Manager {
     }
 
     /**
-     * Store license data with plugin-specific isolation
+     * Store license data with plugin-specific prefixes to prevent conflicts
      */
     public function store_license_data($plugin_slug, $license_data) {
         // Store with plugin-specific prefixes to prevent conflicts
         $prefix = $this->get_plugin_prefix($plugin_slug);
+        
+        // Format the license data for display
+        $formatted_data = $this->format_license_data_for_display($license_data);
         
         if (isset($license_data['accessToken'])) {
             update_option("{$prefix}_license_access_token", $license_data['accessToken']);
@@ -423,8 +436,8 @@ class EGP_Centralized_License_Manager {
             update_option("{$prefix}_license_expires_at", $license_data['expires_at']);
         }
         
-        // Store complete license data
-        update_option("{$prefix}_license_data", $license_data);
+        // Store complete license data (formatted)
+        update_option("{$prefix}_license_data", $formatted_data);
         
         // Clear any cached data
         wp_cache_delete("license_data_{$plugin_slug}", $this->cache_group);
@@ -485,6 +498,59 @@ class EGP_Centralized_License_Manager {
         }
         
         return true;
+    }
+    
+    /**
+     * Format license data for display
+     */
+    private function format_license_data_for_display($license_data) {
+        $formatted = array(
+            'valid' => isset($license_data['valid']) ? $license_data['valid'] : false,
+            'success' => isset($license_data['success']) ? $license_data['success'] : false
+        );
+        
+        // Extract product name
+        if (isset($license_data['package']['name'])) {
+            $formatted['product_name'] = $license_data['package']['name'];
+        } elseif (isset($license_data['packageType'])) {
+            $formatted['product_name'] = 'Geo Elementor ' . ucfirst($license_data['packageType']);
+        } else {
+            $formatted['product_name'] = 'Geo Elementor';
+        }
+        
+        // Determine if it's a free plan
+        $package_slug = $license_data['package']['slug'] ?? $license_data['packageType'] ?? '';
+        $formatted['is_free_plan'] = ($package_slug === 'geo-free' || $package_slug === 'free');
+        
+        // Handle expiration
+        if ($formatted['is_free_plan']) {
+            $formatted['expires_at'] = 'never';
+            $formatted['expires_text'] = 'Never Expires';
+        } else {
+            if (isset($license_data['expires_at'])) {
+                $formatted['expires_at'] = $license_data['expires_at'];
+            } elseif (isset($license_data['expires'])) {
+                $formatted['expires_at'] = $license_data['expires'];
+            } else {
+                $formatted['expires_at'] = '';
+            }
+        }
+        
+        // Handle sites information
+        if ($formatted['is_free_plan']) {
+            $formatted['sites_text'] = '1 / Unlimited';
+        } else {
+            if (isset($license_data['sitesCount']) && isset($license_data['sitesLimit'])) {
+                $formatted['sites_text'] = $license_data['sitesCount'] . ' / ' . $license_data['sitesLimit'];
+            } else {
+                $formatted['sites_text'] = '1 / Unlimited';
+            }
+        }
+        
+        // Extract version
+        $formatted['version'] = $license_data['version'] ?? '1.0.0';
+        
+        return $formatted;
     }
     
     /**

@@ -380,7 +380,11 @@ class EGP_Licensing {
                             <th scope="row"><?php _e('License Status', 'elementor-geo-popup'); ?></th>
                             <td>
                                 <span class="egp-license-status egp-status-<?php echo esc_attr($license_status); ?>">
-                                    <?php echo $this->get_license_status_text($license_status); ?>
+                                    <?php if ($license_status === 'valid') : ?>
+                                        <span style="color: green;">✓ <?php _e('Valid', 'elementor-geo-popup'); ?></span>
+                                    <?php else : ?>
+                                        <?php echo $this->get_license_status_text($license_status); ?>
+                                    <?php endif; ?>
                                 </span>
                             </td>
                         </tr>
