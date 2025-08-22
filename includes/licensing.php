@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 class EGP_Centralized_License_Manager {
     
     private static $instance = null;
-    private $license_server = 'https://license.reactwoo.com';
+    public $license_server = 'https://license.reactwoo.com';
     private $cache_group = 'egp_license_cache';
     private $request_locks = array();
     
@@ -165,6 +165,13 @@ class EGP_Centralized_License_Manager {
             // Clear any cached license data for this plugin
             wp_cache_delete("license_data_{$plugin_slug}", $this->cache_group);
             
+            // If server returned error, encapsulate it as WP_Error so UI can show it
+            if (isset($data['error']) && $data['error']) {
+                $reason = isset($data['reason']) ? trim($data['reason']) : '';
+                $message = $data['error'] . ($reason !== '' ? (': ' . $reason) : '');
+                return new WP_Error('activation_failed', $message);
+            }
+            
             return $data;
         } finally {
             unset($this->request_locks[$lock_key]);
@@ -242,8 +249,6 @@ class EGP_Licensing {
             $this->check_license_status();
         }
     }
-    
-
     
     /**
      * Render license page
@@ -605,11 +610,13 @@ class EGP_Licensing {
             return new WP_Error('activation_failed', __('License activation failed', 'elementor-geo-popup'));
         }
         
-        // Store license data and tokens
+        // Store license data and tokens (both generic and slugged, for verifier compatibility)
         update_option('egp_license_key', $license_key);
         update_option('egp_license_access_token', $access_token);
         update_option('egp_license_refresh_token', $refresh_token);
         update_option('egp_license_expires_at', $expires_at);
+        update_option("{$this->plugin_slug}_license_access_token", $access_token);
+        update_option("{$this->plugin_slug}_license_refresh_token", $refresh_token);
         update_option('egp_license_status', 'valid');
         
         // Fetch features/limits via centralized manager
@@ -649,6 +656,8 @@ class EGP_Licensing {
         delete_option('egp_license_access_token');
         delete_option('egp_license_refresh_token');
         delete_option('egp_license_expires_at');
+        delete_option("{$this->plugin_slug}_license_access_token");
+        delete_option("{$this->plugin_slug}_license_refresh_token");
         
         // Clear cached license data
         wp_cache_delete("license_data_{$this->plugin_slug}", 'egp_license_cache');
@@ -672,8 +681,13 @@ class EGP_Licensing {
             update_option('egp_license_status', 'valid');
             update_option('egp_license_data', $license_data);
         } else {
+            $error_msg = 'License is invalid';
+            if (is_array($license_data) && isset($license_data['error'])) {
+                $reason = isset($license_data['reason']) ? trim($license_data['reason']) : '';
+                $error_msg = $license_data['error'] . ($reason !== '' ? (': ' . $reason) : '');
+            }
             update_option('egp_license_status', 'invalid');
-            return new WP_Error('license_invalid', __('License is invalid', 'elementor-geo-popup'));
+            return new WP_Error('license_invalid', __($error_msg, 'elementor-geo-popup'));
         }
         
         return true;
@@ -699,7 +713,7 @@ class EGP_Licensing {
         $license_status = get_option('egp_license_status');
         
         if ($license_status === 'invalid' || $license_status === 'expired') {
-            $default_url = admin_url('options-general.php?page=elementor-geo-popup');
+            $default_url = admin_url('admin.php?page=geo-elementor-license');
             ?>
             <div class="notice notice-error">
                 <p>
@@ -712,7 +726,7 @@ class EGP_Licensing {
             </div>
             <?php
         } elseif ($license_status === 'inactive') {
-            $default_url = admin_url('options-general.php?page=elementor-geo-popup');
+            $default_url = admin_url('admin.php?page=geo-elementor-license');
             ?>
             <div class="notice notice-warning">
                 <p>
