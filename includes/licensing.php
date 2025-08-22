@@ -331,15 +331,42 @@ class EGP_Licensing {
                         <?php if (!empty($license_data)) : ?>
                         <tr>
                             <th scope="row"><?php _e('Product', 'elementor-geo-popup'); ?></th>
-                            <td><?php echo esc_html($license_data['product_name'] ?? ''); ?></td>
+                            <td><?php echo esc_html($license_data['product_name'] ?? $license_data['packageType'] ?? 'Geo Elementor'); ?></td>
                         </tr>
                         <tr>
                             <th scope="row"><?php _e('Expires', 'elementor-geo-popup'); ?></th>
-                            <td><?php echo esc_html($license_data['expires'] ?? ''); ?></td>
+                            <td>
+                                <?php 
+                                $expires = $license_data['expires'] ?? $license_data['expires_at'] ?? '';
+                                if ($expires) {
+                                    if (is_numeric($expires)) {
+                                        echo esc_html(date('F j, Y', $expires));
+                                    } else {
+                                        echo esc_html($expires);
+                                    }
+                                } else {
+                                    echo esc_html(__('Not specified', 'elementor-geo-popup'));
+                                }
+                                ?>
+                            </td>
                         </tr>
                         <tr>
                             <th scope="row"><?php _e('Sites', 'elementor-geo-popup'); ?></th>
-                            <td><?php echo esc_html($license_data['sites_count'] ?? ''); ?> / <?php echo esc_html($license_data['sites_limit'] ?? ''); ?></td>
+                            <td>
+                                <?php 
+                                $sites_count = $license_data['sites_count'] ?? $license_data['sitesCount'] ?? '';
+                                $sites_limit = $license_data['sites_limit'] ?? $license_data['sitesLimit'] ?? '';
+                                if ($sites_count !== '' && $sites_limit !== '') {
+                                    echo esc_html($sites_count . ' / ' . $sites_limit);
+                                } else {
+                                    echo esc_html(__('Unlimited', 'elementor-geo-popup'));
+                                }
+                                ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php _e('Version', 'elementor-geo-popup'); ?></th>
+                            <td><?php echo esc_html($license_data['version'] ?? '1.0.0'); ?></td>
                         </tr>
                         <?php endif; ?>
                     </table>
@@ -619,10 +646,36 @@ class EGP_Licensing {
         update_option("{$this->plugin_slug}_license_refresh_token", $refresh_token);
         update_option('egp_license_status', 'valid');
         
-        // Fetch features/limits via centralized manager
-        $license_data = $this->license_manager->get_license_data($this->plugin_slug, $license_key, true);
-        if (isset($license_data['valid']) && $license_data['valid']) {
-            update_option('egp_license_data', $license_data);
+        // Store complete license data from server response
+        $license_data_to_store = array(
+            'valid' => true,
+            'success' => true,
+            'packageType' => $result['packageType'] ?? 'geo-free',
+            'version' => $result['version'] ?? '1.0.0',
+            'expires_at' => $expires_at,
+            'accessToken' => $access_token,
+            'refreshToken' => $refresh_token,
+            'product_name' => 'Geo Elementor ' . ucfirst(($result['packageType'] ?? 'free')),
+            'sites_count' => $result['sitesCount'] ?? 1,
+            'sites_limit' => $result['sitesLimit'] ?? 'unlimited',
+            'features' => array('basic_geo_targeting', 'page_targeting', 'popup_targeting')
+        );
+        
+        // Merge with any additional data from server
+        if (is_array($result)) {
+            $license_data_to_store = array_merge($license_data_to_store, $result);
+        }
+        
+        update_option('egp_license_data', $license_data_to_store);
+        
+        // Fetch features/limits via centralized manager (if available)
+        if ($this->license_manager && method_exists($this->license_manager, 'get_license_data')) {
+            $license_data = $this->license_manager->get_license_data($this->plugin_slug, $license_key, true);
+            if (isset($license_data['valid']) && $license_data['valid']) {
+                // Merge server data with our stored data
+                $merged_data = array_merge($license_data_to_store, $license_data);
+                update_option('egp_license_data', $merged_data);
+            }
         }
         
         return true;
