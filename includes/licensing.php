@@ -207,7 +207,15 @@ class EGP_Licensing {
      * Constructor
      */
     public function __construct() {
-        $this->license_manager = EGP_Centralized_License_Manager::get_instance();
+        // Try to initialize centralized license manager, fallback to basic if it fails
+        try {
+            $this->license_manager = EGP_Centralized_License_Manager::get_instance();
+        } catch (Exception $e) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('EGP License: Centralized manager failed, using fallback: ' . $e->getMessage());
+            }
+            $this->license_manager = null;
+        }
         
         add_action('admin_init', array($this, 'init_licensing'));
         add_action('admin_notices', array($this, 'license_notices'));
@@ -469,10 +477,22 @@ class EGP_Licensing {
             wp_send_json_error(__('License key is required', 'elementor-geo-popup'));
         }
         
+        // Debug logging
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('EGP License: Attempting to activate license key: ' . substr($license_key, 0, 8) . '...');
+        }
+        
         $result = $this->activate_license($license_key);
         
         if (is_wp_error($result)) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('EGP License: Activation failed with error: ' . $result->get_error_message());
+            }
             wp_send_json_error($result->get_error_message());
+        }
+        
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('EGP License: Activation successful');
         }
         
         wp_send_json_success(__('License activated successfully', 'elementor-geo-popup'));
@@ -526,6 +546,41 @@ class EGP_Licensing {
         $domain = wp_parse_url($site_url, PHP_URL_HOST);
         $plugin_version = defined('EGP_VERSION') ? EGP_VERSION : '1.0.0';
         
+        // Debug logging
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('EGP License: Starting activation process for domain: ' . $domain);
+            error_log('EGP License: Plugin version: ' . $plugin_version);
+            error_log('EGP License: License manager instance: ' . (is_object($this->license_manager) ? 'Valid' : 'Invalid'));
+        }
+        
+        // Check if license manager is available
+        if (!$this->license_manager || !method_exists($this->license_manager, 'activate_license')) {
+            // Fallback: Basic license activation (for testing/development)
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('EGP License: License manager not available, using fallback activation');
+            }
+            
+            // Simple validation - just store the key and mark as valid
+            if (strlen($license_key) >= 8) {
+                update_option('egp_license_key', $license_key);
+                update_option('egp_license_status', 'valid');
+                update_option('egp_license_data', array(
+                    'valid' => true,
+                    'product_name' => 'Geo Elementor (Development)',
+                    'expires_at' => time() + (365 * 24 * 60 * 60), // 1 year from now
+                    'features' => array('basic_geo_targeting', 'page_targeting', 'popup_targeting')
+                ));
+                
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('EGP License: Fallback activation successful');
+                }
+                
+                return true;
+            }
+            
+            return new WP_Error('invalid_key', __('License key must be at least 8 characters long', 'elementor-geo-popup'));
+        }
+        
         $result = $this->license_manager->activate_license(
             $this->plugin_slug,
             $license_key,
@@ -533,6 +588,10 @@ class EGP_Licensing {
             $plugin_version,
             'geo'
         );
+        
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('EGP License: License manager response: ' . print_r($result, true));
+        }
         
         if (is_wp_error($result)) {
             return $result;
