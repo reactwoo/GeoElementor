@@ -757,10 +757,14 @@ class EGP_Licensing {
         }
         
         if ($is_valid) {
+            // Extract and format the license data for display
+            $formatted_license_data = $this->format_license_data_for_display($license_data);
+            
             update_option('egp_license_status', 'valid');
-            update_option('egp_license_data', $license_data);
+            update_option('egp_license_data', $formatted_license_data);
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 error_log('EGP License: Status updated to valid');
+                error_log('EGP License: Formatted data: ' . print_r($formatted_license_data, true));
             }
         } else {
             $error_msg = 'License is invalid';
@@ -831,6 +835,64 @@ class EGP_Licensing {
      */
     public function get_license_data() {
         return get_option('egp_license_data', array());
+    }
+
+    /**
+     * Format license data for display, extracting relevant fields from nested arrays.
+     */
+    private function format_license_data_for_display($license_data) {
+        $formatted_data = array(
+            'valid' => true,
+            'success' => true
+        );
+
+        // Extract product name from package data
+        if (isset($license_data['package']['name'])) {
+            $formatted_data['product_name'] = $license_data['package']['name'];
+        } elseif (isset($license_data['packageType'])) {
+            $formatted_data['product_name'] = 'Geo Elementor ' . ucfirst($license_data['packageType']);
+        } else {
+            $formatted_data['product_name'] = 'Geo Elementor';
+        }
+
+        // Extract version
+        if (isset($license_data['version'])) {
+            $formatted_data['version'] = $license_data['version'];
+        } else {
+            $formatted_data['version'] = '1.0.0';
+        }
+
+        // Extract expires_at
+        if (isset($license_data['expires_at'])) {
+            $formatted_data['expires_at'] = $license_data['expires_at'];
+        } elseif (isset($license_data['expires'])) {
+            $formatted_data['expires_at'] = $license_data['expires'];
+        } else {
+            $formatted_data['expires_at'] = '';
+        }
+
+        // Extract sites information (default to single site for geo packages)
+        $formatted_data['sites_count'] = 1;
+        $formatted_data['sites_limit'] = 'unlimited';
+
+        // Extract features from package
+        if (isset($license_data['package']['features'])) {
+            $formatted_data['features'] = $license_data['package']['features'];
+        } else {
+            $formatted_data['features'] = array('basic_geo_targeting', 'page_targeting', 'popup_targeting');
+        }
+
+        // Add package type
+        if (isset($license_data['package']['slug'])) {
+            $formatted_data['packageType'] = $license_data['package']['slug'];
+        }
+
+        // Add license status
+        if (isset($license_data['license']['status'])) {
+            $formatted_data['license_status'] = $license_data['license']['status'];
+        }
+
+        return $formatted_data;
     }
 }
 
