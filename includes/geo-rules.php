@@ -55,6 +55,9 @@ class EGP_Geo_Rules {
         add_action('wp_ajax_egp_save_geo_rule', array($this, 'ajax_save_geo_rule'));
         add_action('wp_ajax_nopriv_egp_track_click', array($this, 'ajax_track_click'));
         add_action('wp_ajax_egp_track_click', array($this, 'ajax_track_click'));
+        add_action('wp_ajax_egp_get_target_options', array($this, 'ajax_get_target_options'));
+        add_action('wp_ajax_egp_save_elementor_geo_rule', array($this, 'ajax_save_elementor_geo_rule'));
+        add_action('wp_ajax_egp_remove_elementor_geo_rule', array($this, 'ajax_remove_elementor_geo_rule'));
     }
     
     /**
@@ -136,7 +139,8 @@ class EGP_Geo_Rules {
                     <label for="egp_target_type"><?php _e('Target Type', 'elementor-geo-popup'); ?></label>
                 </th>
                 <td>
-                    <select name="egp_target_type" id="egp_target_type">
+                    <select name="egp_target_type" id="egp_target_type" onchange="egpUpdateTargetOptions()">
+                        <option value=""><?php _e('Select Target Type', 'elementor-geo-popup'); ?></option>
                         <option value="page" <?php selected($target_type, 'page'); ?>><?php _e('Page', 'elementor-geo-popup'); ?></option>
                         <option value="popup" <?php selected($target_type, 'popup'); ?>><?php _e('Popup', 'elementor-geo-popup'); ?></option>
                         <?php if ($this->is_pro_user()): ?>
@@ -150,11 +154,13 @@ class EGP_Geo_Rules {
             
             <tr>
                 <th scope="row">
-                    <label for="egp_target_id"><?php _e('Target ID', 'elementor-geo-popup'); ?></label>
+                    <label for="egp_target_id"><?php _e('Target Selection', 'elementor-geo-popup'); ?></label>
                 </th>
                 <td>
-                    <input type="text" name="egp_target_id" id="egp_target_id" value="<?php echo esc_attr($target_id); ?>" class="regular-text" />
-                    <p class="description"><?php _e('Page ID, Popup ID, or CSS selector', 'elementor-geo-popup'); ?></p>
+                    <div id="egp_target_selection">
+                        <p class="description"><?php _e('Select a target type first', 'elementor-geo-popup'); ?></p>
+                    </div>
+                    <input type="hidden" name="egp_target_id" id="egp_target_id" value="<?php echo esc_attr($target_id); ?>" />
                 </td>
             </tr>
             
@@ -196,6 +202,82 @@ class EGP_Geo_Rules {
                 </td>
             </tr>
         </table>
+        
+        <script>
+        function egpUpdateTargetOptions() {
+            var targetType = document.getElementById('egp_target_type').value;
+            var targetSelection = document.getElementById('egp_target_selection');
+            var targetIdField = document.getElementById('egp_target_id');
+            
+            if (!targetType) {
+                targetSelection.innerHTML = '<p class="description"><?php _e('Select a target type first', 'elementor-geo-popup'); ?></p>';
+                return;
+            }
+            
+            // Show loading
+            targetSelection.innerHTML = '<p class="description"><?php _e('Loading options...', 'elementor-geo-popup'); ?></p>';
+            
+            // Fetch options based on target type
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '<?php echo admin_url('admin-ajax.php'); ?>', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    if (response.success) {
+                        egpRenderTargetOptions(targetType, response.data, targetIdField.value);
+                    } else {
+                        targetSelection.innerHTML = '<p class="description"><?php _e('Error loading options', 'elementor-geo-popup'); ?></p>';
+                    }
+                }
+            };
+            xhr.send('action=egp_get_target_options&target_type=' + targetType + '&nonce=<?php echo wp_create_nonce('egp_admin_nonce'); ?>');
+        }
+        
+        function egpRenderTargetOptions(targetType, options, selectedValue) {
+            var targetSelection = document.getElementById('egp_target_selection');
+            var html = '';
+            
+            if (targetType === 'page') {
+                html = '<select name="egp_target_id_select" id="egp_target_id_select" onchange="egpUpdateTargetId(this.value)">';
+                html += '<option value=""><?php _e('Select a page', 'elementor-geo-popup'); ?></option>';
+                html += '<option value="all" ' + (selectedValue === 'all' ? 'selected' : '') + '><?php _e('All Pages', 'elementor-geo-popup'); ?></option>';
+                options.forEach(function(option) {
+                    html += '<option value="' + option.id + '" ' + (selectedValue == option.id ? 'selected' : '') + '>' + option.title + '</option>';
+                });
+                html += '</select>';
+            } else if (targetType === 'popup') {
+                html = '<select name="egp_target_id_select" id="egp_target_id_select" onchange="egpUpdateTargetId(this.value)">';
+                html += '<option value=""><?php _e('Select a popup', 'elementor-geo-popup'); ?></option>';
+                html += '<option value="all" ' + (selectedValue === 'all' ? 'selected' : '') + '><?php _e('All Popups', 'elementor-geo-popup'); ?></option>';
+                options.forEach(function(option) {
+                    html += '<option value="' + option.id + '" ' + (selectedValue == option.id ? 'selected' : '') + '>' + option.title + '</option>';
+                });
+                html += '</select>';
+            } else if (targetType === 'widget') {
+                html = '<select name="egp_target_id_select" id="egp_target_id_select" onchange="egpUpdateTargetId(this.value)">';
+                html += '<option value=""><?php _e('Select a widget', 'elementor-geo-popup'); ?></option>';
+                html += '<option value="all" ' + (selectedValue === 'all' ? 'selected' : '') + '><?php _e('All Widgets', 'elementor-geo-popup'); ?></option>';
+                options.forEach(function(option) {
+                    html += '<option value="' + option.id + '" ' + (selectedValue == option.id ? 'selected' : '') + '>' + option.title + '</option>';
+                });
+                html += '</select>';
+            }
+            
+            targetSelection.innerHTML = html;
+        }
+        
+        function egpUpdateTargetId(value) {
+            document.getElementById('egp_target_id').value = value;
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('egp_target_type').value) {
+                egpUpdateTargetOptions();
+            }
+        });
+        </script>
         <?php
     }
     
@@ -596,6 +678,147 @@ class EGP_Geo_Rules {
         $this->track_click($rule_id);
         
         wp_send_json_success();
+    }
+
+    /**
+     * AJAX: Get target options for a specific target type
+     */
+    public function ajax_get_target_options() {
+        check_ajax_referer('egp_admin_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
+        }
+
+        $target_type = sanitize_text_field($_POST['target_type']);
+        $options = array();
+
+        if ($target_type === 'page') {
+            $pages = get_pages(array('sort_column' => 'post_title', 'sort_order' => 'asc'));
+            foreach ($pages as $page) {
+                $options[] = array('id' => $page->ID, 'title' => $page->post_title);
+            }
+        } elseif ($target_type === 'popup') {
+            $popups = get_posts(array(
+                'post_type' => 'geo_popup', // Assuming geo_popup is the custom post type for popups
+                'posts_per_page' => -1,
+                'orderby' => 'title',
+                'order' => 'asc'
+            ));
+            foreach ($popups as $popup) {
+                $options[] = array('id' => $popup->ID, 'title' => $popup->post_title);
+            }
+        } elseif ($target_type === 'section') {
+            // This part needs to be implemented to fetch sections from Elementor
+            // For now, we'll return an empty array or a placeholder
+            $options = array();
+        } elseif ($target_type === 'widget') {
+            // This part needs to be implemented to fetch widgets from Elementor
+            // For now, we'll return an empty array or a placeholder
+            $options = array();
+        }
+
+        wp_send_json_success($options);
+    }
+    
+    /**
+     * AJAX: Save geo rule from Elementor
+     */
+    public function ajax_save_elementor_geo_rule() {
+        check_ajax_referer('egp_admin_nonce', 'nonce');
+        
+        if (!current_user_can('edit_posts')) {
+            wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
+        }
+        
+        $rule_data = $_POST['rule_data'];
+        
+        // Check if rule already exists
+        $existing_rule = $this->get_elementor_geo_rule($rule_data['element_id']);
+        
+        if ($existing_rule) {
+            // Update existing rule
+            $post_id = $existing_rule->ID;
+            $post_data = array(
+                'ID' => $post_id,
+                'post_title' => sanitize_text_field($rule_data['element_title']),
+                'post_content' => 'Elementor element geo targeting rule'
+            );
+            wp_update_post($post_data);
+        } else {
+            // Create new rule
+            $post_data = array(
+                'post_title' => sanitize_text_field($rule_data['element_title']),
+                'post_content' => 'Elementor element geo targeting rule',
+                'post_type' => $this->post_type,
+                'post_status' => 'publish'
+            );
+            $post_id = wp_insert_post($post_data);
+        }
+        
+        if (is_wp_error($post_id)) {
+            wp_send_json_error(__('Failed to save geo rule', 'elementor-geo-popup'));
+        }
+        
+        // Save meta fields
+        update_post_meta($post_id, $this->meta_prefix . 'target_type', 'elementor');
+        update_post_meta($post_id, $this->meta_prefix . 'target_id', sanitize_text_field($rule_data['element_id']));
+        update_post_meta($post_id, $this->meta_prefix . 'countries', array_map('sanitize_text_field', $rule_data['countries']));
+        update_post_meta($post_id, $this->meta_prefix . 'priority', intval($rule_data['priority']));
+        update_post_meta($post_id, $this->meta_prefix . 'active', '1');
+        update_post_meta($post_id, $this->meta_prefix . 'tracking_id', sanitize_text_field($rule_data['tracking_id']));
+        update_post_meta($post_id, $this->meta_prefix . 'source', 'elementor');
+        update_post_meta($post_id, $this->meta_prefix . 'element_type', sanitize_text_field($rule_data['element_type']));
+        
+        wp_send_json_success(array('id' => $post_id));
+    }
+    
+    /**
+     * AJAX: Remove geo rule from Elementor
+     */
+    public function ajax_remove_elementor_geo_rule() {
+        check_ajax_referer('egp_admin_nonce', 'nonce');
+        
+        if (!current_user_can('edit_posts')) {
+            wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
+        }
+        
+        $element_id = sanitize_text_field($_POST['element_id']);
+        
+        $existing_rule = $this->get_elementor_geo_rule($element_id);
+        
+        if ($existing_rule) {
+            wp_delete_post($existing_rule->ID, true);
+            wp_send_json_success(__('Geo rule removed', 'elementor-geo-popup'));
+        } else {
+            wp_send_json_success(__('No geo rule found to remove', 'elementor-geo-popup'));
+        }
+    }
+    
+    /**
+     * Get existing Elementor geo rule by element ID
+     */
+    private function get_elementor_geo_rule($element_id) {
+        $args = array(
+            'post_type' => $this->post_type,
+            'post_status' => 'any',
+            'meta_query' => array(
+                array(
+                    'key' => $this->meta_prefix . 'target_id',
+                    'value' => $element_id,
+                    'compare' => '='
+                ),
+                array(
+                    'key' => $this->meta_prefix . 'source',
+                    'value' => 'elementor',
+                    'compare' => '='
+                )
+            ),
+            'posts_per_page' => 1
+        );
+        
+        $rules = get_posts($args);
+        return !empty($rules) ? $rules[0] : null;
     }
     
     /**

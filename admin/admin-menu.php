@@ -84,9 +84,20 @@ class EGP_Admin_Menu {
 		echo '<style>
 			.status-active { color: #46b450; font-weight: bold; }
 			.status-inactive { color: #dc3232; font-weight: bold; }
-			.wp-list-table .column-title { width: 25%; }
+			.source-elementor { color: #556068; font-weight: bold; }
+			.source-manual { color: #0073aa; font-weight: bold; }
+			.egp-elementor-badge { 
+				background: #556068; 
+				color: white; 
+				padding: 2px 6px; 
+				border-radius: 3px; 
+				font-size: 10px; 
+				margin-left: 8px; 
+			}
+			.wp-list-table .column-title { width: 20%; }
+			.wp-list-table .column-source { width: 8%; }
 			.wp-list-table .column-type { width: 10%; }
-			.wp-list-table .column-target { width: 20%; }
+			.wp-list-table .column-target { width: 18%; }
 			.wp-list-table .column-countries { width: 15%; }
 			.wp-list-table .column-status { width: 8%; }
 			.wp-list-table .column-created { width: 12%; }
@@ -119,6 +130,7 @@ class EGP_Admin_Menu {
 		echo '<thead>';
 		echo '<tr>';
 		echo '<th scope="col" class="manage-column column-title column-primary">' . esc_html__('Rule Name', 'elementor-geo-popup') . '</th>';
+		echo '<th scope="col" class="manage-column">' . esc_html__('Source', 'elementor-geo-popup') . '</th>';
 		echo '<th scope="col" class="manage-column">' . esc_html__('Type', 'elementor-geo-popup') . '</th>';
 		echo '<th scope="col" class="manage-column">' . esc_html__('Target', 'elementor-geo-popup') . '</th>';
 		echo '<th scope="col" class="manage-column">' . esc_html__('Countries', 'elementor-geo-popup') . '</th>';
@@ -134,8 +146,10 @@ class EGP_Admin_Menu {
 			$target_type = get_post_meta($rule->ID, 'egp_target_type', true);
 			$target_id = get_post_meta($rule->ID, 'egp_target_id', true);
 			$countries = get_post_meta($rule->ID, 'egp_countries', true);
-			$is_active = get_post_meta($rule->ID, 'egp_is_active', true);
+			$is_active = get_post_meta($rule->ID, 'egp_active', true);
 			$clicks = get_post_meta($rule->ID, 'egp_clicks', true) ?: 0;
+			$source = get_post_meta($rule->ID, 'egp_source', true) ?: 'manual';
+			$element_type = get_post_meta($rule->ID, 'egp_element_type', true);
 			
 			// Format target display
 			$target_display = '';
@@ -145,6 +159,8 @@ class EGP_Admin_Menu {
 				$target_display = 'Page: ' . ($target_id ?: 'All Pages');
 			} elseif ($target_type === 'widget') {
 				$target_display = 'Widget: ' . ($target_id ?: 'All Widgets');
+			} elseif ($target_type === 'elementor') {
+				$target_display = 'Elementor: ' . ucfirst($element_type ?: 'Element') . ' #' . $target_id;
 			} else {
 				$target_display = ucfirst($target_type ?: 'Unknown');
 			}
@@ -164,14 +180,26 @@ class EGP_Admin_Menu {
 			$status_class = $is_active ? 'status-active' : 'status-inactive';
 			$status_text = $is_active ? __('Active', 'elementor-geo-popup') : __('Inactive', 'elementor-geo-popup');
 			
+			// Source indicator
+			$source_text = $source === 'elementor' ? 'Elementor' : 'Manual';
+			$source_class = $source === 'elementor' ? 'source-elementor' : 'source-manual';
+			
 			echo '<tr>';
 			echo '<td class="title column-title has-row-actions column-primary">';
-			echo '<strong><a href="' . esc_url(get_edit_post_link($rule->ID)) . '">' . esc_html($rule->post_title) . '</a></strong>';
+			echo '<strong>' . esc_html($rule->post_title) . '</strong>';
+			if ($source === 'elementor') {
+				echo ' <span class="egp-elementor-badge">Elementor</span>';
+			}
 			echo '<div class="row-actions">';
-			echo '<span class="edit"><a href="' . esc_url(get_edit_post_link($rule->ID)) . '">' . esc_html__('Edit', 'elementor-geo-popup') . '</a> | </span>';
+			if ($source === 'elementor') {
+				echo '<span class="edit"><a href="#" onclick="egpEditElementorRule(' . $rule->ID . ')">' . esc_html__('Edit in Elementor', 'elementor-geo-popup') . '</a> | </span>';
+			} else {
+				echo '<span class="edit"><a href="' . esc_url(get_edit_post_link($rule->ID)) . '">' . esc_html__('Edit', 'elementor-geo-popup') . '</a> | </span>';
+			}
 			echo '<span class="trash"><a href="' . esc_url(get_delete_post_link($rule->ID)) . '" onclick="return confirm(\'' . esc_js(__('Are you sure you want to delete this rule?', 'elementor-geo-popup')) . '\')">' . esc_html__('Delete', 'elementor-geo-popup') . '</a></span>';
 			echo '</div>';
 			echo '</td>';
+			echo '<td><span class="' . esc_attr($source_class) . '">' . esc_html($source_text) . '</span></td>';
 			echo '<td>' . esc_html(ucfirst($target_type ?: 'Unknown')) . '</td>';
 			echo '<td>' . esc_html($target_display) . '</td>';
 			echo '<td>' . esc_html($countries_display) . '</td>';
@@ -179,13 +207,35 @@ class EGP_Admin_Menu {
 			echo '<td>' . esc_html(date('M j, Y', strtotime($rule->post_date))) . '</td>';
 			echo '<td>' . esc_html($clicks) . '</td>';
 			echo '<td>';
-			echo '<a href="' . esc_url(get_edit_post_link($rule->ID)) . '" class="button button-small">' . esc_html__('Edit', 'elementor-geo-popup') . '</a> ';
+			if ($source === 'elementor') {
+				echo '<a href="#" onclick="egpEditElementorRule(' . $rule->ID . ')" class="button button-small">' . esc_html__('Edit in Elementor', 'elementor-geo-popup') . '</a> ';
+			} else {
+				echo '<a href="' . esc_url(get_edit_post_link($rule->ID)) . '" class="button button-small">' . esc_html__('Edit', 'elementor-geo-popup') . '</a> ';
+			}
 			echo '<a href="' . esc_url(get_delete_post_link($rule->ID)) . '" class="button button-small button-link-delete" onclick="return confirm(\'' . esc_js(__('Are you sure you want to delete this rule?', 'elementor-geo-popup')) . '\')">' . esc_html__('Delete', 'elementor-geo-popup') . '</a>';
 			echo '</td>';
 			echo '</tr>';
 		}
 		echo '</tbody>';
 		echo '</table>';
+		
+		// Add JavaScript for Elementor rule editing
+		echo '<script>
+		function egpEditElementorRule(ruleId) {
+			// Find the Elementor element and open it in editor
+			if (typeof elementor !== "undefined") {
+				var element = elementor.getPreviewView().collection.findWhere({id: ruleId});
+				if (element) {
+					elementor.channels.editor.trigger("section:activated", element);
+					elementor.channels.editor.trigger("panel:open:editor", element);
+				} else {
+					alert("Element not found in current page. Please navigate to the page containing this element.");
+				}
+			} else {
+				alert("Elementor editor not available. Please open the page in Elementor editor.");
+			}
+		}
+		</script>';
 		
 		echo '</div>';
 	}
