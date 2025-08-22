@@ -152,6 +152,19 @@ class EGP_Centralized_License_Manager {
             // If no stored data or it's invalid, try server verification
             $verification_result = $this->verify_license_with_server($access_token, $expires_at);
             
+            // Format the verification result for display
+            if (isset($verification_result['valid']) && $verification_result['valid']) {
+                $formatted_result = $this->format_license_data_for_display($verification_result);
+                
+                // Store the formatted data for future use
+                update_option("{$prefix}_license_data", $formatted_result);
+                
+                // Cache the formatted result
+                wp_cache_set($cache_key, $formatted_result, $this->cache_group, 3600);
+                
+                return $formatted_result;
+            }
+            
             // Cache the result
             wp_cache_set($cache_key, $verification_result, $this->cache_group, 3600);
             
@@ -509,7 +522,7 @@ class EGP_Centralized_License_Manager {
             'success' => isset($license_data['success']) ? $license_data['success'] : false
         );
         
-        // Extract product name
+        // Extract product name from package data
         if (isset($license_data['package']['name'])) {
             $formatted['product_name'] = $license_data['package']['name'];
         } elseif (isset($license_data['packageType'])) {
@@ -518,7 +531,7 @@ class EGP_Centralized_License_Manager {
             $formatted['product_name'] = 'Geo Elementor';
         }
         
-        // Determine if it's a free plan
+        // Determine if it's a free plan based on package slug
         $package_slug = $license_data['package']['slug'] ?? $license_data['packageType'] ?? '';
         $formatted['is_free_plan'] = ($package_slug === 'geo-free' || $package_slug === 'free');
         
@@ -547,8 +560,16 @@ class EGP_Centralized_License_Manager {
             }
         }
         
-        // Extract version
+        // Extract version from license data or use default
         $formatted['version'] = $license_data['version'] ?? '1.0.0';
+        
+        // Add package type for reference
+        $formatted['package_type'] = $package_slug;
+        
+        // Add license ID for reference
+        if (isset($license_data['license']['id'])) {
+            $formatted['license_id'] = $license_data['license']['id'];
+        }
         
         return $formatted;
     }
