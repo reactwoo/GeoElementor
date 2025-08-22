@@ -20,7 +20,6 @@ class EGP_Admin_Settings {
      * Constructor
      */
     public function __construct() {
-        add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_init', array($this, 'init_settings'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
         add_action('wp_ajax_egp_update_database', array($this, 'ajax_update_database'));
@@ -32,14 +31,10 @@ class EGP_Admin_Settings {
     /**
      * Add admin menu
      */
-    public function add_admin_menu() {
-        add_options_page(
-            __('Elementor Geo Popup', 'elementor-geo-popup'),
-            __('Elementor Geo Popup', 'elementor-geo-popup'),
-            'manage_options',
-            'elementor-geo-popup',
-            array($this, 'render_settings_page')
-        );
+    // Settings page will be rendered via top-level menu hook
+    // Expose a render hook for the admin menu controller
+    public function render_via_hook() {
+        $this->render_settings_page();
     }
 
 

@@ -77,7 +77,7 @@ class EGP_Geo_Rules {
             'labels' => $labels,
             'public' => false,
             'show_ui' => true,
-            'show_in_menu' => 'options-general.php', // Under Settings
+            'show_in_menu' => 'geo-elementor', // Under top-level Geo Elementor
             'capability_type' => 'post',
             'hierarchical' => false,
             'rewrite' => false,

@@ -10,19 +10,7 @@ if (!defined('ABSPATH')) {
 
 class EGP_Admin_Dashboard {
 	public function __construct() {
-		add_action('admin_menu', array($this, 'register_menu')); // under Settings
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
-	}
-
-	public function register_menu() {
-		add_submenu_page(
-			'options-general.php',
-			__('Geo Rules Dashboard', 'elementor-geo-popup'),
-			__('Geo Rules Dashboard', 'elementor-geo-popup'),
-			'manage_options',
-			'geo-el-dashboard',
-			array($this, 'render_page')
-		);
 	}
 
 	public function render_page() {
@@ -32,7 +20,8 @@ class EGP_Admin_Dashboard {
 	}
 
 	public function enqueue_assets($hook) {
-		if ($hook !== 'settings_page_geo-el-dashboard') {
+		// Accept when loaded via our top-level menu
+		if ($hook !== 'geo-elementor_page_geo-el-dashboard' && $hook !== 'settings_page_geo-el-dashboard') {
 			return;
 		}
 
