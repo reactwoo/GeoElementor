@@ -691,5 +691,82 @@
 
 })(jQuery);
 
+/**
+ * Popup Editor JavaScript - Fixed infinite loop issue
+ */
+
+(function($) {
+    'use strict';
+    
+    var EGP_Popup_Editor = {
+        retryCount: 0,
+        maxRetries: 5,
+        retryDelay: 1000, // 1 second
+        
+        init: function() {
+            this.bindEvents();
+        },
+        
+        bindEvents: function() {
+            // Wait for DOM to be ready
+            $(document).ready(function() {
+                EGP_Popup_Editor.setupGuards();
+            });
+        },
+        
+        setupGuards: function() {
+            console.log('[EGP] setupGuards start');
+            
+            // Check if we've exceeded max retries
+            if (this.retryCount >= this.maxRetries) {
+                console.error('[EGP] Max retries exceeded. Popup system not ready.');
+                return;
+            }
+            
+            // Check if popup system is ready
+            if (this.isPopupReady()) {
+                console.log('[EGP] Popup system ready, proceeding with setup');
+                this.retryCount = 0; // Reset retry count on success
+                this.initializePopup();
+            } else {
+                console.log('[EGP] showPopup not ready; retry ' + (this.retryCount + 1) + '/' + this.maxRetries);
+                this.retryCount++;
+                
+                // Use setTimeout instead of immediate retry to prevent infinite loop
+                setTimeout(function() {
+                    EGP_Popup_Editor.setupGuards();
+                }, this.retryDelay);
+            }
+        },
+        
+        isPopupReady: function() {
+            // Check if required elements and functions exist
+            return (
+                typeof window.EGP_Popup !== 'undefined' &&
+                typeof window.EGP_Popup.showPopup === 'function' &&
+                $('.egp-popup-container').length > 0
+            );
+        },
+        
+        initializePopup: function() {
+            try {
+                // Initialize popup functionality
+                if (typeof window.EGP_Popup !== 'undefined') {
+                    window.EGP_Popup.init();
+                    console.log('[EGP] Popup system initialized successfully');
+                }
+            } catch (error) {
+                console.error('[EGP] Error initializing popup:', error);
+            }
+        }
+    };
+    
+    // Initialize when document is ready
+    $(document).ready(function() {
+        EGP_Popup_Editor.init();
+    });
+    
+})(jQuery);
+
 
 

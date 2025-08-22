@@ -20,11 +20,64 @@ class EGP_Popup_Hooks {
      * Constructor
      */
     public function __construct() {
+        // Check if Elementor Pro is available
+        if ($this->is_elementor_pro_available()) {
+            // Use Elementor Pro popup system
+            $this->init_elementor_pro_hooks();
+        } else {
+            // Use fallback custom popup system
+            if ($this->should_use_fallback_popups()) {
+                $this->init_fallback_popup_system();
+            }
+        }
+        
+        // Always add AJAX handlers for stats
+        add_action('wp_ajax_egp_get_popup_stats', array($this, 'ajax_get_popup_stats'));
+        add_action('wp_ajax_nopriv_egp_get_popup_stats', array($this, 'ajax_get_popup_stats'));
+    }
+    
+    /**
+     * Check if Elementor Pro is available
+     */
+    private function is_elementor_pro_available() {
+        return (
+            class_exists('ElementorPro\Plugin') &&
+            class_exists('ElementorPro\Modules\Popup\Module') &&
+            method_exists('ElementorPro\Modules\Popup\Module', 'get_popup')
+        );
+    }
+    
+    /**
+     * Check if we should use fallback popup system
+     */
+    private function should_use_fallback_popups() {
+        return get_option('egp_use_fallback_popups', false);
+    }
+    
+    /**
+     * Initialize Elementor Pro popup hooks
+     */
+    private function init_elementor_pro_hooks() {
         add_action('elementor/init', array($this, 'init_popup_hooks'));
         add_filter('elementor_pro/popup/display_conditions', array($this, 'add_geo_display_condition'));
         add_action('elementor_pro/popup/before_render', array($this, 'check_geo_display_condition'));
-        add_action('wp_ajax_egp_get_popup_stats', array($this, 'ajax_get_popup_stats'));
-        add_action('wp_ajax_nopriv_egp_get_popup_stats', array($this, 'ajax_get_popup_stats'));
+        add_action('elementor_pro/popup/after_render', array($this, 'track_popup_view'));
+        add_action('elementor_pro/popup/after_close', array($this, 'track_popup_close'));
+        
+        // Add geo targeting controls to popup editor
+        add_action('elementor/element/popup/section_popup_layout/before_section_end', array($this, 'add_geo_targeting_controls'));
+        
+        error_log('[EGP] Elementor Pro popup system initialized');
+    }
+    
+    /**
+     * Initialize fallback popup system
+     */
+    private function init_fallback_popup_system() {
+        add_action('wp_footer', array($this, 'render_popup_html'));
+        add_action('wp_enqueue_scripts', array($this, 'enqueue_fallback_popup_scripts'));
+        
+        error_log('[EGP] Fallback popup system initialized');
     }
     
     /**
@@ -438,6 +491,177 @@ class EGP_Popup_Hooks {
     public function check_geo_display_condition($popup_id) {
         // This is called before popup rendering
         // We can use this to set up any necessary data
+    }
+
+    /**
+     * Add geo targeting controls to popup editor
+     */
+    public function add_geo_targeting_controls($element) {
+        $element->add_control(
+            'egp_enable_geo_targeting',
+            [
+                'label' => __('Enable Geo Targeting', 'elementor-geo-popup'),
+                'type' => \Elementor\Controls_Manager::SWITCHER,
+                'label_on' => __('Yes', 'elementor-geo-popup'),
+                'label_off' => __('No', 'elementor-geo-popup'),
+                'return_value' => 'yes',
+                'default' => 'no',
+                'separator' => 'before',
+            ]
+        );
+        
+        $element->add_control(
+            'egp_countries',
+            [
+                'label' => __('Target Countries', 'elementor-geo-popup'),
+                'type' => \Elementor\Controls_Manager::SELECT2,
+                'multiple' => true,
+                'options' => $this->get_countries_list(),
+                'condition' => [
+                    'egp_enable_geo_targeting' => 'yes',
+                ],
+                'description' => __('Select countries where this popup should be shown', 'elementor-geo-popup'),
+            ]
+        );
+        
+        $element->add_control(
+            'egp_fallback_behavior',
+            [
+                'label' => __('Fallback Behavior', 'elementor-geo-popup'),
+                'type' => \Elementor\Controls_Manager::SELECT,
+                'default' => 'inherit',
+                'options' => [
+                    'inherit' => __('Use Global Setting', 'elementor-geo-popup'),
+                    'show_to_all' => __('Show to All Visitors', 'elementor-geo-popup'),
+                    'show_to_none' => __('Hide from All Visitors', 'elementor-geo-popup'),
+                    'show_default' => __('Show Default Popup', 'elementor-geo-popup'),
+                ],
+                'condition' => [
+                    'egp_enable_geo_targeting' => 'yes',
+                ],
+                'description' => __('What to do when country cannot be determined', 'elementor-geo-popup'),
+            ]
+        );
+    }
+    
+    /**
+     * Get countries list for controls
+     */
+    private function get_countries_list() {
+        return [
+            'US' => 'United States',
+            'CA' => 'Canada',
+            'GB' => 'United Kingdom',
+            'DE' => 'Germany',
+            'FR' => 'France',
+            'AU' => 'Australia',
+            'JP' => 'Japan',
+            'BR' => 'Brazil',
+            'IN' => 'India',
+            'CN' => 'China',
+            'IT' => 'Italy',
+            'ES' => 'Spain',
+            'NL' => 'Netherlands',
+            'SE' => 'Sweden',
+            'NO' => 'Norway',
+            'DK' => 'Denmark',
+            'FI' => 'Finland',
+            'CH' => 'Switzerland',
+            'AT' => 'Austria',
+            'BE' => 'Belgium',
+        ];
+    }
+    
+    /**
+     * Enqueue fallback popup scripts
+     */
+    public function enqueue_fallback_popup_scripts() {
+        wp_enqueue_script(
+            'egp-fallback-popup',
+            EGP_PLUGIN_URL . 'assets/js/geo-widget.js',
+            array('jquery'),
+            EGP_VERSION,
+            true
+        );
+        
+        wp_enqueue_style(
+            'egp-fallback-popup',
+            EGP_PLUGIN_URL . 'assets/css/geo-widget.css',
+            array(),
+            EGP_VERSION
+        );
+    }
+
+    /**
+     * Render popup HTML structure
+     */
+    public function render_popup_html() {
+        if (is_admin()) {
+            return;
+        }
+        
+        // Get active popups for current page
+        $popups = $this->get_active_popups();
+        
+        if (empty($popups)) {
+            return;
+        }
+        
+        echo '<div id="egp-popup-container" class="egp-popup-container">';
+        echo '<div class="egp-popup-overlay"></div>';
+        
+        foreach ($popups as $popup) {
+            $this->render_single_popup($popup);
+        }
+        
+        echo '</div>';
+    }
+    
+    /**
+     * Render single popup HTML
+     */
+    private function render_single_popup($popup) {
+        $popup_id = 'egp-popup-' . $popup->ID;
+        $title = get_post_meta($popup->ID, 'egp_popup_title', true) ?: $popup->post_title;
+        $content = $popup->post_content;
+        $show_close = get_post_meta($popup->ID, 'egp_show_close_button', true) !== '0';
+        
+        echo '<div id="' . esc_attr($popup_id) . '" class="egp-popup" data-popup-id="' . esc_attr($popup->ID) . '">';
+        
+        if ($show_close) {
+            echo '<div class="egp-popup-header">';
+            echo '<h3 class="egp-popup-title">' . esc_html($title) . '</h3>';
+            echo '<button type="button" class="egp-popup-close" aria-label="Close popup">×</button>';
+            echo '</div>';
+        }
+        
+        echo '<div class="egp-popup-body">';
+        echo apply_filters('the_content', $content);
+        echo '</div>';
+        
+        echo '</div>';
+    }
+    
+    /**
+     * Get active popups for current page
+     */
+    private function get_active_popups() {
+        $current_page_id = get_queried_object_id();
+        
+        $args = array(
+            'post_type' => 'geo_popup',
+            'post_status' => 'publish',
+            'meta_query' => array(
+                array(
+                    'key' => 'egp_active',
+                    'value' => '1',
+                    'compare' => '='
+                )
+            ),
+            'posts_per_page' => -1
+        );
+        
+        return get_posts($args);
     }
 }
 

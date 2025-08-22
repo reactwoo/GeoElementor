@@ -161,3 +161,187 @@
         background: none;
     }
 }
+
+/* Geo Widget CSS - Popup System Styles */
+
+/* Popup Container */
+.egp-popup-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 999999;
+    display: none;
+}
+
+.egp-popup-container.egp-popup-active {
+    display: block;
+}
+
+/* Popup Overlay */
+.egp-popup-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(2px);
+}
+
+/* Popup Content */
+.egp-popup {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.egp-popup.egp-popup-active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Popup Header */
+.egp-popup-header {
+    padding: 20px 20px 0;
+    border-bottom: 1px solid #eee;
+    position: relative;
+}
+
+.egp-popup-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+}
+
+.egp-popup-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 20px;
+    color: #999;
+    transition: color 0.2s ease;
+}
+
+.egp-popup-close:hover {
+    color: #333;
+}
+
+.egp-popup-close::before {
+    content: '×';
+    display: block;
+    line-height: 1;
+}
+
+/* Popup Body */
+.egp-popup-body {
+    padding: 20px;
+}
+
+/* Popup Footer */
+.egp-popup-footer {
+    padding: 0 20px 20px;
+    border-top: 1px solid #eee;
+    text-align: right;
+}
+
+/* Popup Buttons */
+.egp-popup-btn {
+    display: inline-block;
+    padding: 8px 16px;
+    margin-left: 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.egp-popup-btn-primary {
+    background: #0073aa;
+    color: #fff;
+}
+
+.egp-popup-btn-primary:hover {
+    background: #005a87;
+}
+
+.egp-popup-btn-secondary {
+    background: #f1f1f1;
+    color: #333;
+}
+
+.egp-popup-btn-secondary:hover {
+    background: #e1e1e1;
+}
+
+/* Body state when popup is open */
+body.egp-popup-open {
+    overflow: hidden;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .egp-popup {
+        width: 95vw;
+        margin: 20px;
+        top: 20px;
+        left: 20px;
+        transform: none;
+    }
+    
+    .egp-popup-header,
+    .egp-popup-body,
+    .egp-popup-footer {
+        padding: 15px;
+    }
+}
+
+/* Animation Classes */
+.egp-popup-fade-in {
+    animation: egpFadeIn 0.3s ease;
+}
+
+.egp-popup-fade-out {
+    animation: egpFadeOut 0.3s ease;
+}
+
+@keyframes egpFadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes egpFadeOut {
+    from {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.9);
+    }
+}
