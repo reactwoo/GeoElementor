@@ -376,19 +376,8 @@ class EGP_Geo_Widget extends \Elementor\Widget_Base {
      */
     private function get_visitor_country() {
         // Use the existing geo detection logic
-        if (class_exists('EGP_Geo_Detect')) {
-            $geo_detect = new EGP_Geo_Detect();
-            return $geo_detect->get_visitor_country();
-        }
-        
-        // Fallback to basic IP detection
-        $ip = $this->get_visitor_ip();
-        if ($ip && !$this->is_private_ip($ip)) {
-            // Simple country detection (you might want to enhance this)
-            return $this->simple_ip_to_country($ip);
-        }
-        
-        return 'US'; // Default fallback
+        $geo_detect = EGP_Geo_Detect::get_instance();
+        return $geo_detect->get_visitor_country();
     }
 
     /**

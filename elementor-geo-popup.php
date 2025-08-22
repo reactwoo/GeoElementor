@@ -114,10 +114,10 @@ class ElementorGeoPopup {
             require_once EGP_PLUGIN_DIR . 'admin/popup-editor.php';
         }
         
-        // Core functionality
+        // Core functionality - Load in proper order
+        require_once EGP_PLUGIN_DIR . 'includes/centralized-license-manager.php';
         require_once EGP_PLUGIN_DIR . 'includes/geo-detect.php';
         require_once EGP_PLUGIN_DIR . 'includes/popup-hooks.php';
-        require_once EGP_PLUGIN_DIR . 'includes/licensing.php';
         require_once EGP_PLUGIN_DIR . 'includes/widget-registration.php';
         require_once EGP_PLUGIN_DIR . 'includes/global-settings.php';
         require_once EGP_PLUGIN_DIR . 'includes/dashboard-api.php';
@@ -162,7 +162,7 @@ class ElementorGeoPopup {
         }, 999);
         
         // Initialize core components
-        new EGP_Geo_Detect();
+        EGP_Geo_Detect::get_instance();
         new EGP_Popup_Hooks();
         new EGP_Widget_Registration();
         new EGP_Global_Settings();

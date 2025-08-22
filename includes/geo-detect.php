@@ -16,6 +16,18 @@ if (!defined('ABSPATH')) {
  */
 class EGP_Geo_Detect {
     
+    private static $instance = null;
+    
+    /**
+     * Get singleton instance
+     */
+    public static function get_instance() {
+        if (null === self::$instance) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+    
     /**
      * Constructor
      */

@@ -553,7 +553,7 @@ class EGP_Geo_Rules {
         // Use existing geo detection if available
         if (class_exists('EGP_Geo_Detect')) {
             $geo_detect = EGP_Geo_Detect::get_instance();
-            return $geo_detect->get_user_country();
+            return $geo_detect->get_visitor_country();
         }
         
         // Fallback to basic detection
