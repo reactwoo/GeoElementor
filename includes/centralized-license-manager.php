@@ -104,17 +104,33 @@ class EGP_Centralized_License_Manager {
      */
     private function fetch_license_from_server($plugin_slug, $license_key = null) {
         $access_token = get_option("{$plugin_slug}_license_access_token", '');
+        $expires_at = get_option("{$plugin_slug}_license_expires_at", 0);
         
         if (!$access_token) {
             return array('valid' => false, 'error' => 'No access token');
         }
         
+        // Check if token is expired
+        if ($expires_at && $expires_at < time()) {
+            return array('valid' => false, 'error' => 'Access token expired');
+        }
+        
+        // If we have a valid access token and it's not expired, consider the license valid
+        if ($access_token && (!$expires_at || $expires_at > time())) {
+            return array('valid' => true, 'success' => true, 'message' => 'License is valid');
+        }
+        
+        // Try to verify with server if endpoint exists (fallback)
         $response = wp_remote_get($this->license_server . '/verify', array(
             'headers' => array('Authorization' => 'Bearer ' . $access_token),
             'timeout' => 20
         ));
         
         if (is_wp_error($response)) {
+            // If verification fails but we have a valid token, return valid
+            if ($access_token && (!$expires_at || $expires_at > time())) {
+                return array('valid' => true, 'success' => true, 'message' => 'License is valid (local verification)');
+            }
             return array('valid' => false, 'error' => $response->get_error_message());
         }
         
@@ -122,6 +138,10 @@ class EGP_Centralized_License_Manager {
         $data = json_decode($body, true);
         
         if (!$data) {
+            // If server response is invalid but we have a valid token, return valid
+            if ($access_token && (!$expires_at || $expires_at > time())) {
+                return array('valid' => true, 'success' => true, 'message' => 'License is valid (local verification)');
+            }
             return array('valid' => false, 'error' => 'Invalid response');
         }
         

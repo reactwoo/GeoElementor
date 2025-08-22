@@ -675,11 +675,40 @@ class EGP_Licensing {
             return true; // No license to check
         }
         
-        $license_data = $this->license_manager->get_license_data($this->plugin_slug, $license_key);
+        // Debug: Log what we're checking
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('EGP License: Checking license status for key: ' . substr($license_key, 0, 8) . '...');
+            error_log('EGP License: Current stored status: ' . get_option('egp_license_status', 'none'));
+        }
         
-        if (isset($license_data['valid']) && $license_data['valid']) {
+        // Force refresh to avoid stale cache after activation
+        $license_data = $this->license_manager->get_license_data($this->plugin_slug, $license_key, true);
+        
+        // Debug: Log what we got back
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('EGP License: Centralized manager returned: ' . print_r($license_data, true));
+        }
+        
+        $is_valid = false;
+        if (is_array($license_data)) {
+            if (isset($license_data['valid'])) {
+                $is_valid = (bool)$license_data['valid'];
+            } elseif (isset($license_data['success'])) {
+                $is_valid = (bool)$license_data['success'];
+            }
+        }
+        
+        // Debug: Log the validation result
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('EGP License: Validation result - is_valid: ' . ($is_valid ? 'true' : 'false'));
+        }
+        
+        if ($is_valid) {
             update_option('egp_license_status', 'valid');
             update_option('egp_license_data', $license_data);
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('EGP License: Status updated to valid');
+            }
         } else {
             $error_msg = 'License is invalid';
             if (is_array($license_data) && isset($license_data['error'])) {
@@ -687,6 +716,9 @@ class EGP_Licensing {
                 $error_msg = $license_data['error'] . ($reason !== '' ? (': ' . $reason) : '');
             }
             update_option('egp_license_status', 'invalid');
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('EGP License: Status updated to invalid - ' . $error_msg);
+            }
             return new WP_Error('license_invalid', __($error_msg, 'elementor-geo-popup'));
         }
         
