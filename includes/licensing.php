@@ -136,7 +136,7 @@ class EGP_Licensing {
             return new WP_Error('no_manager', 'License manager not available');
         }
         
-        $domain = get_site_url();
+        $domain = wp_parse_url(get_site_url(), PHP_URL_HOST);
         $plugin_version = $this->get_plugin_version();
         
         if (defined('WP_DEBUG') && WP_DEBUG) {
@@ -165,20 +165,9 @@ class EGP_Licensing {
             error_log("EGP License: Activation successful");
         }
         
-        // Store license data locally for backward compatibility
+        // Store license data using centralized manager for consistency
         if (isset($result['success']) && $result['success']) {
-            if (isset($result['accessToken'])) {
-                update_option('egp_license_access_token', $result['accessToken']);
-            }
-            if (isset($result['refreshToken'])) {
-                update_option('egp_license_refresh_token', $result['refreshToken']);
-            }
-            if (isset($result['expires_at'])) {
-                update_option('egp_license_expires_at', $result['expires_at']);
-            }
-            
-            // Store complete license data
-            update_option('egp_license_data', $result);
+            $this->license_manager->store_license_data($this->plugin_slug, $result);
         }
         
         return $result;
@@ -262,6 +251,9 @@ class EGP_Licensing {
         if (is_wp_error($result)) {
             wp_send_json_error($result->get_error_message());
         }
+        
+        // Save the license key locally
+        update_option('egp_license_key', $license_key);
         
         wp_send_json_success(__('License activated successfully', 'elementor-geo-popup'));
     }

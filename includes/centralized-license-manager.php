@@ -493,11 +493,11 @@ class EGP_Centralized_License_Manager {
     private function get_plugin_prefix($plugin_slug) {
         switch ($plugin_slug) {
             case 'geo-elementor':
-                return 'egp_license';
+                return 'egp';
             case 'ali2woo':
-                return 'ali2woo_license';
+                return 'ali2woo';
             default:
-                return $plugin_slug . '_license';
+                return $plugin_slug;
         }
     }
 }
