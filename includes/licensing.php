@@ -12,31 +12,215 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Licensing System Class
+ * Centralized License Manager to prevent conflicts between multiple plugins
+ */
+class EGP_Centralized_License_Manager {
+    
+    private static $instance = null;
+    private $license_server = 'https://license.reactwoo.com';
+    private $cache_group = 'egp_license_cache';
+    private $request_locks = array();
+    
+    public static function get_instance() {
+        if (null === self::$instance) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+    
+    private function __construct() {
+        // Initialize shared hooks
+        add_action('init', array($this, 'init_shared_license_system'));
+    }
+    
+    /**
+     * Initialize shared license system
+     */
+    public function init_shared_license_system() {
+        // Register shared license check cron (only once across all plugins)
+        if (!wp_next_scheduled('shared_license_check')) {
+            wp_schedule_event(time(), 'hourly', 'shared_license_check');
+        }
+        add_action('shared_license_check', array($this, 'perform_shared_license_check'));
+        
+        // Clear expired cache entries
+        add_action('wp_scheduled_delete', array($this, 'cleanup_expired_cache'));
+    }
+    
+    /**
+     * Get license data with caching and deduplication
+     */
+    public function get_license_data($plugin_slug, $license_key = null, $force_refresh = false) {
+        $cache_key = "license_data_{$plugin_slug}";
+        
+        // Check if we have a recent cache entry
+        if (!$force_refresh) {
+            $cached = wp_cache_get($cache_key, $this->cache_group);
+            if ($cached && $cached['expires'] > time()) {
+                return $cached['data'];
+            }
+        }
+        
+        // Check if another request is already fetching this license
+        $lock_key = "license_lock_{$plugin_slug}";
+        if (isset($this->request_locks[$lock_key]) && $this->request_locks[$lock_key] > time() - 30) {
+            // Wait for existing request to complete
+            $wait_time = 0;
+            while (isset($this->request_locks[$lock_key]) && $this->request_locks[$lock_key] > time() - 30 && $wait_time < 10) {
+                sleep(1);
+                $wait_time++;
+            }
+            
+            // Check cache again after waiting
+            $cached = wp_cache_get($cache_key, $this->cache_group);
+            if ($cached && $cached['expires'] > time()) {
+                return $cached['data'];
+            }
+        }
+        
+        // Set request lock
+        $this->request_locks[$lock_key] = time();
+        
+        try {
+            $license_data = $this->fetch_license_from_server($plugin_slug, $license_key);
+            
+            // Cache the result for 15 minutes
+            wp_cache_set($cache_key, array(
+                'data' => $license_data,
+                'expires' => time() + 900 // 15 minutes
+            ), $this->cache_group, 900);
+            
+            return $license_data;
+        } finally {
+            // Clear request lock
+            unset($this->request_locks[$lock_key]);
+        }
+    }
+    
+    /**
+     * Fetch license data from server
+     */
+    private function fetch_license_from_server($plugin_slug, $license_key = null) {
+        $access_token = get_option("{$plugin_slug}_license_access_token", '');
+        
+        if (!$access_token) {
+            return array('valid' => false, 'error' => 'No access token');
+        }
+        
+        $response = wp_remote_get($this->license_server . '/verify', array(
+            'headers' => array('Authorization' => 'Bearer ' . $access_token),
+            'timeout' => 20
+        ));
+        
+        if (is_wp_error($response)) {
+            return array('valid' => false, 'error' => $response->get_error_message());
+        }
+        
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body, true);
+        
+        if (!$data) {
+            return array('valid' => false, 'error' => 'Invalid response');
+        }
+        
+        return $data;
+    }
+    
+    /**
+     * Activate license with deduplication
+     */
+    public function activate_license($plugin_slug, $license_key, $domain, $plugin_version, $product_type) {
+        $lock_key = "activation_lock_{$plugin_slug}_{$domain}";
+        
+        // Check if activation is already in progress
+        if (isset($this->request_locks[$lock_key]) && $this->request_locks[$lock_key] > time() - 60) {
+            return new WP_Error('activation_in_progress', 'License activation already in progress for this domain');
+        }
+        
+        $this->request_locks[$lock_key] = time();
+        
+        try {
+            $response = wp_remote_post($this->license_server . '/activate', array(
+                'headers' => array('Content-Type' => 'application/json'),
+                'body' => wp_json_encode(array(
+                    'licenseKey' => $license_key,
+                    'domain' => $domain,
+                    'pluginVersion' => $plugin_version,
+                    'productType' => $product_type
+                )),
+                'timeout' => 30
+            ));
+            
+            if (is_wp_error($response)) {
+                return $response;
+            }
+            
+            $body = wp_remote_retrieve_body($response);
+            $data = json_decode($body, true);
+            
+            if (!$data) {
+                return new WP_Error('invalid_response', 'Invalid response from license server');
+            }
+            
+            // Clear any cached license data for this plugin
+            wp_cache_delete("license_data_{$plugin_slug}", $this->cache_group);
+            
+            return $data;
+        } finally {
+            unset($this->request_locks[$lock_key]);
+        }
+    }
+    
+    /**
+     * Perform shared license check (called by cron)
+     */
+    public function perform_shared_license_check() {
+        // Get all plugins that might have licenses
+        $plugins = array('geo-elementor', 'ali2woo', 'other-plugin');
+        
+        foreach ($plugins as $plugin_slug) {
+            $access_token = get_option("{$plugin_slug}_license_access_token", '');
+            if ($access_token) {
+                // Force refresh of license data
+                $this->get_license_data($plugin_slug, null, true);
+            }
+        }
+    }
+    
+    /**
+     * Cleanup expired cache entries
+     */
+    public function cleanup_expired_cache() {
+        // WordPress handles this automatically, but we can add custom cleanup if needed
+    }
+}
+
+/**
+ * Licensing System Class for Geo Elementor Plugin
  */
 class EGP_Licensing {
     
-    /**
-     * License server URL
-     */
-    private $license_server = 'https://license.reactwoo.com';
+    private $license_manager;
+    private $plugin_slug = 'geo-elementor';
     
     /**
      * Constructor
      */
     public function __construct() {
+        $this->license_manager = EGP_Centralized_License_Manager::get_instance();
+        
         add_action('admin_init', array($this, 'init_licensing'));
         add_action('admin_notices', array($this, 'license_notices'));
         add_action('wp_ajax_egp_activate_license', array($this, 'ajax_activate_license'));
         add_action('wp_ajax_egp_deactivate_license', array($this, 'ajax_deactivate_license'));
         add_action('wp_ajax_egp_check_license', array($this, 'ajax_check_license'));
         
-        // Schedule license checks
+        // Schedule license checks (now handled centrally)
         if (!wp_next_scheduled('egp_daily_license_check')) {
             wp_schedule_event(time(), 'daily', 'egp_daily_license_check');
         }
         add_action('egp_daily_license_check', array($this, 'check_license_status'));
-
+        
         // Allow rendering the license page directly without redirects
         add_action('egp_render_license_page', array($this, 'render_license_page'));
     }
@@ -45,30 +229,13 @@ class EGP_Licensing {
      * Initialize licensing
      */
     public function init_licensing() {
-        // Add license settings to the admin settings page
-        add_action('admin_menu', array($this, 'add_license_menu'));
-        
         // Check license status on admin pages
         if (is_admin()) {
             $this->check_license_status();
         }
     }
     
-    /**
-     * Add license menu
-     */
-    public function add_license_menu() {
-        add_submenu_page(
-            'options-general.php',
-            __('Elementor Geo Popup License', 'elementor-geo-popup'),
-            __('EGP License', 'elementor-geo-popup'),
-            'manage_options',
-            'egp-license',
-            array($this, 'render_license_page')
-        );
 
-        // License page under our own top-level menu is registered in admin/admin-menu.php
-    }
     
     /**
      * Render license page
@@ -352,38 +519,28 @@ class EGP_Licensing {
     }
     
     /**
-     * Activate license
+     * Activate license using centralized manager
      */
     private function activate_license($license_key) {
         $site_url = get_site_url();
-        $site_name = get_bloginfo('name');
+        $domain = wp_parse_url($site_url, PHP_URL_HOST);
+        $plugin_version = defined('EGP_VERSION') ? EGP_VERSION : '1.0.0';
         
-        // Token-based activation (Option B)
-        $response = wp_remote_post($this->license_server . '/activate', array(
-            'headers' => array('Content-Type' => 'application/json'),
-            'body' => wp_json_encode(array(
-                'licenseKey' => $license_key,
-                'domain' => wp_parse_url($site_url, PHP_URL_HOST),
-                'pluginVersion' => defined('EGP_VERSION') ? EGP_VERSION : '1.0.0',
-                'productType' => 'geo'
-            )),
-            'timeout' => 30
-        ));
+        $result = $this->license_manager->activate_license(
+            $this->plugin_slug,
+            $license_key,
+            $domain,
+            $plugin_version,
+            'geo'
+        );
         
-        if (is_wp_error($response)) {
-            return $response;
+        if (is_wp_error($result)) {
+            return $result;
         }
         
-        $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body, true);
-        
-        if (!$data) {
-            return new WP_Error('invalid_response', __('Invalid response from license server', 'elementor-geo-popup'));
-        }
-        
-        $access_token = $data['accessToken'] ?? $data['access_token'] ?? ($data['data']['access_token'] ?? '');
-        $refresh_token = $data['refreshToken'] ?? $data['refresh_token'] ?? ($data['data']['refresh_token'] ?? '');
-        $expires_at = intval($data['expires_at'] ?? ($data['data']['expires_at'] ?? 0));
+        $access_token = $result['accessToken'] ?? $result['access_token'] ?? '';
+        $refresh_token = $result['refreshToken'] ?? $result['refresh_token'] ?? '';
+        $expires_at = intval($result['expires_at'] ?? 0);
         
         if (empty($access_token) || empty($refresh_token)) {
             return new WP_Error('activation_failed', __('License activation failed', 'elementor-geo-popup'));
@@ -396,17 +553,10 @@ class EGP_Licensing {
         update_option('egp_license_expires_at', $expires_at);
         update_option('egp_license_status', 'valid');
         
-        // Fetch features/limits via verify
-        $verify = wp_remote_get($this->license_server . '/verify', array(
-            'headers' => array('Authorization' => 'Bearer ' . $access_token),
-            'timeout' => 20
-        ));
-        if (!is_wp_error($verify)) {
-            $vbody = wp_remote_retrieve_body($verify);
-            $vdata = json_decode($vbody, true);
-            if (isset($vdata['valid']) && $vdata['valid']) {
-                update_option('egp_license_data', $vdata);
-            }
+        // Fetch features/limits via centralized manager
+        $license_data = $this->license_manager->get_license_data($this->plugin_slug, $license_key, true);
+        if (isset($license_data['valid']) && $license_data['valid']) {
+            update_option('egp_license_data', $license_data);
         }
         
         return true;
@@ -424,7 +574,7 @@ class EGP_Licensing {
         
         $site_url = get_site_url();
         
-        $response = wp_remote_post($this->license_server . '/deactivate', array(
+        $response = wp_remote_post($this->license_manager->license_server . '/deactivate', array(
             'headers' => array('Content-Type' => 'application/json'),
             'body' => wp_json_encode(array(
                 'licenseKey' => $license_key,
@@ -441,11 +591,14 @@ class EGP_Licensing {
         delete_option('egp_license_refresh_token');
         delete_option('egp_license_expires_at');
         
+        // Clear cached license data
+        wp_cache_delete("license_data_{$this->plugin_slug}", 'egp_license_cache');
+        
         return true;
     }
     
     /**
-     * Check license status
+     * Check license status using centralized manager
      */
     public function check_license_status() {
         $license_key = get_option('egp_license_key');
@@ -454,64 +607,15 @@ class EGP_Licensing {
             return true; // No license to check
         }
         
-        $site_url = get_site_url();
+        $license_data = $this->license_manager->get_license_data($this->plugin_slug, $license_key);
         
-        $access_token = get_option('egp_license_access_token', '');
-        if ($access_token) {
-            $response = wp_remote_get($this->license_server . '/verify', array(
-                'headers' => array('Authorization' => 'Bearer ' . $access_token),
-                'timeout' => 20
-            ));
+        if (isset($license_data['valid']) && $license_data['valid']) {
+            update_option('egp_license_status', 'valid');
+            update_option('egp_license_data', $license_data);
         } else {
-            return new WP_Error('no_token', __('No license token available', 'elementor-geo-popup'));
+            update_option('egp_license_status', 'invalid');
+            return new WP_Error('license_invalid', __('License is invalid', 'elementor-geo-popup'));
         }
-        
-        if (is_wp_error($response)) {
-            return $response;
-        }
-        
-        $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body, true);
-        
-        if (!$data || (isset($data['valid']) && !$data['valid'])) {
-            // Attempt token refresh if refresh token exists
-            $refresh_token = get_option('egp_license_refresh_token', '');
-            if ($refresh_token) {
-                $refresh = wp_remote_post($this->license_server . '/refresh', array(
-                    'headers' => array('Content-Type' => 'application/json'),
-                    'body' => wp_json_encode(array('refreshToken' => $refresh_token)),
-                    'timeout' => 20
-                ));
-                if (!is_wp_error($refresh)) {
-                    $rbody = wp_remote_retrieve_body($refresh);
-                    $rdata = json_decode($rbody, true);
-                    $new_access = $rdata['accessToken'] ?? $rdata['access_token'] ?? '';
-                    $new_refresh = $rdata['refreshToken'] ?? $rdata['refresh_token'] ?? '';
-                    $new_exp = intval($rdata['expires_at'] ?? 0);
-                    if ($new_access && $new_refresh) {
-                        update_option('egp_license_access_token', $new_access);
-                        update_option('egp_license_refresh_token', $new_refresh);
-                        update_option('egp_license_expires_at', $new_exp);
-                        // Retry verify
-                        $response = wp_remote_get($this->license_server . '/verify', array(
-                            'headers' => array('Authorization' => 'Bearer ' . $new_access),
-                            'timeout' => 20
-                        ));
-                        if (!is_wp_error($response)) {
-                            $body = wp_remote_retrieve_body($response);
-                            $data = json_decode($body, true);
-                        }
-                    }
-                }
-            }
-            if (!$data || (isset($data['valid']) && !$data['valid'])) {
-                update_option('egp_license_status', 'invalid');
-                return new WP_Error('license_invalid', __('License is invalid', 'elementor-geo-popup'));
-            }
-        }
-        
-        update_option('egp_license_status', 'valid');
-        update_option('egp_license_data', $data);
         
         return true;
     }
@@ -536,7 +640,7 @@ class EGP_Licensing {
         $license_status = get_option('egp_license_status');
         
         if ($license_status === 'invalid' || $license_status === 'expired') {
-            $default_url = admin_url('admin.php?page=geo-elementor-license');
+            $default_url = admin_url('options-general.php?page=elementor-geo-popup');
             ?>
             <div class="notice notice-error">
                 <p>
@@ -549,7 +653,7 @@ class EGP_Licensing {
             </div>
             <?php
         } elseif ($license_status === 'inactive') {
-            $default_url = admin_url('admin.php?page=geo-elementor-license');
+            $default_url = admin_url('options-general.php?page=elementor-geo-popup');
             ?>
             <div class="notice notice-warning">
                 <p>
@@ -571,6 +675,9 @@ class EGP_Licensing {
         return get_option('egp_license_data', array());
     }
 }
+
+// Initialize the centralized license manager
+EGP_Centralized_License_Manager::get_instance();
 
 
 

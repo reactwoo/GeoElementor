@@ -26,8 +26,7 @@ class EGP_Admin_Settings {
         add_action('wp_ajax_egp_update_database', array($this, 'ajax_update_database'));
         add_action('wp_ajax_egp_test_connection', array($this, 'ajax_test_connection'));
         
-        // Add shortcut submenu under Elementor if Elementor is present
-        add_action('admin_menu', array($this, 'add_elementor_submenu'), 20);
+
     }
     
     /**
@@ -43,30 +42,7 @@ class EGP_Admin_Settings {
         );
     }
 
-    /**
-     * Add submenu under Elementor menu for quick access
-     */
-    public function add_elementor_submenu() {
-        // Elementor top-level slug is 'elementor'
-        if (current_user_can('manage_options')) {
-            add_submenu_page(
-                'elementor',
-                __('Geo Popup Settings', 'elementor-geo-popup'),
-                __('Geo Popup', 'elementor-geo-popup'),
-                'manage_options',
-                'elementor-geo-popup-redirect',
-                array($this, 'redirect_to_settings')
-            );
-        }
-    }
 
-    /**
-     * Redirect the Elementor submenu to our settings page
-     */
-    public function redirect_to_settings() {
-        wp_safe_redirect(admin_url('options-general.php?page=elementor-geo-popup'));
-        exit;
-    }
 
     /**
      * Initialize settings

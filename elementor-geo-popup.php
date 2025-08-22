@@ -74,14 +74,14 @@ class ElementorGeoPopup {
      * Initialize plugin
      */
     public function init() {
-        // Always load admin settings and licensing so settings are visible even if Elementor isn't active
+        // Always load admin settings, dashboard, and licensing so settings are visible even if Elementor isn't active
         if (is_admin()) {
             require_once EGP_PLUGIN_DIR . 'admin/settings-page.php';
-            require_once EGP_PLUGIN_DIR . 'admin/admin-menu.php';
+            require_once EGP_PLUGIN_DIR . 'admin/dashboard-page.php';
             require_once EGP_PLUGIN_DIR . 'includes/licensing.php';
             // Initialize admin-only components early
             new EGP_Admin_Settings();
-            new EGP_Admin_Menu();
+            new EGP_Admin_Dashboard();
             new EGP_Licensing();
         }
 
@@ -118,6 +118,8 @@ class ElementorGeoPopup {
         require_once EGP_PLUGIN_DIR . 'includes/licensing.php';
         require_once EGP_PLUGIN_DIR . 'includes/widget-registration.php';
         require_once EGP_PLUGIN_DIR . 'includes/global-settings.php';
+        require_once EGP_PLUGIN_DIR . 'includes/dashboard-api.php';
+        require_once EGP_PLUGIN_DIR . 'includes/geo-rules.php';
     }
     
     /**
@@ -162,6 +164,7 @@ class ElementorGeoPopup {
         new EGP_Popup_Hooks();
         new EGP_Widget_Registration();
         new EGP_Global_Settings();
+        // Geo Rules system is auto-initialized
     }
     
     /**
