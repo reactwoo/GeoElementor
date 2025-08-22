@@ -20,25 +20,35 @@ class EGP_Admin_Menu {
 		}
 		$capability = apply_filters('egp_required_capability', $default_cap);
 
-		// Top-level: Geo Elementor
+		// Top-level: Geo Elementor (no callback - just container)
 		add_menu_page(
 			__('Geo Elementor', 'elementor-geo-popup'),
 			__('Geo Elementor', 'elementor-geo-popup'),
 			$capability,
 			'geo-elementor',
-			array($this, 'render_dashboard'),
+			'',
 			'dashicons-location-alt',
 			58
 		);
 
-		// Submenu: Dashboard
+		// Submenu: Dashboard (first priority)
 		add_submenu_page(
 			'geo-elementor',
 			__('Dashboard', 'elementor-geo-popup'),
 			__('Dashboard', 'elementor-geo-popup'),
 			$capability,
-			'geo-el-dashboard',
+			'geo-elementor',
 			array($this, 'render_dashboard')
+		);
+
+		// Submenu: Rules (renamed from Geo Rules)
+		add_submenu_page(
+			'geo-elementor',
+			__('Rules', 'elementor-geo-popup'),
+			__('Rules', 'elementor-geo-popup'),
+			$capability,
+			'geo-elementor-rules',
+			array($this, 'render_rules')
 		);
 
 		// Submenu: Settings
@@ -60,13 +70,124 @@ class EGP_Admin_Menu {
 			'geo-elementor-license',
 			array($this, 'render_license')
 		);
-
-		// Geo Rules CPT will appear under this top-level via show_in_menu.
 	}
 
 	public function render_dashboard() {
 		echo '<div class="wrap"><h1>' . esc_html__('Geo Rules Dashboard', 'elementor-geo-popup') . '</h1>';
 		echo '<div id="geo-el-admin-app"></div></div>';
+	}
+
+	public function render_rules() {
+		echo '<div class="wrap"><h1>' . esc_html__('Geo Rules', 'elementor-geo-popup') . '</h1>';
+		
+		// Add custom CSS for status indicators
+		echo '<style>
+			.status-active { color: #46b450; font-weight: bold; }
+			.status-inactive { color: #dc3232; font-weight: bold; }
+			.wp-list-table .column-title { width: 25%; }
+			.wp-list-table .column-type { width: 10%; }
+			.wp-list-table .column-target { width: 20%; }
+			.wp-list-table .column-countries { width: 15%; }
+			.wp-list-table .column-status { width: 8%; }
+			.wp-list-table .column-created { width: 12%; }
+			.wp-list-table .column-clicks { width: 8%; }
+			.wp-list-table .column-actions { width: 12%; }
+		</style>';
+		
+		// Get all geo rules
+		$rules = get_posts(array(
+			'post_type' => 'geo_rule',
+			'post_status' => 'any',
+			'numberposts' => -1,
+			'orderby' => 'date',
+			'order' => 'DESC'
+		));
+		
+		if (empty($rules)) {
+			echo '<div class="notice notice-info"><p>' . esc_html__('No geo rules found. Create your first rule to get started.', 'elementor-geo-popup') . '</p></div>';
+			echo '<p><a href="' . esc_url(admin_url('post-new.php?post_type=geo_rule')) . '" class="button button-primary">' . esc_html__('Add New Rule', 'elementor-geo-popup') . '</a></p>';
+			return;
+		}
+		
+		echo '<div class="tablenav top">';
+		echo '<div class="alignleft actions">';
+		echo '<a href="' . esc_url(admin_url('post-new.php?post_type=geo_rule')) . '" class="button button-primary">' . esc_html__('Add New Rule', 'elementor-geo-popup') . '</a>';
+		echo '</div>';
+		echo '</div>';
+		
+		echo '<table class="wp-list-table widefat fixed striped">';
+		echo '<thead>';
+		echo '<tr>';
+		echo '<th scope="col" class="manage-column column-title column-primary">' . esc_html__('Rule Name', 'elementor-geo-popup') . '</th>';
+		echo '<th scope="col" class="manage-column">' . esc_html__('Type', 'elementor-geo-popup') . '</th>';
+		echo '<th scope="col" class="manage-column">' . esc_html__('Target', 'elementor-geo-popup') . '</th>';
+		echo '<th scope="col" class="manage-column">' . esc_html__('Countries', 'elementor-geo-popup') . '</th>';
+		echo '<th scope="col" class="manage-column">' . esc_html__('Status', 'elementor-geo-popup') . '</th>';
+		echo '<th scope="col" class="manage-column">' . esc_html__('Created', 'elementor-geo-popup') . '</th>';
+		echo '<th scope="col" class="manage-column">' . esc_html__('Clicks', 'elementor-geo-popup') . '</th>';
+		echo '<th scope="col" class="manage-column">' . esc_html__('Actions', 'elementor-geo-popup') . '</th>';
+		echo '</tr>';
+		echo '</thead>';
+		
+		echo '<tbody>';
+		foreach ($rules as $rule) {
+			$target_type = get_post_meta($rule->ID, 'egp_target_type', true);
+			$target_id = get_post_meta($rule->ID, 'egp_target_id', true);
+			$countries = get_post_meta($rule->ID, 'egp_countries', true);
+			$is_active = get_post_meta($rule->ID, 'egp_is_active', true);
+			$clicks = get_post_meta($rule->ID, 'egp_clicks', true) ?: 0;
+			
+			// Format target display
+			$target_display = '';
+			if ($target_type === 'popup') {
+				$target_display = 'Popup: ' . ($target_id ?: 'All Popups');
+			} elseif ($target_type === 'page') {
+				$target_display = 'Page: ' . ($target_id ?: 'All Pages');
+			} elseif ($target_type === 'widget') {
+				$target_display = 'Widget: ' . ($target_id ?: 'All Widgets');
+			} else {
+				$target_display = ucfirst($target_type ?: 'Unknown');
+			}
+			
+			// Format countries
+			$countries_display = '';
+			if (is_array($countries) && !empty($countries)) {
+				$countries_display = implode(', ', array_slice($countries, 0, 3));
+				if (count($countries) > 3) {
+					$countries_display .= ' (+' . (count($countries) - 3) . ' more)';
+				}
+			} else {
+				$countries_display = 'All Countries';
+			}
+			
+			// Status indicator
+			$status_class = $is_active ? 'status-active' : 'status-inactive';
+			$status_text = $is_active ? __('Active', 'elementor-geo-popup') : __('Inactive', 'elementor-geo-popup');
+			
+			echo '<tr>';
+			echo '<td class="title column-title has-row-actions column-primary">';
+			echo '<strong><a href="' . esc_url(get_edit_post_link($rule->ID)) . '">' . esc_html($rule->post_title) . '</a></strong>';
+			echo '<div class="row-actions">';
+			echo '<span class="edit"><a href="' . esc_url(get_edit_post_link($rule->ID)) . '">' . esc_html__('Edit', 'elementor-geo-popup') . '</a> | </span>';
+			echo '<span class="trash"><a href="' . esc_url(get_delete_post_link($rule->ID)) . '" onclick="return confirm(\'' . esc_js(__('Are you sure you want to delete this rule?', 'elementor-geo-popup')) . '\')">' . esc_html__('Delete', 'elementor-geo-popup') . '</a></span>';
+			echo '</div>';
+			echo '</td>';
+			echo '<td>' . esc_html(ucfirst($target_type ?: 'Unknown')) . '</td>';
+			echo '<td>' . esc_html($target_display) . '</td>';
+			echo '<td>' . esc_html($countries_display) . '</td>';
+			echo '<td><span class="' . esc_attr($status_class) . '">' . esc_html($status_text) . '</span></td>';
+			echo '<td>' . esc_html(date('M j, Y', strtotime($rule->post_date))) . '</td>';
+			echo '<td>' . esc_html($clicks) . '</td>';
+			echo '<td>';
+			echo '<a href="' . esc_url(get_edit_post_link($rule->ID)) . '" class="button button-small">' . esc_html__('Edit', 'elementor-geo-popup') . '</a> ';
+			echo '<a href="' . esc_url(get_delete_post_link($rule->ID)) . '" class="button button-small button-link-delete" onclick="return confirm(\'' . esc_js(__('Are you sure you want to delete this rule?', 'elementor-geo-popup')) . '\')">' . esc_html__('Delete', 'elementor-geo-popup') . '</a>';
+			echo '</td>';
+			echo '</tr>';
+		}
+		echo '</tbody>';
+		echo '</table>';
+		
+		echo '</div>';
 	}
 
 	public function render_settings() {

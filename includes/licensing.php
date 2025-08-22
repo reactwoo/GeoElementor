@@ -331,19 +331,33 @@ class EGP_Licensing {
                         <?php if (!empty($license_data)) : ?>
                         <tr>
                             <th scope="row"><?php _e('Product', 'elementor-geo-popup'); ?></th>
-                            <td><?php echo esc_html($license_data['product_name'] ?? $license_data['packageType'] ?? 'Geo Elementor'); ?></td>
+                            <td>
+                                <?php 
+                                $product_name = $license_data['product_name'] ?? '';
+                                $is_free_plan = $license_data['is_free_plan'] ?? false;
+                                
+                                if ($product_name) {
+                                    if ($is_free_plan) {
+                                        echo esc_html($product_name) . ' <span style="color: #0073aa;">(Free)</span>';
+                                        echo '<br><small><a href="https://reactwoo.com/geo-elementor" target="_blank" style="color: #0073aa; text-decoration: none;">';
+                                        echo __('Upgrade to Pro for advanced features', 'elementor-geo-popup');
+                                        echo '</a></small>';
+                                    } else {
+                                        echo esc_html($product_name);
+                                    }
+                                } else {
+                                    echo esc_html(__('Not specified', 'elementor-geo-popup'));
+                                }
+                                ?>
+                            </td>
                         </tr>
                         <tr>
                             <th scope="row"><?php _e('Expires', 'elementor-geo-popup'); ?></th>
                             <td>
                                 <?php 
-                                $expires = $license_data['expires'] ?? $license_data['expires_at'] ?? '';
-                                if ($expires) {
-                                    if (is_numeric($expires)) {
-                                        echo esc_html(date('F j, Y', $expires));
-                                    } else {
-                                        echo esc_html($expires);
-                                    }
+                                $expires_text = $license_data['expires_text'] ?? '';
+                                if ($expires_text) {
+                                    echo esc_html($expires_text);
                                 } else {
                                     echo esc_html(__('Not specified', 'elementor-geo-popup'));
                                 }
@@ -354,12 +368,11 @@ class EGP_Licensing {
                             <th scope="row"><?php _e('Sites', 'elementor-geo-popup'); ?></th>
                             <td>
                                 <?php 
-                                $sites_count = $license_data['sites_count'] ?? $license_data['sitesCount'] ?? '';
-                                $sites_limit = $license_data['sites_limit'] ?? $license_data['sitesLimit'] ?? '';
-                                if ($sites_count !== '' && $sites_limit !== '') {
-                                    echo esc_html($sites_count . ' / ' . $sites_limit);
+                                $sites_text = $license_data['sites_text'] ?? '';
+                                if ($sites_text) {
+                                    echo esc_html($sites_text);
                                 } else {
-                                    echo esc_html(__('Unlimited', 'elementor-geo-popup'));
+                                    echo esc_html(__('Not specified', 'elementor-geo-popup'));
                                 }
                                 ?>
                             </td>
@@ -862,18 +875,53 @@ class EGP_Licensing {
             $formatted_data['version'] = '1.0.0';
         }
 
-        // Extract expires_at
-        if (isset($license_data['expires_at'])) {
-            $formatted_data['expires_at'] = $license_data['expires_at'];
-        } elseif (isset($license_data['expires'])) {
-            $formatted_data['expires_at'] = $license_data['expires'];
+        // Handle expiration based on package type
+        $package_slug = $license_data['package']['slug'] ?? $license_data['packageType'] ?? '';
+        if ($package_slug === 'geo-free' || $package_slug === 'free') {
+            // Free plans never expire
+            $formatted_data['expires_at'] = 'never';
+            $formatted_data['expires_text'] = 'Never Expires';
+            $formatted_data['is_free_plan'] = true;
         } else {
-            $formatted_data['expires_at'] = '';
+            // Paid plans have expiration
+            if (isset($license_data['expires_at'])) {
+                $formatted_data['expires_at'] = $license_data['expires_at'];
+                $formatted_data['expires_text'] = date('F j, Y', $license_data['expires_at']);
+            } elseif (isset($license_data['expires'])) {
+                $formatted_data['expires_at'] = $license_data['expires'];
+                $formatted_data['expires_text'] = date('F j, Y', $license_data['expires']);
+            } else {
+                $formatted_data['expires_at'] = '';
+                $formatted_data['expires_text'] = 'Not specified';
+            }
+            $formatted_data['is_free_plan'] = false;
         }
 
-        // Extract sites information (default to single site for geo packages)
-        $formatted_data['sites_count'] = 1;
-        $formatted_data['sites_limit'] = 'unlimited';
+        // Extract sites information based on package type
+        if ($package_slug === 'geo-free' || $package_slug === 'free') {
+            $formatted_data['sites_count'] = 1;
+            $formatted_data['sites_limit'] = 'unlimited';
+            $formatted_data['sites_text'] = '1 / Unlimited';
+        } else {
+            // Paid plans may have site limits
+            if (isset($license_data['sitesCount'])) {
+                $formatted_data['sites_count'] = $license_data['sitesCount'];
+            } elseif (isset($license_data['sites_count'])) {
+                $formatted_data['sites_count'] = $license_data['sites_count'];
+            } else {
+                $formatted_data['sites_count'] = 1;
+            }
+
+            if (isset($license_data['sitesLimit'])) {
+                $formatted_data['sites_limit'] = $license_data['sitesLimit'];
+            } elseif (isset($license_data['sites_limit'])) {
+                $formatted_data['sites_limit'] = $license_data['sites_limit'];
+            } else {
+                $formatted_data['sites_limit'] = 'unlimited';
+            }
+            
+            $formatted_data['sites_text'] = $formatted_data['sites_count'] . ' / ' . $formatted_data['sites_limit'];
+        }
 
         // Extract features from package
         if (isset($license_data['package']['features'])) {
@@ -892,7 +940,49 @@ class EGP_Licensing {
             $formatted_data['license_status'] = $license_data['license']['status'];
         }
 
+        // Add user tracking information (for future marketing)
+        if (isset($license_data['license']['id'])) {
+            $formatted_data['license_id'] = $license_data['license']['id'];
+        }
+        
+        if (isset($license_data['license']['domain'])) {
+            $formatted_data['installed_domain'] = $license_data['license']['domain'];
+        }
+
+        // Track user information for marketing (non-intrusive)
+        $this->track_user_usage($formatted_data);
+
         return $formatted_data;
+    }
+
+    /**
+     * Track user usage for marketing purposes (non-intrusive)
+     */
+    private function track_user_usage($license_data) {
+        // Only track basic usage, no personal data
+        $tracking_data = array(
+            'license_id' => $license_data['license_id'] ?? '',
+            'domain' => $license_data['installed_domain'] ?? get_site_url(),
+            'package_type' => $license_data['packageType'] ?? 'unknown',
+            'is_free_plan' => $license_data['is_free_plan'] ?? false,
+            'plugin_version' => defined('EGP_VERSION') ? EGP_VERSION : '1.0.0',
+            'wordpress_version' => get_bloginfo('version'),
+            'tracking_timestamp' => time()
+        );
+
+        // Store locally for potential future use
+        update_option('egp_usage_tracking', $tracking_data);
+
+        // Send to license server if it supports usage tracking
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('EGP License: Usage tracking data: ' . print_r($tracking_data, true));
+        }
+
+        // In the future, you can implement server-side tracking here
+        // wp_remote_post($this->license_server . '/track-usage', array(
+        //     'body' => wp_json_encode($tracking_data),
+        //     'timeout' => 10
+        // ));
     }
 }
 
