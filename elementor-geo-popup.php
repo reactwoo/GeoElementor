@@ -77,6 +77,7 @@ class ElementorGeoPopup {
         // Always load admin settings, dashboard, menu, and licensing so settings are visible even if Elementor isn't active
         if (is_admin()) {
             require_once EGP_PLUGIN_DIR . 'includes/centralized-license-manager.php';
+            require_once EGP_PLUGIN_DIR . 'includes/geo-database.php';
             require_once EGP_PLUGIN_DIR . 'admin/settings-page.php';
             require_once EGP_PLUGIN_DIR . 'admin/dashboard-page.php';
             require_once EGP_PLUGIN_DIR . 'admin/admin-menu.php';
