@@ -21,8 +21,11 @@
         },
 
         addGeoControls: function () {
-            // Add geo targeting section to all element types
+            // Add geo targeting section to widgets
             elementor.hooks.addAction('panel/open_editor/widget', this.addGeoPanel);
+
+            // Add geo targeting section to popups
+            elementor.hooks.addAction('panel/open_editor/popup', this.addGeoPanel);
         },
 
         addGeoPanel: function (panel, model) {
@@ -76,10 +79,18 @@
                 </div>
             `);
 
-            // Insert after the Advanced tab content
-            var $advancedTab = panel.$el.find('.elementor-panel-tab-content[data-tab="advanced"]');
-            if ($advancedTab.length) {
-                $advancedTab.append($geoSection);
+            // Insert into appropriate section based on element type
+            var $targetSection;
+            if (model.get('elType') === 'popup') {
+                // For popups, add to popup layout section
+                $targetSection = panel.$el.find('.elementor-panel-section-popup_layout');
+            } else {
+                // For widgets, add to Advanced tab
+                $targetSection = panel.$el.find('.elementor-panel-tab-content[data-tab="advanced"]');
+            }
+
+            if ($targetSection.length) {
+                $targetSection.append($geoSection);
             }
 
             // Bind events
@@ -157,7 +168,7 @@
             };
 
             // Send to backend to save
-            $.post(egpEditor.ajaxUrl, {
+            $.post(ajaxurl, {
                 action: 'egp_save_elementor_geo_rule',
                 rule_data: ruleData,
                 nonce: egpEditor.nonce
@@ -171,7 +182,7 @@
         },
 
         removeGeoRuleFromDatabase: function (model) {
-            $.post(egpEditor.ajaxUrl, {
+            $.post(ajaxurl, {
                 action: 'egp_remove_elementor_geo_rule',
                 element_id: model.get('id'),
                 nonce: egpEditor.nonce

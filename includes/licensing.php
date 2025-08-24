@@ -110,7 +110,11 @@ class EGP_Licensing {
         
         if ($is_valid) {
             update_option('egp_license_status', 'valid');
-            update_option('egp_license_data', $license_data);
+            
+            // Only store license data if it contains the formatted fields for display
+            if (isset($license_data['product_name'])) {
+                update_option('egp_license_data', $license_data);
+            }
             
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 error_log('EGP License: Status updated to valid');
@@ -349,6 +353,11 @@ class EGP_Licensing {
         $license_key = get_option('egp_license_key', '');
         $license_status = get_option('egp_license_status', '');
         $license_data = get_option('egp_license_data', array());
+        
+        // Debug: Log what we're getting for license data
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('EGP License Page: Retrieved license data: ' . print_r($license_data, true));
+        }
         
         ?>
         <div class="wrap">

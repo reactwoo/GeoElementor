@@ -6,7 +6,7 @@
 (function ($) {
     'use strict';
 
-    var EGP_Popup_Editor = {
+    var EGP_Popup_Editor_JS = {
         isInitialized: false,
 
         init: function () {
@@ -18,7 +18,7 @@
 
             // Wait for DOM to be ready
             $(document).ready(function () {
-                EGP_Popup_Editor.setupOnce();
+                EGP_Popup_Editor_JS.setupOnce();
             });
         },
 
@@ -28,8 +28,11 @@
             }
 
             try {
-                // Check if we're in Elementor editor
-                if (typeof elementor !== 'undefined' && elementor.isEditMode()) {
+                // Check if we're in Elementor editor (modern API)
+                if (typeof elementor !== 'undefined' && elementor.getPreviewView && elementor.getPreviewView().isEditMode()) {
+                    this.setupElementorEditor();
+                } else if (typeof elementor !== 'undefined' && elementor.isEditMode && elementor.isEditMode()) {
+                    // Fallback for older versions
                     this.setupElementorEditor();
                 } else {
                     this.setupFrontend();
@@ -68,11 +71,11 @@
         setupElementorProPopups: function () {
             // Hook into Elementor Pro popup events
             $(document).on('elementor/popup/show', function (event, popupId) {
-                EGP_Popup_Editor.trackPopupView(popupId);
+                EGP_Popup_Editor_JS.trackPopupView(popupId);
             });
 
             $(document).on('elementor/popup/hide', function (event, popupId) {
-                EGP_Popup_Editor.trackPopupClose(popupId);
+                EGP_Popup_Editor_JS.trackPopupClose(popupId);
             });
         },
 
@@ -85,18 +88,18 @@
             // Bind popup events
             $(document).on('click', '.egp-popup-close', function (e) {
                 e.preventDefault();
-                EGP_Popup_Editor.hidePopup($(this).closest('.egp-popup'));
+                EGP_Popup_Editor_JS.hidePopup($(this).closest('.egp-popup'));
             });
 
             $(document).on('click', '.egp-popup-overlay', function (e) {
                 if (e.target === this) {
-                    EGP_Popup_Editor.hidePopup($(this).find('.egp-popup'));
+                    EGP_Popup_Editor_JS.hidePopup($(this).find('.egp-popup'));
                 }
             });
 
             $(document).on('keydown', function (e) {
                 if (e.keyCode === 27) { // ESC key
-                    EGP_Popup_Editor.hideAllPopups();
+                    EGP_Popup_Editor_JS.hideAllPopups();
                 }
             });
         },
@@ -152,7 +155,7 @@
             }
 
             // Bind events
-            EGP_Popup_Editor.bindGeoEvents(panel, model);
+            EGP_Popup_Editor_JS.bindGeoEvents(panel, model);
         },
 
         bindGeoEvents: function (panel, model) {
@@ -170,7 +173,7 @@
 
             // Save geo settings when popup is saved
             panel.$el.on('change', 'input, select', function () {
-                EGP_Popup_Editor.saveGeoSettings(panel, model);
+                EGP_Popup_Editor_JS.saveGeoSettings(panel, model);
             });
         },
 
@@ -236,7 +239,7 @@
 
     // Initialize when document is ready
     $(document).ready(function () {
-        EGP_Popup_Editor.init();
+        EGP_Popup_Editor_JS.init();
     });
 
 })(jQuery);
