@@ -81,7 +81,10 @@ class ElementorGeoPopup {
             require_once EGP_PLUGIN_DIR . 'admin/settings-page.php';
             require_once EGP_PLUGIN_DIR . 'admin/dashboard-page.php';
             require_once EGP_PLUGIN_DIR . 'admin/admin-menu.php';
+            require_once EGP_PLUGIN_DIR . 'admin/variant-groups.php';
             require_once EGP_PLUGIN_DIR . 'includes/licensing.php';
+            require_once EGP_PLUGIN_DIR . 'includes/activation-setup.php';
+            require_once EGP_PLUGIN_DIR . 'demo-fallback-system.php';
             // Initialize admin-only components early
             new EGP_Admin_Settings();
             new EGP_Admin_Dashboard();
@@ -185,6 +188,9 @@ class ElementorGeoPopup {
         
         // Flush rewrite rules
         flush_rewrite_rules();
+        
+        // Trigger activation hooks
+        do_action('rw_geo_after_activation');
     }
     
     /**
@@ -196,6 +202,9 @@ class ElementorGeoPopup {
         
         // Flush rewrite rules
         flush_rewrite_rules();
+        
+        // Trigger deactivation hooks
+        do_action('rw_geo_after_deactivation');
     }
     
     /**

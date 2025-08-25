@@ -1,0 +1,350 @@
+/**
+ * Variant Groups Admin CSS
+ * Styles for the variant groups admin interface
+ * 
+ * @package ElementorGeoPopup
+ * @since 1.0.0
+ */
+
+/* Variant Groups Admin Styles */
+.mapping-row {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    padding: 20px;
+    position: relative;
+}
+
+.mapping-row h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #23282d;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.mapping-row .form-table {
+    margin-top: 0;
+}
+
+.mapping-row .form-table th {
+    width: 120px;
+    padding: 8px 10px 8px 0;
+}
+
+.mapping-row .form-table td {
+    padding: 8px 10px;
+}
+
+.mapping-row .form-table select {
+    width: 100%;
+    max-width: 300px;
+}
+
+.mapping-row .form-table input[type="text"] {
+    width: 100%;
+    max-width: 300px;
+}
+
+.mapping-row .form-table input[type="number"] {
+    width: 80px;
+}
+
+.mapping-row p {
+    margin: 15px 0 0 0;
+}
+
+.mapping-row .button {
+    margin-right: 10px;
+}
+
+.mapping-row .button:last-child {
+    margin-right: 0;
+}
+
+/* Template row (hidden) */
+.mapping-row.template {
+    display: none;
+}
+
+/* Form styling */
+#variant-form .form-table th {
+    width: 150px;
+}
+
+#variant-form .form-table td {
+    padding: 15px 10px;
+}
+
+#variant-form .form-table input[type="text"],
+#variant-form .form-table select {
+    width: 100%;
+    max-width: 400px;
+}
+
+#variant-form .form-table input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+#variant-form .form-table label {
+    display: inline-block;
+    margin-bottom: 5px;
+}
+
+/* Type mask checkboxes */
+.type-mask-options {
+    margin: 10px 0;
+}
+
+.type-mask-options label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: normal;
+}
+
+.type-mask-options input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+/* Options section */
+.options-section {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    margin: 20px 0;
+}
+
+.options-section h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #23282d;
+}
+
+/* Country mappings container */
+#country-mappings {
+    margin: 20px 0;
+}
+
+/* Add mapping button */
+.add-mapping {
+    margin: 20px 0;
+}
+
+/* Status indicators */
+.status-active {
+    color: #46b450;
+    font-weight: bold;
+}
+
+.status-inactive {
+    color: #dc3232;
+    font-weight: bold;
+}
+
+/* Notice styling */
+.notice {
+    margin: 20px 0;
+}
+
+.notice p {
+    margin: 0.5em 0;
+}
+
+/* Table styling */
+.wp-list-table .column-name {
+    width: 25%;
+}
+
+.wp-list-table .column-slug {
+    width: 15%;
+}
+
+.wp-list-table .column-types {
+    width: 20%;
+}
+
+.wp-list-table .column-countries {
+    width: 15%;
+}
+
+.wp-list-table .column-updated {
+    width: 15%;
+}
+
+.wp-list-table .column-actions {
+    width: 10%;
+}
+
+/* Responsive design */
+@media screen and (max-width: 782px) {
+    .mapping-row {
+        padding: 15px;
+    }
+
+    .mapping-row .form-table th,
+    .mapping-row .form-table td {
+        display: block;
+        width: 100%;
+        padding: 5px 0;
+    }
+
+    .mapping-row .form-table th {
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+
+    #variant-form .form-table th,
+    #variant-form .form-table td {
+        display: block;
+        width: 100%;
+        padding: 10px 0;
+    }
+
+    .mapping-row .button {
+        display: block;
+        width: 100%;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+
+    .mapping-row .button:last-child {
+        margin-bottom: 0;
+    }
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Success/error states */
+.mapping-row.saved {
+    border-color: #46b450;
+    background: #f7fcf7;
+}
+
+.mapping-row.error {
+    border-color: #dc3232;
+    background: #fef7f7;
+}
+
+/* Select2 integration */
+.select2-container {
+    min-width: 200px;
+}
+
+.select2-container--default .select2-selection--single {
+    border-color: #ddd;
+    border-radius: 4px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 28px;
+    padding-left: 8px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 26px;
+}
+
+/* Form validation */
+.form-table input.error,
+.form-table select.error {
+    border-color: #dc3232;
+}
+
+.form-table .error-message {
+    color: #dc3232;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+/* Help text */
+.help-text {
+    color: #666;
+    font-size: 12px;
+    font-style: italic;
+    margin-top: 5px;
+}
+
+/* Required field indicator */
+.required {
+    color: #dc3232;
+}
+
+/* Inline form actions */
+.inline-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.inline-actions .button {
+    margin: 0;
+}
+
+/* Collapsible sections */
+.collapsible-section {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin: 15px 0;
+}
+
+.collapsible-section .section-header {
+    background: #f9f9f9;
+    padding: 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #ddd;
+    margin: 0;
+}
+
+.collapsible-section .section-header:hover {
+    background: #f1f1f1;
+}
+
+.collapsible-section .section-content {
+    padding: 15px;
+    display: none;
+}
+
+.collapsible-section.expanded .section-content {
+    display: block;
+}
+
+.collapsible-section .section-header::before {
+    content: '▶';
+    margin-right: 10px;
+    transition: transform 0.2s;
+}
+
+.collapsible-section.expanded .section-header::before {
+    transform: rotate(90deg);
+}

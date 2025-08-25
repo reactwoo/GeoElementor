@@ -51,6 +51,16 @@ class EGP_Admin_Menu {
 			array($this, 'render_rules')
 		);
 
+		// Submenu: Variant Groups
+		add_submenu_page(
+			'geo-elementor',
+			__('Variant Groups', 'elementor-geo-popup'),
+			__('Variant Groups', 'elementor-geo-popup'),
+			$capability,
+			'geo-elementor-variants',
+			array($this, 'render_variants')
+		);
+
 		// Submenu: Settings
 		add_submenu_page(
 			'geo-elementor',
@@ -237,6 +247,20 @@ class EGP_Admin_Menu {
 		}
 		</script>';
 		
+		echo '</div>';
+	}
+
+	public function render_variants() {
+		// Render Variant Groups page via class if available
+		if (class_exists('RW_Geo_Variant_Groups_Admin')) {
+			$variants = RW_Geo_Variant_Groups_Admin::get_instance();
+			$variants->render_admin_page();
+			return;
+		}
+		
+		// Fallback if class not available
+		echo '<div class="wrap"><h1>' . esc_html__('Variant Groups', 'elementor-geo-popup') . '</h1>';
+		echo '<div class="notice notice-error"><p>' . esc_html__('Variant Groups functionality not available. Please ensure the plugin is properly loaded.', 'elementor-geo-popup') . '</p></div>';
 		echo '</div>';
 	}
 
