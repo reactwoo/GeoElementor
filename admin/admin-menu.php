@@ -20,7 +20,18 @@ class EGP_Admin_Menu {
 		}
 		$capability = apply_filters('egp_required_capability', $default_cap);
 
-		// Top-level menu is registered by the Dashboard module to avoid duplicates
+		// Top-level: Geo Elementor. Register here unless the Dashboard module is providing it
+		if (!class_exists('Geo_Elementor_Plugin')) {
+			add_menu_page(
+				__('Geo Elementor', 'elementor-geo-popup'),
+				__('Geo Elementor', 'elementor-geo-popup'),
+				$capability,
+				'geo-elementor',
+				array($this, 'render_dashboard'),
+				'dashicons-location-alt',
+				58
+			);
+		}
 
 		// The Dashboard submenu is automatically provided by the top-level page
 
