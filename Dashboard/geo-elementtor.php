@@ -18,6 +18,11 @@ define( 'GEO_EL_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'GEO_EL_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'GEO_EL_VERSION', '0.2.0' );
 
+// Prevent duplicate registration if main plugin loader is present
+if (class_exists('ElementorGeoPopup')) {
+    return;
+}
+
 final class Geo_Elementor_Plugin {
 	private static $instance = null;
 

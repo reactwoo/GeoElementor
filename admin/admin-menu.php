@@ -20,26 +20,9 @@ class EGP_Admin_Menu {
 		}
 		$capability = apply_filters('egp_required_capability', $default_cap);
 
-		// Top-level: Geo Elementor (no callback - just container)
-		add_menu_page(
-			__('Geo Elementor', 'elementor-geo-popup'),
-			__('Geo Elementor', 'elementor-geo-popup'),
-			$capability,
-			'geo-elementor',
-			'',
-			'dashicons-location-alt',
-			58
-		);
+		// Top-level menu is registered by the Dashboard module to avoid duplicates
 
-		// Submenu: Dashboard (first priority)
-		add_submenu_page(
-			'geo-elementor',
-			__('Dashboard', 'elementor-geo-popup'),
-			__('Dashboard', 'elementor-geo-popup'),
-			$capability,
-			'geo-elementor',
-			array($this, 'render_dashboard')
-		);
+		// The Dashboard submenu is automatically provided by the top-level page
 
 		// Submenu: Rules (renamed from Geo Rules)
 		add_submenu_page(
@@ -51,15 +34,7 @@ class EGP_Admin_Menu {
 			array($this, 'render_rules')
 		);
 
-		// Submenu: Variant Groups
-		add_submenu_page(
-			'geo-elementor',
-			__('Variant Groups', 'elementor-geo-popup'),
-			__('Variant Groups', 'elementor-geo-popup'),
-			$capability,
-			'geo-elementor-variants',
-			array($this, 'render_variants')
-		);
+		// Variant Groups submenu is registered in RW_Geo_Variant_Groups_Admin
 
 		// Submenu: Settings
 		add_submenu_page(

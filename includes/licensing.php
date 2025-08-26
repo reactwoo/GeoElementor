@@ -40,11 +40,11 @@ class EGP_Licensing {
         add_action('wp_ajax_egp_check_license', array($this, 'ajax_check_license'));
         add_action('wp_ajax_egp_force_clear_license', array($this, 'ajax_force_clear_license'));
         
-        // Schedule license checks (now handled centrally)
-        if (!wp_next_scheduled('egp_daily_license_check')) {
-            wp_schedule_event(time(), 'daily', 'egp_daily_license_check');
+        // License checks are handled centrally via EGP_Centralized_License_Manager
+        // Ensure any legacy cron is cleared to prevent conflicts
+        if (wp_next_scheduled('egp_daily_license_check')) {
+            wp_clear_scheduled_hook('egp_daily_license_check');
         }
-        add_action('egp_daily_license_check', array($this, 'check_license_status'));
         
         // Allow rendering the license page directly without redirects
         add_action('egp_render_license_page', array($this, 'render_license_page'));
@@ -68,10 +68,15 @@ class EGP_Licensing {
             return false;
         }
         
-        // Check and refresh tokens before validation
-        $this->license_manager->check_and_refresh_tokens($this->plugin_slug);
-        
-        $license_data = $this->license_manager->get_license_data($this->plugin_slug, null, true);
+        // Prefer cached data; avoid forced refresh on every admin_init to reduce flapping
+        $license_data = $this->license_manager->get_license_data($this->plugin_slug, null, false);
+        if (!$license_data || (isset($license_data['valid']) && !$license_data['valid'])) {
+            // Attempt a refresh if invalid/stale
+            if (method_exists($this->license_manager, 'check_and_refresh_tokens')) {
+                $this->license_manager->check_and_refresh_tokens($this->plugin_slug);
+            }
+            $license_data = $this->license_manager->get_license_data($this->plugin_slug, null, true);
+        }
         
         if (defined('WP_DEBUG') && WP_DEBUG) {
             error_log('EGP License: Centralized manager returned: ' . print_r($license_data, true));

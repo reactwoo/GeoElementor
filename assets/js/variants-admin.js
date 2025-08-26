@@ -58,31 +58,26 @@
          * Initialize form handling
          */
         initFormHandling: function () {
-            // Set up form validation and submission
-            $('#variant-form').validate({
-                rules: {
-                    variant_name: {
-                        required: true,
-                        minlength: 2
+            // Set up form validation if jQuery Validate is present; otherwise rely on HTML5 required attrs
+            if ($.fn.validate && typeof $('#variant-form').validate === 'function') {
+                $('#variant-form').validate({
+                    rules: {
+                        variant_name: { required: true, minlength: 2 },
+                        variant_slug: { required: true, minlength: 2, pattern: /^[a-z0-9-]+$/ }
                     },
-                    variant_slug: {
-                        required: true,
-                        minlength: 2,
-                        pattern: /^[a-z0-9-]+$/
+                    messages: {
+                        variant_name: {
+                            required: 'Variant group name is required',
+                            minlength: 'Name must be at least 2 characters'
+                        },
+                        variant_slug: {
+                            required: 'Slug is required',
+                            minlength: 'Slug must be at least 2 characters',
+                            pattern: 'Slug can only contain lowercase letters, numbers, and hyphens'
+                        }
                     }
-                },
-                messages: {
-                    variant_name: {
-                        required: 'Variant group name is required',
-                        minlength: 'Name must be at least 2 characters'
-                    },
-                    variant_slug: {
-                        required: 'Slug is required',
-                        minlength: 'Slug must be at least 2 characters',
-                        pattern: 'Slug can only contain lowercase letters, numbers, and hyphens'
-                    }
-                }
-            });
+                });
+            }
         },
 
         /**
@@ -103,8 +98,13 @@
             var $submitButton = $form.find('#submit');
             var originalText = $submitButton.val();
 
-            // Validate form
-            if (!$form.valid()) {
+            // Validate form (supports both jQuery Validate and native constraints)
+            if ($.fn.validate && typeof $form.valid === 'function') {
+                if (!$form.valid()) {
+                    return false;
+                }
+            } else if (!$form[0].checkValidity()) {
+                $form[0].reportValidity && $form[0].reportValidity();
                 return false;
             }
 
