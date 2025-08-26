@@ -49,8 +49,8 @@ class RW_Geo_Variant_Groups_Admin {
     public function add_admin_page() {
         add_submenu_page(
             'geo-elementor',
-            __('Variant Groups', 'elementor-geo-popup'),
-            __('Variant Groups', 'elementor-geo-popup'),
+            __('Groups', 'elementor-geo-popup'),
+            __('Groups', 'elementor-geo-popup'),
             'manage_options',
             'geo-elementor-variants',
             array($this, 'render_admin_page')
@@ -89,7 +89,7 @@ class RW_Geo_Variant_Groups_Admin {
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('rw_geo_variants_nonce'),
             'strings' => array(
-                'confirmDelete' => __('Are you sure you want to delete this variant group?', 'elementor-geo-popup'),
+                'confirmDelete' => __('Are you sure you want to delete this group?', 'elementor-geo-popup'),
                 'confirmDeleteMapping' => __('Are you sure you want to delete this mapping?', 'elementor-geo-popup'),
                 'saving' => __('Saving...', 'elementor-geo-popup'),
                 'saved' => __('Saved!', 'elementor-geo-popup'),
@@ -105,7 +105,7 @@ class RW_Geo_Variant_Groups_Admin {
         $action = $_GET['action'] ?? 'list';
         
         echo '<div class="wrap">';
-        echo '<h1>' . __('Geo Variant Groups', 'elementor-geo-popup') . '</h1>';
+        echo '<h1>' . __('Groups', 'elementor-geo-popup') . '</h1>';
         
         switch ($action) {
             case 'add':
@@ -127,10 +127,10 @@ class RW_Geo_Variant_Groups_Admin {
         $variant_crud = new RW_Geo_Variant_CRUD();
         $variants = $variant_crud->get_all();
         
-        echo '<p><a href="' . admin_url('admin.php?page=geo-elementor-variants&action=add') . '" class="button button-primary">' . __('Add New Variant Group', 'elementor-geo-popup') . '</a></p>';
+        echo '<p><a href="' . admin_url('admin.php?page=geo-elementor-variants&action=add') . '" class="button button-primary">' . __('Add New Group', 'elementor-geo-popup') . '</a></p>';
         
         if (empty($variants)) {
-            echo '<div class="notice notice-info"><p>' . __('No variant groups found. Create your first one to get started with geo-targeting.', 'elementor-geo-popup') . '</p></div>';
+            echo '<div class="notice notice-info"><p>' . __('No groups found. Create your first one to get started with geo-targeting.', 'elementor-geo-popup') . '</p></div>';
             return;
         }
         
@@ -188,12 +188,12 @@ class RW_Geo_Variant_Groups_Admin {
         }
         
         $is_edit = !empty($variant);
-        $title = $is_edit ? __('Edit Variant Group', 'elementor-geo-popup') : __('Add New Variant Group', 'elementor-geo-popup');
+        $title = $is_edit ? __('Edit Group', 'elementor-geo-popup') : __('Add New Group', 'elementor-geo-popup');
         
         echo '<h2>' . $title . '</h2>';
         
         if ($is_edit) {
-            echo '<p><a href="' . admin_url('admin.php?page=geo-elementor-variants') . '">&larr; ' . __('Back to Variant Groups', 'elementor-geo-popup') . '</a></p>';
+            echo '<p><a href="' . admin_url('admin.php?page=geo-elementor-variants') . '">&larr; ' . __('Back to Groups', 'elementor-geo-popup') . '</a></p>';
         }
         
         echo '<form method="post" id="variant-form">';
@@ -283,7 +283,7 @@ class RW_Geo_Variant_Groups_Admin {
         echo '</table>';
         
         echo '<p class="submit">';
-        echo '<input type="submit" name="submit" id="submit" class="button button-primary" value="' . ($is_edit ? __('Update Variant Group', 'elementor-geo-popup') : __('Add Variant Group', 'elementor-geo-popup')) . '">';
+        echo '<input type="submit" name="submit" id="submit" class="button button-primary" value="' . ($is_edit ? __('Update Group', 'elementor-geo-popup') : __('Add Group', 'elementor-geo-popup')) . '">';
         if ($is_edit) {
             echo ' <a href="' . admin_url('admin.php?page=geo-elementor-variants') . '" class="button">' . __('Cancel', 'elementor-geo-popup') . '</a>';
         }
@@ -405,10 +405,8 @@ class RW_Geo_Variant_Groups_Admin {
         echo '</table>';
         
         echo '<p>';
-        if (!$is_template) {
-            echo '<button type="button" class="button button-small save-mapping" data-id="' . $mapping_id . '">' . __('Save Mapping', 'elementor-geo-popup') . '</button> ';
-            echo '<button type="button" class="button button-small button-link-delete delete-mapping" data-id="' . $mapping_id . '">' . __('Delete', 'elementor-geo-popup') . '</button>';
-        }
+        echo '<button type="button" class="button button-small save-mapping" data-id="' . $mapping_id . '">' . __('Save Mapping', 'elementor-geo-popup') . '</button> ';
+        echo '<button type="button" class="button button-small button-link-delete delete-mapping" data-id="' . $mapping_id . '">' . __('Delete', 'elementor-geo-popup') . '</button>';
         echo '</p>';
         
         echo '</div>';
@@ -529,7 +527,7 @@ class RW_Geo_Variant_Groups_Admin {
         }
         
         wp_send_json_success(array(
-            'message' => $variant_id ? __('Variant group updated successfully', 'elementor-geo-popup') : __('Variant group created successfully', 'elementor-geo-popup'),
+            'message' => $variant_id ? __('Group updated successfully', 'elementor-geo-popup') : __('Group created successfully', 'elementor-geo-popup'),
             'variant_id' => $variant_id ?: $result
         ));
     }
@@ -547,7 +545,7 @@ class RW_Geo_Variant_Groups_Admin {
         $variant_id = intval($_POST['variant_id'] ?? 0);
         
         if (!$variant_id) {
-            wp_send_json_error(__('Invalid variant ID', 'elementor-geo-popup'));
+            wp_send_json_error(__('Invalid group ID', 'elementor-geo-popup'));
         }
         
         $variant_crud = new RW_Geo_Variant_CRUD();
@@ -557,7 +555,7 @@ class RW_Geo_Variant_Groups_Admin {
             wp_send_json_error($result->get_error_message());
         }
         
-        wp_send_json_success(__('Variant group deleted successfully', 'elementor-geo-popup'));
+        wp_send_json_success(__('Group deleted successfully', 'elementor-geo-popup'));
     }
     
     /**
@@ -576,7 +574,7 @@ class RW_Geo_Variant_Groups_Admin {
         $popup_id = intval($_POST['popup_id'] ?? 0) ?: null;
         
         if (!$variant_id || !$country_iso2) {
-            wp_send_json_error(__('Variant ID and country are required', 'elementor-geo-popup'));
+            wp_send_json_error(__('Group ID and country are required', 'elementor-geo-popup'));
         }
         
         $data = array(

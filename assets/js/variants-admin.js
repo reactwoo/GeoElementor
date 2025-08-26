@@ -204,7 +204,17 @@
 
             var $container = $('#country-mappings');
             var $template = $('#mapping-template');
-            var templateHtml = $template.html();
+            var templateHtml = $template.length ? $template.html() : '';
+            if (!templateHtml) {
+                // Fallback: construct minimal row if template missing
+                templateHtml = [
+                    '<table class="form-table">',
+                    '<tr><th><label>Country</label></th><td><select class="country-select" required><option value="">Select Country</option></select></td></tr>',
+                    '<tr><th></th><td><button type="button" class="button button-small save-mapping" data-id="{{id}}">Save Mapping</button> ',
+                    '<button type="button" class="button button-small button-link-delete delete-mapping" data-id="{{id}}">Delete</button></td></tr>',
+                    '</table>'
+                ].join('');
+            }
 
             // Generate unique ID for new mapping
             var newId = 'new_' + Date.now();
