@@ -47,13 +47,15 @@ class RW_Geo_Variant_Groups_Admin {
      * Add admin page to menu
      */
     public function add_admin_page() {
+        // Register Groups submenu and move above Rules by giving a higher priority hook
         add_submenu_page(
             'geo-elementor',
             __('Groups', 'elementor-geo-popup'),
             __('Groups', 'elementor-geo-popup'),
             'manage_options',
             'geo-elementor-variants',
-            array($this, 'render_admin_page')
+            array($this, 'render_admin_page'),
+            1
         );
     }
     

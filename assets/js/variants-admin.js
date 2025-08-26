@@ -26,6 +26,7 @@
             this.bindEvents();
             this.initFormHandling();
             this.initMappingHandling();
+            this.applyTypeVisibility();
         },
 
         /**
@@ -74,6 +75,7 @@
                             required: 'Slug is required',
                             minlength: 'Slug must be at least 2 characters',
                             pattern: 'Slug can only contain lowercase letters, numbers, and hyphens'
+
                         }
                     }
                 });
@@ -86,6 +88,16 @@
         initMappingHandling: function () {
             // Set up mapping row interactions
             this.setupMappingRows();
+        },
+
+        /**
+         * Show/hide Page/Popup selects in mapping rows based on current type mask selections
+         */
+        applyTypeVisibility: function () {
+            var pageChecked = $('input[name="type_mask[]"][value="' + this.getTypeMaskValue('page') + '"]').is(':checked');
+            var popupChecked = $('input[name="type_mask[]"][value="' + this.getTypeMaskValue('popup') + '"]').is(':checked');
+            $('.mapping-row .page-select').closest('tr').toggle(!!pageChecked);
+            $('.mapping-row .popup-select').closest('tr').toggle(!!popupChecked);
         },
 
         /**
@@ -132,10 +144,12 @@
                         if (!formData.get('variant_id')) {
                             setTimeout(function () {
                                 window.location.href = 'admin.php?page=geo-elementor-variants&action=edit&id=' + response.data.variant_id;
+
                             }, 1500);
                         }
                     } else {
                         RW_Geo_Variants_Admin.showNotice(response.data || rwGeoVariants.strings.error, 'error');
+
                     }
                 },
                 error: function () {
@@ -186,6 +200,7 @@
                         RW_Geo_Variants_Admin.showNotice(response.data, 'success');
                     } else {
                         RW_Geo_Variants_Admin.showNotice(response.data || rwGeoVariants.strings.error, 'error');
+
                         $button.prop('disabled', false);
                     }
                 },
@@ -210,6 +225,8 @@
                 templateHtml = [
                     '<table class="form-table">',
                     '<tr><th><label>Country</label></th><td><select class="country-select" required><option value="">Select Country</option></select></td></tr>',
+                    '<tr class="page-row"><th><label>Page</label></th><td><select class="page-select"><option value="">Use Default</option></select></td></tr>',
+                    '<tr class="popup-row"><th><label>Popup</label></th><td><select class="popup-select"><option value="">Use Default</option></select></td></tr>',
                     '<tr><th></th><td><button type="button" class="button button-small save-mapping" data-id="{{id}}">Save Mapping</button> ',
                     '<button type="button" class="button button-small button-link-delete delete-mapping" data-id="{{id}}">Delete</button></td></tr>',
                     '</table>'
@@ -223,8 +240,10 @@
             // Add new mapping row
             $container.append('<div class="mapping-row" id="mapping-row-' + newId + '">' + newHtml + '</div>');
 
+
             // Initialize the new row
             RW_Geo_Variants_Admin.setupMappingRow($('#mapping-row-' + newId));
+            RW_Geo_Variants_Admin.applyTypeVisibility();
 
             // Scroll to new row
             $('html, body').animate({
@@ -282,6 +301,7 @@
                         }, 2000);
                     } else {
                         RW_Geo_Variants_Admin.showNotice(response.data || rwGeoVariants.strings.error, 'error');
+
                     }
                 },
                 error: function () {
@@ -334,6 +354,7 @@
                         RW_Geo_Variants_Admin.showNotice(response.data, 'success');
                     } else {
                         RW_Geo_Variants_Admin.showNotice(response.data || rwGeoVariants.strings.error, 'error');
+
                         $button.prop('disabled', false);
                     }
                 },
@@ -362,13 +383,7 @@
          * Handle type mask changes
          */
         handleTypeMaskChange: function () {
-            var $row = $(this).closest('tr');
-            var $nextRow = $row.next('tr');
-
-            // Show/hide related form fields based on type selection
-            if ($(this).val() == RW_Geo_Variants_Admin.getTypeMaskValue('page')) {
-                $nextRow.toggle($(this).is(':checked'));
-            }
+            RW_Geo_Variants_Admin.applyTypeVisibility();
         },
 
         /**
@@ -417,6 +432,7 @@
 
             var $notice = $('<div class="notice notice-' + type + ' is-dismissible"><p>' + message + '</p></div>');
 
+
             // Remove existing notices of same type
             $('.notice-' + type).remove();
 
@@ -432,6 +448,7 @@
 
             // Make dismissible
             $notice.append('<button type="button" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button>');
+
             $notice.find('.notice-dismiss').on('click', function () {
                 $notice.fadeOut(300, function () {
                     $(this).remove();
