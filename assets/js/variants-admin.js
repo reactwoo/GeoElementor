@@ -234,8 +234,8 @@
 
             var $container = $('#country-mappings');
             var $template = $('#mapping-template');
-            var templateHtml = $template.length ? $template.html() : '';
-            if (!templateHtml) {
+            var templateHtml = $template.length ? ($template.html() || '').trim() : '';
+            if (!templateHtml || templateHtml.length === 0) {
                 // Fallback: construct minimal row if template missing
                 templateHtml = [
                     '<table class="form-table">',
@@ -254,9 +254,12 @@
 
             // Add new mapping row
             $container.append('<div class="mapping-row" id="mapping-row-' + newId + '">' + newHtml + '</div>');
+            var $newRow = $('#mapping-row-' + newId);
+            $newRow.css('display', 'block');
+            $newRow.find('tr').css('display', 'table-row');
 
             if (window.console && console.log) {
-                console.log('[RW_Geo_Variants_Admin] Mapping row added', { id: newId });
+                console.log('[RW_Geo_Variants_Admin] Mapping row added', { id: newId, usedTemplate: !!templateHtml, htmlLen: (newHtml || '').length });
             }
 
 

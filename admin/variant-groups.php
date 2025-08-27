@@ -336,7 +336,7 @@ class RW_Geo_Variant_Groups_Admin {
         echo '<h3>' . __('Country Mappings', 'elementor-geo-popup') . '</h3>';
         echo '<p>' . __('Configure which countries should show specific content instead of the defaults.', 'elementor-geo-popup') . '</p>';
         
-        echo '<div id="country-mappings">';
+        echo '<div id="country-mappings" style="margin-top:15px;">';
         
         if (!empty($mappings)) {
             foreach ($mappings as $mapping) {
@@ -349,9 +349,10 @@ class RW_Geo_Variant_Groups_Admin {
         echo '<p><button type="button" class="button add-mapping" id="egp-add-mapping">' . __('Add Country Mapping', 'elementor-geo-popup') . '</button></p>';
         
         // Template for new mapping rows
-        echo '<script type="text/template" id="mapping-template">';
+        // Use a data attribute to avoid other plugins stripping script templates
+        echo '<template id="mapping-template" data-template="mapping">';
         $this->render_mapping_row(null, $variant, true);
-        echo '</script>';
+        echo '</template>';
     }
     
     /**
