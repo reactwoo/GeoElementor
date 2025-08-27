@@ -353,6 +353,8 @@ class RW_Geo_Variant_Groups_Admin {
         echo '<template id="mapping-template" data-template="mapping">';
         $this->render_mapping_row(null, $variant, true);
         echo '</template>';
+        // Ensure visibility in case other plugins hide elements unintentionally
+        echo '<style>#country-mappings{display:block!important}.mapping-row{display:block!important}.mapping-row tr{display:table-row!important}</style>';
     }
     
     /**

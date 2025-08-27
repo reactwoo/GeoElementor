@@ -248,6 +248,21 @@
                 ].join('');
             }
 
+            // If template includes a wrapper .mapping-row (from PHP), strip it and use its inner HTML
+            (function () {
+                try {
+                    var $wrap = $('<div/>').html(templateHtml);
+                    var $tplRow = $wrap.find('.mapping-row').first();
+                    if ($tplRow.length) {
+                        templateHtml = $tplRow.html();
+                    }
+                } catch (err) {
+                    if (window.console && console.warn) {
+                        console.warn('[RW_Geo_Variants_Admin] Template unwrap failed:', err);
+                    }
+                }
+            })();
+
             // Generate unique ID for new mapping
             var newId = 'new_' + Date.now();
             var newHtml = templateHtml.replace(/\{\{id\}\}/g, newId);
