@@ -346,7 +346,7 @@ class RW_Geo_Variant_Groups_Admin {
         
         echo '</div>';
         
-        echo '<p><button type="button" class="button add-mapping">' . __('Add Country Mapping', 'elementor-geo-popup') . '</button></p>';
+        echo '<p><button type="button" class="button add-mapping" id="egp-add-mapping">' . __('Add Country Mapping', 'elementor-geo-popup') . '</button></p>';
         
         // Template for new mapping rows
         echo '<script type="text/template" id="mapping-template">';

@@ -11,7 +11,19 @@
 
     // Initialize when document is ready
     $(document).ready(function () {
-        RW_Geo_Variants_Admin.init();
+        try {
+            RW_Geo_Variants_Admin.init();
+            if (window.console && console.log) {
+                console.log('[RW_Geo_Variants_Admin] Initialized', {
+                    addMappingButtons: $('.add-mapping').length,
+                    mappingRows: $('.mapping-row').length
+                });
+            }
+        } catch (e) {
+            if (window.console && console.error) {
+                console.error('[RW_Geo_Variants_Admin] Init error:', e);
+            }
+        }
     });
 
     /**
@@ -34,25 +46,25 @@
          */
         bindEvents: function () {
             // Form submission
-            $('#variant-form').on('submit', this.handleFormSubmit);
+            $('#variant-form').off('submit.rwgeo').on('submit.rwgeo', this.handleFormSubmit);
 
             // Delete variant buttons
-            $(document).on('click', '.delete-variant', this.handleDeleteVariant);
+            $(document).off('click.rwgeo', '.delete-variant').on('click.rwgeo', '.delete-variant', this.handleDeleteVariant);
 
             // Add mapping button
-            $(document).on('click', '.add-mapping', this.handleAddMapping);
+            $(document).off('click.rwgeo', '.add-mapping').on('click.rwgeo', '.add-mapping', this.handleAddMapping);
 
             // Save mapping buttons
-            $(document).on('click', '.save-mapping', this.handleSaveMapping);
+            $(document).off('click.rwgeo', '.save-mapping').on('click.rwgeo', '.save-mapping', this.handleSaveMapping);
 
             // Delete mapping buttons
-            $(document).on('click', '.delete-mapping', this.handleDeleteMapping);
+            $(document).off('click.rwgeo', '.delete-mapping').on('click.rwgeo', '.delete-mapping', this.handleDeleteMapping);
 
             // Auto-generate slug from name
             $('#variant_name').on('input', this.autoGenerateSlug);
 
             // Type mask change handling
-            $('input[name="type_mask[]"]').on('change', this.handleTypeMaskChange);
+            $('input[name="type_mask[]"]').off('change.rwgeo').on('change.rwgeo', this.handleTypeMaskChange);
         },
 
         /**
@@ -216,6 +228,9 @@
          */
         handleAddMapping: function (e) {
             e.preventDefault();
+            if (window.console && console.log) {
+                console.log('[RW_Geo_Variants_Admin] Add mapping clicked');
+            }
 
             var $container = $('#country-mappings');
             var $template = $('#mapping-template');
@@ -239,6 +254,10 @@
 
             // Add new mapping row
             $container.append('<div class="mapping-row" id="mapping-row-' + newId + '">' + newHtml + '</div>');
+
+            if (window.console && console.log) {
+                console.log('[RW_Geo_Variants_Admin] Mapping row added', { id: newId });
+            }
 
 
             // Initialize the new row
