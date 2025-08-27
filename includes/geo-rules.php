@@ -58,6 +58,7 @@ class EGP_Geo_Rules {
         add_action('wp_ajax_egp_get_target_options', array($this, 'ajax_get_target_options'));
         add_action('wp_ajax_egp_save_elementor_geo_rule', array($this, 'ajax_save_elementor_geo_rule'));
         add_action('wp_ajax_egp_remove_elementor_geo_rule', array($this, 'ajax_remove_elementor_geo_rule'));
+        // No-public: internal conflict check helper via AJAX if needed later
     }
     
     /**
@@ -338,13 +339,27 @@ class EGP_Geo_Rules {
             return;
         }
         
-        // Save targeting data
+        // Save targeting data with conflict check against Groups
         if (isset($_POST['egp_target_type'])) {
-            update_post_meta($post_id, $this->meta_prefix . 'target_type', sanitize_text_field($_POST['egp_target_type']));
+            $target_type = sanitize_text_field($_POST['egp_target_type']);
+            update_post_meta($post_id, $this->meta_prefix . 'target_type', $target_type);
+        } else {
+            $target_type = get_post_meta($post_id, $this->meta_prefix . 'target_type', true);
         }
         
         if (isset($_POST['egp_target_id'])) {
-            update_post_meta($post_id, $this->meta_prefix . 'target_id', sanitize_text_field($_POST['egp_target_id']));
+            $target_id = sanitize_text_field($_POST['egp_target_id']);
+            // Only check numeric IDs
+            if (in_array($target_type, array('page','popup'), true) && ctype_digit((string) $target_id)) {
+                if ($this->group_conflict_exists($target_type, intval($target_id))) {
+                    // Do not save conflicting target; mark inactive
+                    update_post_meta($post_id, $this->meta_prefix . 'active', '0');
+                } else {
+                    update_post_meta($post_id, $this->meta_prefix . 'target_id', $target_id);
+                }
+            } else {
+                update_post_meta($post_id, $this->meta_prefix . 'target_id', $target_id);
+            }
         }
         
         if (isset($_POST['egp_countries'])) {
@@ -653,9 +668,18 @@ class EGP_Geo_Rules {
             wp_send_json_error(__('Failed to save rule', 'elementor-geo-popup'));
         }
         
+        // Conflict check with Groups before saving target
+        $target_type = sanitize_text_field($rule_data['type']);
+        $target_id_raw = sanitize_text_field($rule_data['target_id']);
+        if (in_array($target_type, array('page','popup'), true) && ctype_digit((string) $target_id_raw)) {
+            if ($this->group_conflict_exists($target_type, intval($target_id_raw))) {
+                wp_send_json_error(__('Conflict: This element is already targeted by a Group. Remove the Group mapping or choose a different target.', 'elementor-geo-popup'));
+            }
+        }
+        
         // Save meta fields
-        update_post_meta($post_id, $this->meta_prefix . 'target_type', sanitize_text_field($rule_data['type']));
-        update_post_meta($post_id, $this->meta_prefix . 'target_id', sanitize_text_field($rule_data['target_id']));
+        update_post_meta($post_id, $this->meta_prefix . 'target_type', $target_type);
+        update_post_meta($post_id, $this->meta_prefix . 'target_id', $target_id_raw);
         update_post_meta($post_id, $this->meta_prefix . 'countries', array_map('sanitize_text_field', $rule_data['countries']));
         update_post_meta($post_id, $this->meta_prefix . 'active', $rule_data['active'] ? '1' : '0');
         update_post_meta($post_id, $this->meta_prefix . 'priority', intval($rule_data['priority']));
@@ -826,6 +850,34 @@ class EGP_Geo_Rules {
         
         $rules = get_posts($args);
         return !empty($rules) ? $rules[0] : null;
+    }
+
+    /**
+     * Check if a Group already targets the given element
+     */
+    private function group_conflict_exists($target_type, $target_id) {
+        if (!$target_id) {
+            return false;
+        }
+        global $wpdb;
+        $db = RW_Geo_Database::get_instance();
+        $variants_table = $db->get_variants_table();
+        $mappings_table = $db->get_mappings_table();
+
+        if ($target_type === 'page') {
+            // Check default_page_id or mapped page_id
+            $exists_default = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$variants_table} WHERE default_page_id = %d LIMIT 1", $target_id));
+            if ($exists_default) { return true; }
+            $exists_map = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$mappings_table} WHERE page_id = %d LIMIT 1", $target_id));
+            return !empty($exists_map);
+        }
+        if ($target_type === 'popup') {
+            $exists_default = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$variants_table} WHERE default_popup_id = %d LIMIT 1", $target_id));
+            if ($exists_default) { return true; }
+            $exists_map = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$mappings_table} WHERE popup_id = %d LIMIT 1", $target_id));
+            return !empty($exists_map);
+        }
+        return false;
     }
     
     /**

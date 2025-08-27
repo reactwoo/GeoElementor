@@ -183,7 +183,10 @@ class EGP_Centralized_License_Manager {
         }
         
         $response = wp_remote_post($this->license_server . '/refresh', array(
-            'headers' => array('Content-Type' => 'application/json'),
+            'headers' => array(
+                'Content-Type' => 'application/json',
+                'X-Plugin-Slug' => $plugin_slug,
+            ),
             'body' => wp_json_encode(array(
                 'refreshToken' => $refresh_token,
                 'pluginSlug' => $plugin_slug
@@ -340,12 +343,16 @@ class EGP_Centralized_License_Manager {
         
         try {
             $response = wp_remote_post($this->license_server . '/activate', array(
-                'headers' => array('Content-Type' => 'application/json'),
+                'headers' => array(
+                    'Content-Type' => 'application/json',
+                    'X-Plugin-Slug' => $plugin_slug,
+                ),
                 'body' => wp_json_encode(array(
                     'licenseKey' => $license_key,
                     'domain' => $domain,
                     'pluginVersion' => $plugin_version,
-                    'productType' => $product_type
+                    'productType' => $product_type,
+                    'pluginSlug' => $plugin_slug,
                 )),
                 'timeout' => 30
             ));
