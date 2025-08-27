@@ -134,7 +134,7 @@ class RW_Geo_Variant_Groups_Admin {
         $action = $_GET['action'] ?? 'list';
         
         echo '<div class="wrap">';
-        echo '<h1>' . __('Groups', 'elementor-geo-popup') . '</h1>';
+        echo '<h1>' . __('Groups', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="Groups manage a default target plus country-specific overrides in one place. If a Rule already targets the same Page/Popup, you cannot add it here to avoid conflicts."></span></h1>';
         
         switch ($action) {
             case 'add':
@@ -609,6 +609,39 @@ class RW_Geo_Variant_Groups_Admin {
             wp_send_json_error(__('Group ID and country are required', 'elementor-geo-popup'));
         }
         
+        // Prevent conflicts with existing Rules that target the same Page/Popup
+        if ($page_id) {
+            $conflict = get_posts(array(
+                'post_type' => 'geo_rule',
+                'post_status' => 'any',
+                'meta_query' => array(
+                    array('key' => 'egp_target_type', 'value' => 'page'),
+                    array('key' => 'egp_target_id', 'value' => (string) $page_id)
+                ),
+                'fields' => 'ids',
+                'posts_per_page' => 1
+            ));
+            if (!empty($conflict)) {
+                wp_send_json_error(__('Conflict: This Page is already targeted by a Rule. Remove the Rule or choose a different target.', 'elementor-geo-popup'));
+            }
+        }
+
+        if ($popup_id) {
+            $conflict = get_posts(array(
+                'post_type' => 'geo_rule',
+                'post_status' => 'any',
+                'meta_query' => array(
+                    array('key' => 'egp_target_type', 'value' => 'popup'),
+                    array('key' => 'egp_target_id', 'value' => (string) $popup_id)
+                ),
+                'fields' => 'ids',
+                'posts_per_page' => 1
+            ));
+            if (!empty($conflict)) {
+                wp_send_json_error(__('Conflict: This Popup is already targeted by a Rule. Remove the Rule or choose a different target.', 'elementor-geo-popup'));
+            }
+        }
+
         $data = array(
             'variant_id' => $variant_id,
             'country_iso2' => $country_iso2,

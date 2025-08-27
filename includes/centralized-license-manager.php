@@ -273,8 +273,10 @@ class EGP_Centralized_License_Manager {
      * Fetch license data from server
      */
     private function fetch_license_from_server($plugin_slug, $license_key = null) {
-        $access_token = get_option("{$plugin_slug}_license_access_token", '');
-        $expires_at = get_option("{$plugin_slug}_license_expires_at", 0);
+        // Use plugin-specific option prefix to avoid clashes with other plugins
+        $prefix = $this->get_plugin_prefix($plugin_slug);
+        $access_token = get_option("{$prefix}_license_access_token", '');
+        $expires_at = get_option("{$prefix}_license_expires_at", 0);
         
         if (!$access_token) {
             return array('valid' => false, 'error' => 'No access token');
@@ -382,7 +384,8 @@ class EGP_Centralized_License_Manager {
         $current_plugin = $this->get_current_plugin_slug();
         
         if ($current_plugin) {
-            $access_token = get_option("{$current_plugin}_license_access_token", '');
+            $prefix = $this->get_plugin_prefix($current_plugin);
+            $access_token = get_option("{$prefix}_license_access_token", '');
             if ($access_token) {
                 // Only refresh license data for current plugin
                 $this->get_license_data($current_plugin, null, true);

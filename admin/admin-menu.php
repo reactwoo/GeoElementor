@@ -74,7 +74,7 @@ class EGP_Admin_Menu {
 	}
 
 	public function render_rules() {
-		echo '<div class="wrap"><h1>' . esc_html__('Geo Rules', 'elementor-geo-popup') . '</h1>';
+		echo '<div class="wrap"><h1>' . esc_html__('Geo Rules', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="Rules target a specific Page or Popup with selected countries. If an element is managed by a Group, avoid creating a duplicate Rule for the same element to prevent conflicts."></span></h1>';
 		
 		// Add custom CSS for status indicators
 		echo '<style>
