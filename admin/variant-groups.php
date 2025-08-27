@@ -41,6 +41,7 @@ class RW_Geo_Variant_Groups_Admin {
         add_action('wp_ajax_rw_geo_delete_mapping', array($this, 'ajax_delete_mapping'));
         add_action('wp_ajax_rw_geo_get_pages', array($this, 'ajax_get_pages'));
         add_action('wp_ajax_rw_geo_get_popups', array($this, 'ajax_get_popups'));
+        add_action('wp_ajax_rw_geo_search_countries', array($this, 'ajax_search_countries'));
     }
     
     /**
@@ -448,6 +449,19 @@ class RW_Geo_Variant_Groups_Admin {
      * Get countries list
      */
     private function get_countries_list() {
+        // Prefer WooCommerce countries list if available for completeness
+        if (class_exists('WC_Countries')) {
+            try {
+                $wc_countries = new \WC_Countries();
+                $countries = $wc_countries->get_countries();
+                if (is_array($countries) && !empty($countries)) {
+                    return $countries;
+                }
+            } catch (\Exception $e) {
+                // fall back to static list below
+            }
+        }
+
         return array(
             'US' => 'United States',
             'GB' => 'United Kingdom',
@@ -504,6 +518,37 @@ class RW_Geo_Variant_Groups_Admin {
             'GR' => 'Greece',
             'PT' => 'Portugal'
         );
+    }
+
+    /**
+     * AJAX: Search countries (predictive)
+     */
+    public function ajax_search_countries() {
+        check_ajax_referer('rw_geo_variants_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
+        }
+
+        $q = isset($_GET['q']) ? sanitize_text_field(wp_unslash($_GET['q'])) : '';
+        $q_upper = strtoupper($q);
+        $q_lower = strtolower($q);
+
+        $countries = $this->get_countries_list();
+        $results = array();
+
+        foreach ($countries as $code => $name) {
+            $code_str = strtoupper($code);
+            $name_str = (string) $name;
+            if ($q === '' || strpos($code_str, $q_upper) !== false || strpos(strtolower($name_str), $q_lower) !== false) {
+                $results[] = array('code' => $code_str, 'name' => $name_str);
+            }
+            if (count($results) >= 50) {
+                break;
+            }
+        }
+
+        wp_send_json_success($results);
     }
     
     /**

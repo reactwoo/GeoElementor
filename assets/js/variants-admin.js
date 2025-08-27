@@ -451,6 +451,39 @@
         setupMappingRow: function ($row) {
             // Use native selects to avoid conflicts with non-standard libraries
             $row.find('.country-select').attr('required', true);
+
+            // Predictive country search using AJAX
+            var $country = $row.find('.country-select');
+            if ($country.length && $row.find('.country-search').length === 0) {
+                var searchBox = $('<input type="text" class="country-search" placeholder="Search country..." style="width:100%;margin-bottom:6px;" />');
+                $country.before(searchBox);
+                var debounceTimer;
+                searchBox.on('input', function () {
+                    clearTimeout(debounceTimer);
+                    var query = $(this).val();
+                    debounceTimer = setTimeout(function () {
+                        $.ajax({
+                            url: rwGeoVariants.ajaxurl,
+                            method: 'GET',
+                            data: { action: 'rw_geo_search_countries', nonce: rwGeoVariants.nonce, q: query },
+                            success: function (resp) {
+                                if (resp && resp.success && Array.isArray(resp.data)) {
+                                    var selected = $country.val();
+                                    $country.empty();
+                                    $country.append('<option value="">Select Country</option>');
+                                    resp.data.forEach(function (item) {
+                                        var opt = $('<option/>').val(item.code).text(item.name);
+                                        $country.append(opt);
+                                    });
+                                    if (selected) {
+                                        $country.val(selected);
+                                    }
+                                }
+                            }
+                        });
+                    }, 200);
+                });
+            }
         },
 
         /**
