@@ -87,8 +87,25 @@ class EGP_Centralized_License_Manager {
         if (!$access_token) {
             $access_token = get_option("{$prefix}_license_access_token", '');
         }
-        
+
+        // Legacy fallback: migrate old keys (e.g., egp_license_access_token)
         if (!$access_token) {
+            $legacy_access = get_option("{$plugin_slug}_license_access_token", '');
+            if ($legacy_access) {
+                $access_token = $legacy_access;
+                update_option("{$prefix}_license_access_token", $legacy_access);
+            }
+        }
+
+        // If still no token, but stored formatted data indicates free plan, treat as valid
+        if (!$access_token) {
+            $stored_formatted = get_option("{$prefix}_license_data", array());
+            if (is_array($stored_formatted) && !empty($stored_formatted['is_free_plan'])) {
+                // Cache and return as valid for free tier
+                $stored_formatted['valid'] = true;
+                wp_cache_set($cache_key, $stored_formatted, $this->cache_group, 3600);
+                return $stored_formatted;
+            }
             return array('valid' => false, 'error' => 'No access token found');
         }
         
