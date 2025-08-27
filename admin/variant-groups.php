@@ -109,6 +109,22 @@ class RW_Geo_Variant_Groups_Admin {
             wp_dequeue_style('select2');
             wp_dequeue_style('selectWoo');
         }, 100);
+
+        // Dequeue any problematic admin_script.js loaded by other plugins on this screen
+        add_action('admin_print_scripts', function () {
+            global $wp_scripts;
+            if (!isset($wp_scripts) || empty($wp_scripts->queue)) {
+                return;
+            }
+            foreach ($wp_scripts->queue as $handle) {
+                if (isset($wp_scripts->registered[$handle]) && isset($wp_scripts->registered[$handle]->src)) {
+                    $src = $wp_scripts->registered[$handle]->src;
+                    if (strpos($src, 'admin_script.js') !== false || strpos($src, 'admin-script.js') !== false) {
+                        wp_dequeue_script($handle);
+                    }
+                }
+            }
+        }, 100);
     }
     
     /**
