@@ -263,37 +263,24 @@
             // Bind events
             this.bindGeoEvents(panel, model);
 
-            // Initialize Select2 if available, otherwise use native select
+            // Initialize native country select (no Select2)
             this.initializeCountrySelect(panel);
         },
 
         /**
-         * Initialize country selection with Select2 or fallback
+         * Initialize country selection without Select2
          */
         initializeCountrySelect: function (panel) {
             var $countriesSelect = panel.$el.find('#egp_countries');
-
-            if (typeof $.fn.select2 !== 'undefined') {
-                // Select2 is available
-                $countriesSelect.select2({
-                    placeholder: 'Select countries...',
-                    allowClear: true,
-                    width: '100%',
-                    closeOnSelect: false
-                });
-            } else {
-                // Fallback to native select with better styling
-                $countriesSelect.css({
-                    'min-height': '120px',
-                    'padding': '8px',
-                    'border': '1px solid #ddd',
-                    'border-radius': '4px',
-                    'background-color': '#fff'
-                });
-
-                // Add helper text
-                $countriesSelect.after('<p class="description" style="margin-top: 5px; color: #666;">Select2 not available - using native select. Hold Ctrl/Cmd to select multiple countries.</p>');
-            }
+            // Style native select for usability
+            $countriesSelect.css({
+                'min-height': '120px',
+                'padding': '8px',
+                'border': '1px solid #ddd',
+                'border-radius': '4px',
+                'background-color': '#fff'
+            });
+            $countriesSelect.after('<p class="description" style="margin-top: 5px; color: #666;">Hold Ctrl/Cmd to select multiple countries.</p>');
         },
 
         bindGeoEvents: function (panel, model) {

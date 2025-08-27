@@ -412,15 +412,7 @@
          * Setup individual mapping row
          */
         setupMappingRow: function ($row) {
-            // Initialize select2 if available
-            if ($.fn.select2) {
-                $row.find('.country-select, .page-select, .popup-select').select2({
-                    width: '100%',
-                    placeholder: 'Select...'
-                });
-            }
-
-            // Add validation
+            // Use native selects to avoid conflicts with non-standard libraries
             $row.find('.country-select').attr('required', true);
         },
 

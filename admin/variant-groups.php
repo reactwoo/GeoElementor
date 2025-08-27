@@ -98,6 +98,17 @@ class RW_Geo_Variant_Groups_Admin {
                 'error' => __('Error occurred', 'elementor-geo-popup')
             )
         ));
+
+        // Dequeue Select2/SelectWoo to avoid conflicts on this screen
+        add_action('admin_print_scripts', function () {
+            wp_dequeue_script('select2');
+            wp_dequeue_script('selectWoo');
+        }, 100);
+
+        add_action('admin_print_styles', function () {
+            wp_dequeue_style('select2');
+            wp_dequeue_style('selectWoo');
+        }, 100);
     }
     
     /**

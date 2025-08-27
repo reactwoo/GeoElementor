@@ -699,8 +699,15 @@ class EGP_Geo_Rules {
                 $options[] = array('id' => $page->ID, 'title' => $page->post_title);
             }
         } elseif ($target_type === 'popup') {
+            // Use Elementor Pro popup templates
             $popups = get_posts(array(
-                'post_type' => 'geo_popup', // Assuming geo_popup is the custom post type for popups
+                'post_type' => 'elementor_library',
+                'meta_query' => array(
+                    array(
+                        'key' => '_elementor_template_type',
+                        'value' => 'popup'
+                    )
+                ),
                 'posts_per_page' => -1,
                 'orderby' => 'title',
                 'order' => 'asc'
