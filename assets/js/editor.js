@@ -260,11 +260,51 @@
                 $targetSection.append($geoSection);
             }
 
-            // Bind events
-            this.bindGeoEvents(panel, model);
+            // Bind events (stable reference)
+            GeoElementorEditor.bindGeoEvents(panel, model);
 
             // Initialize native country select (no Select2)
-            this.initializeCountrySelect(panel);
+            GeoElementorEditor.initializeCountrySelect(panel);
+
+            // Populate with existing rule by popup post ID, fallback to element ID
+            try {
+                var popupPostId = (elementor && elementor.config && elementor.config.document && elementor.config.document.id) ? elementor.config.document.id : '';
+                var elementId = model && model.get ? model.get('id') : '';
+                var paramsByPopup = { action: 'egp_get_rule_by_popup', popup_id: popupPostId, nonce: (window.egpEditor && egpEditor.nonce) || '' };
+                var paramsByElement = { action: 'egp_get_rule_by_element', element_id: elementId, nonce: (window.egpEditor && egpEditor.nonce) || '' };
+
+                var applyRule = function (data) {
+                    panel.$el.find('#egp_enable_geo').prop('checked', true);
+                    panel.$el.find('#egp_geo_options').show();
+                    if (Array.isArray(data.countries)) {
+                        panel.$el.find('#egp_countries').val(data.countries);
+                    }
+                    var summary = $('<div class=\"elementor-panel-field\"><p class=\"description\">Rule: ' + data.title + ' (Priority ' + (data.priority || 0) + ')</p></div>');
+                    $geoSection.append(summary);
+                    var ruleLinks = $('<div class=\"elementor-panel-field\"><a class=\"button button-small\" target=\"_blank\" href=\"' + (window.ajaxurl ? window.ajaxurl.replace('admin-ajax.php', 'post.php?post=' + data.id + '&action=edit') : '#') + '\">Edit Rule</a></div>');
+                    $geoSection.append(ruleLinks);
+                };
+
+                if (popupPostId) {
+                    $.get(ajaxurl, paramsByPopup).done(function (resp) {
+                        if (resp && resp.success && resp.data) {
+                            applyRule(resp.data);
+                        } else if (elementId) {
+                            $.get(ajaxurl, paramsByElement).done(function (resp2) {
+                                if (resp2 && resp2.success && resp2.data) {
+                                    applyRule(resp2.data);
+                                }
+                            });
+                        }
+                    });
+                } else if (elementId) {
+                    $.get(ajaxurl, paramsByElement).done(function (resp3) {
+                        if (resp3 && resp3.success && resp3.data) {
+                            applyRule(resp3.data);
+                        }
+                    });
+                }
+            } catch (e) { }
         },
 
         /**
@@ -340,12 +380,17 @@
         },
 
         saveGeoRuleToDatabase: function (model, settings) {
+            var docType = (elementor && elementor.config && elementor.config.document && elementor.config.document.type) ? elementor.config.document.type : '';
+            var popupPostId = (elementor && elementor.config && elementor.config.document && elementor.config.document.id) ? elementor.config.document.id : '';
+            var isPopupDoc = (docType === 'popup' || model.get('elType') === 'popup');
+            var targetType = isPopupDoc ? 'popup' : 'elementor';
+            var targetId = isPopupDoc && popupPostId ? String(popupPostId) : String(model.get('id'));
             var ruleData = {
                 element_id: model.get('id'),
                 element_type: model.get('elType') || 'widget',
-                element_title: model.get('settings').get('_title') || 'Untitled Element',
-                target_type: 'elementor',
-                target_id: model.get('id'),
+                element_title: (model.get('settings') && model.get('settings').get('_title')) || 'Untitled Element',
+                target_type: targetType,
+                target_id: targetId,
                 countries: settings.egp_countries,
                 priority: settings.egp_priority,
                 tracking_id: settings.egp_tracking_id,
