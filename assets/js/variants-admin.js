@@ -452,45 +452,55 @@
             // Use native selects to avoid conflicts with non-standard libraries
             $row.find('.country-select').attr('required', true);
 
-            // Predictive country search using AJAX
+            // Inline buffered type-to-filter for native select (no separate field)
             var $country = $row.find('.country-select');
-            if ($country.length && $row.find('.country-search').length === 0) {
-                var searchBox = $('<input type="text" class="country-search" placeholder="Search country..." style="width:100%;margin-bottom:6px;" />');
-                $country.before(searchBox);
-                var debounceTimer;
-                searchBox.on('input', function () {
-                    clearTimeout(debounceTimer);
-                    var query = $(this).val();
-                    debounceTimer = setTimeout(function () {
-                        $.ajax({
-                            url: rwGeoVariants.ajaxurl,
-                            method: 'GET',
-                            data: { action: 'rw_geo_search_countries', nonce: rwGeoVariants.nonce, q: query },
-                            success: function (resp) {
-                                if (resp && resp.success && Array.isArray(resp.data)) {
-                                    var current = $country.val();
-                                    var isFocused = $country.is(':focus');
-                                    // Rebuild options with full results, preserve selection
-                                    var html = ['<option value="">Select Country</option>'];
-                                    resp.data.forEach(function (item) {
-                                        var sel = (current === item.code) ? ' selected' : '';
-                                        html.push('<option value="' + item.code + '"' + sel + '>' + item.name + '</option>');
-                                    });
-                                    $country.html(html.join(''));
-                                    // Keep focus behavior natural
-                                    if (isFocused) {
-                                        $country.trigger('change');
-                                    }
-                                }
+            if ($country.length) {
+                // Preload full list once
+                if ($country.data('rwgeo-loaded') !== true) {
+                    $.ajax({
+                        url: rwGeoVariants.ajaxurl,
+                        method: 'GET',
+                        data: { action: 'rw_geo_search_countries', nonce: rwGeoVariants.nonce, q: '' },
+                        success: function (resp) {
+                            if (resp && resp.success && Array.isArray(resp.data)) {
+                                var current = $country.val();
+                                var html = ['<option value="">Select Country</option>'];
+                                resp.data.forEach(function (item) {
+                                    var sel = (current === item.code) ? ' selected' : '';
+                                    html.push('<option value="' + item.code + '"' + sel + '>' + item.name + '</option>');
+                                });
+                                $country.html(html.join(''));
+                                $country.data('rwgeo-loaded', true);
+                            }
+                        }
+                    });
+                }
+
+                // Buffered key search on the select itself
+                var buffer = '';
+                var lastKeyTime = 0;
+                $country.on('keydown', function (e) {
+                    var now = Date.now();
+                    if (now - lastKeyTime > 700) {
+                        buffer = '';
+                    }
+                    lastKeyTime = now;
+                    var key = e.key;
+                    if (key.length === 1 && /[a-zA-Z\s]/.test(key)) {
+                        buffer += key.toLowerCase();
+                        var found = false;
+                        $country.find('option').each(function () {
+                            var text = $(this).text().toLowerCase();
+                            if (text.indexOf(buffer) === 0) {
+                                $country.val($(this).val());
+                                found = true;
+                                return false;
                             }
                         });
-                    }, 200);
-                });
-
-                // Initial load of full list on focus if empty options
-                $country.on('focus', function () {
-                    if ($country.find('option').length <= 1) {
-                        searchBox.trigger('input');
+                        if (found) {
+                            e.preventDefault();
+                            $country.trigger('change');
+                        }
                     }
                 });
             }

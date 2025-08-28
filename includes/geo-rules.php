@@ -587,18 +587,23 @@ class EGP_Geo_Rules {
      * Get countries list
      */
     private function get_countries_list() {
+        // Load full ISO-3166 list from bundled data file if available
+        $json_path = plugin_dir_path(__FILE__) . '../assets/data/countries.json';
+        $json_path = realpath($json_path);
+        if ($json_path && file_exists($json_path)) {
+            $contents = file_get_contents($json_path);
+            $decoded = json_decode($contents, true);
+            if (is_array($decoded) && !empty($decoded)) {
+                return $decoded;
+            }
+        }
+
+        // Fallback minimal list
         return array(
             'US' => 'United States',
-            'CA' => 'Canada',
             'GB' => 'United Kingdom',
-            'DE' => 'Germany',
-            'FR' => 'France',
-            'AU' => 'Australia',
-            'JP' => 'Japan',
-            'BR' => 'Brazil',
-            'IN' => 'India',
-            'CN' => 'China',
-            // Add more countries as needed
+            'CA' => 'Canada',
+            'AU' => 'Australia'
         );
     }
     
