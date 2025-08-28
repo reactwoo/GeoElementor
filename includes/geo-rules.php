@@ -684,12 +684,15 @@ class EGP_Geo_Rules {
             }
         }
         
-        // Save meta fields
-        update_post_meta($post_id, $this->meta_prefix . 'target_type', $target_type);
-        update_post_meta($post_id, $this->meta_prefix . 'target_id', $target_id_raw);
-        update_post_meta($post_id, $this->meta_prefix . 'countries', array_map('sanitize_text_field', $rule_data['countries']));
-        update_post_meta($post_id, $this->meta_prefix . 'active', $rule_data['active'] ? '1' : '0');
-        update_post_meta($post_id, $this->meta_prefix . 'priority', intval($rule_data['priority']));
+        // Unified save to ensure consistency across sources
+        $this->save_or_update_rule(array(
+            'target_type' => $target_type,
+            'target_id' => $target_id_raw,
+            'countries' => array_map('sanitize_text_field', $rule_data['countries']),
+            'priority' => intval($rule_data['priority']),
+            'title' => get_the_title($post_id),
+            'source' => 'manual'
+        ));
         
         wp_send_json_success(array('id' => $post_id));
     }
@@ -798,15 +801,26 @@ class EGP_Geo_Rules {
             wp_send_json_error(__('Failed to save geo rule', 'elementor-geo-popup'));
         }
         
-        // Save meta fields
-        update_post_meta($post_id, $this->meta_prefix . 'target_type', 'elementor');
-        update_post_meta($post_id, $this->meta_prefix . 'target_id', sanitize_text_field($rule_data['element_id']));
-        update_post_meta($post_id, $this->meta_prefix . 'countries', array_map('sanitize_text_field', $rule_data['countries']));
-        update_post_meta($post_id, $this->meta_prefix . 'priority', intval($rule_data['priority']));
-        update_post_meta($post_id, $this->meta_prefix . 'active', '1');
-        update_post_meta($post_id, $this->meta_prefix . 'tracking_id', sanitize_text_field($rule_data['tracking_id']));
-        update_post_meta($post_id, $this->meta_prefix . 'source', 'elementor');
-        update_post_meta($post_id, $this->meta_prefix . 'element_type', sanitize_text_field($rule_data['element_type']));
+        // Prefer popup targeting when the current document is a popup
+        $target_type = 'elementor';
+        $target_id = sanitize_text_field($rule_data['element_id']);
+        if (!empty($_POST['document_id'])) {
+            $doc_id = sanitize_text_field($_POST['document_id']);
+            $doc = get_post(intval($doc_id));
+            if ($doc && $doc->post_type === 'elementor_library' && get_post_meta($doc->ID, '_elementor_template_type', true) === 'popup') {
+                $target_type = 'popup';
+                $target_id = (string) $doc->ID;
+            }
+        }
+
+        $this->save_or_update_rule(array(
+            'target_type' => $target_type,
+            'target_id' => $target_id,
+            'countries' => array_map('sanitize_text_field', $rule_data['countries']),
+            'priority' => intval($rule_data['priority']),
+            'title' => sanitize_text_field($rule_data['element_title']),
+            'source' => 'elementor'
+        ));
         
         wp_send_json_success(array('id' => $post_id));
     }
@@ -857,6 +871,78 @@ class EGP_Geo_Rules {
         
         $rules = get_posts($args);
         return !empty($rules) ? $rules[0] : null;
+    }
+
+    /**
+     * Create or update a geo_rule for a specific target (popup/elementor)
+     */
+    private function save_or_update_rule($args) {
+        $defaults = array(
+            'target_type' => '',
+            'target_id' => '',
+            'countries' => array(),
+            'priority' => 50,
+            'title' => '',
+            'source' => 'manual'
+        );
+        $args = wp_parse_args($args, $defaults);
+
+        if (empty($args['target_type']) || empty($args['target_id'])) {
+            return new WP_Error('invalid_target', 'Missing target_type or target_id');
+        }
+
+        // Normalize popup: ensure it's an elementor_library popup
+        if ($args['target_type'] === 'popup') {
+            $post = get_post(intval($args['target_id']));
+            if (!$post || $post->post_type !== 'elementor_library') {
+                return new WP_Error('invalid_popup', 'Target is not a valid Elementor popup');
+            }
+            $tpl = get_post_meta($post->ID, '_elementor_template_type', true);
+            if ($tpl !== 'popup') {
+                return new WP_Error('invalid_popup', 'Target is not an Elementor popup');
+            }
+            if (empty($args['title'])) {
+                $args['title'] = $post->post_title ?: 'Popup #'.$post->ID;
+            }
+        }
+
+        // Find existing rule by target
+        $existing = get_posts(array(
+            'post_type' => $this->post_type,
+            'post_status' => 'any',
+            'meta_query' => array(
+                array('key' => $this->meta_prefix.'target_type', 'value' => $args['target_type']),
+                array('key' => $this->meta_prefix.'target_id', 'value' => (string) $args['target_id'])
+            ),
+            'fields' => 'ids',
+            'posts_per_page' => 1
+        ));
+
+        if (!empty($existing)) {
+            $post_id = $existing[0];
+            if (!empty($args['title'])) {
+                wp_update_post(array('ID' => $post_id, 'post_title' => $args['title']));
+            }
+        } else {
+            $post_id = wp_insert_post(array(
+                'post_title' => $args['title'] ?: ucfirst($args['target_type']).' '.$args['target_id'],
+                'post_type' => $this->post_type,
+                'post_status' => 'publish'
+            ));
+            if (is_wp_error($post_id)) {
+                return $post_id;
+            }
+        }
+
+        // Save meta
+        update_post_meta($post_id, $this->meta_prefix.'target_type', $args['target_type']);
+        update_post_meta($post_id, $this->meta_prefix.'target_id', (string) $args['target_id']);
+        update_post_meta($post_id, $this->meta_prefix.'countries', array_values(array_unique(array_map('strtoupper', (array)$args['countries']))));
+        update_post_meta($post_id, $this->meta_prefix.'priority', intval($args['priority']));
+        update_post_meta($post_id, $this->meta_prefix.'active', '1');
+        update_post_meta($post_id, $this->meta_prefix.'source', $args['source']);
+
+        return $post_id;
     }
 
     /**

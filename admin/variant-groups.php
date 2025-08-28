@@ -704,6 +704,23 @@ class RW_Geo_Variant_Groups_Admin {
         } else {
             $result = $mapping_crud->create($data);
         }
+
+        // Keep Rules in sync: if popup_id is set, ensure corresponding rule exists/updates
+        if (!is_wp_error($result) && $popup_id) {
+            if (class_exists('EGP_Geo_Rules')) {
+                $rules = EGP_Geo_Rules::get_instance();
+                if (method_exists($rules, 'save_or_update_rule')) {
+                    $rules->save_or_update_rule(array(
+                        'target_type' => 'popup',
+                        'target_id' => (string) $popup_id,
+                        'countries' => array($country_iso2),
+                        'priority' => 50,
+                        'title' => get_the_title($popup_id),
+                        'source' => 'groups'
+                    ));
+                }
+            }
+        }
         
         if (is_wp_error($result)) {
             wp_send_json_error($result->get_error_message());
