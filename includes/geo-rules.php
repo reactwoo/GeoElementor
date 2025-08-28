@@ -58,6 +58,7 @@ class EGP_Geo_Rules {
         add_action('wp_ajax_egp_get_target_options', array($this, 'ajax_get_target_options'));
         add_action('wp_ajax_egp_save_elementor_geo_rule', array($this, 'ajax_save_elementor_geo_rule'));
         add_action('wp_ajax_egp_remove_elementor_geo_rule', array($this, 'ajax_remove_elementor_geo_rule'));
+        add_action('wp_ajax_egp_get_rule_by_element', array($this, 'ajax_get_rule_by_element'));
         // No-public: internal conflict check helper via AJAX if needed later
     }
     
@@ -855,6 +856,40 @@ class EGP_Geo_Rules {
         
         $rules = get_posts($args);
         return !empty($rules) ? $rules[0] : null;
+    }
+
+    /**
+     * AJAX: Get rule details by Elementor element ID
+     */
+    public function ajax_get_rule_by_element() {
+        check_ajax_referer('egp_admin_nonce', 'nonce');
+
+        if (!current_user_can('edit_posts')) {
+            wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
+        }
+
+        $element_id = isset($_GET['element_id']) ? sanitize_text_field($_GET['element_id']) : '';
+        if (!$element_id) {
+            wp_send_json_error(__('Missing element_id', 'elementor-geo-popup'));
+        }
+
+        $rule = $this->get_elementor_geo_rule($element_id);
+        if (!$rule) {
+            wp_send_json_success(null);
+        }
+
+        $data = array(
+            'id' => $rule->ID,
+            'title' => $rule->post_title,
+            'type' => get_post_meta($rule->ID, $this->meta_prefix . 'target_type', true),
+            'target_id' => get_post_meta($rule->ID, $this->meta_prefix . 'target_id', true),
+            'countries' => get_post_meta($rule->ID, $this->meta_prefix . 'countries', true),
+            'priority' => get_post_meta($rule->ID, $this->meta_prefix . 'priority', true),
+            'active' => get_post_meta($rule->ID, $this->meta_prefix . 'active', true),
+            'tracking_id' => get_post_meta($rule->ID, $this->meta_prefix . 'tracking_id', true)
+        );
+
+        wp_send_json_success($data);
     }
 
     /**

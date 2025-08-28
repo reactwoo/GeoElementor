@@ -28,18 +28,35 @@
             }
 
             try {
-                // Check if we're in Elementor editor (modern API)
-                if (typeof elementor !== 'undefined' && elementor.getPreviewView && elementor.getPreviewView().isEditMode()) {
-                    this.setupElementorEditor();
-                } else if (typeof elementor !== 'undefined' && elementor.isEditMode && elementor.isEditMode()) {
-                    // Fallback for older versions
-                    this.setupElementorEditor();
-                } else {
-                    this.setupFrontend();
-                }
+                var self = this;
+                var tryEditor = function () {
+                    if (typeof elementor !== 'undefined') {
+                        try {
+                            var isEditor = false;
+                            if (elementor.getPreviewView && elementor.getPreviewView().isEditMode) {
+                                isEditor = !!elementor.getPreviewView().isEditMode();
+                            } else if (elementor.isEditMode && typeof elementor.isEditMode === 'function') {
+                                isEditor = !!elementor.isEditMode();
+                            }
+                            if (isEditor) {
+                                self.setupElementorEditor();
+                                self.isInitialized = true;
+                                console.log('[EGP] Popup Editor initialized successfully (editor)');
+                                return true;
+                            }
+                        } catch (e) {
+                            // swallow and retry as frontend
+                        }
+                    }
+                    return false;
+                };
 
-                this.isInitialized = true;
-                console.log('[EGP] Popup Editor initialized successfully');
+                // If not in editor, set up frontend
+                if (!tryEditor()) {
+                    this.setupFrontend();
+                    this.isInitialized = true;
+                    console.log('[EGP] Popup Editor initialized successfully (frontend)');
+                }
 
             } catch (error) {
                 console.error('[EGP] Error initializing popup editor:', error);
@@ -156,6 +173,30 @@
 
             // Bind events
             EGP_Popup_Editor_JS.bindGeoEvents(panel, model);
+
+            // Populate with existing rule (if any)
+            try {
+                $.get(ajaxurl, {
+                    action: 'egp_get_rule_by_element',
+                    element_id: model.get('id'),
+                    nonce: (window.egpEditor && egpEditor.nonce) || ''
+                }).done(function (resp) {
+                    if (resp && resp.success && resp.data) {
+                        // Auto-enable and fill countries
+                        panel.$el.find('#egp_enable_geo').prop('checked', true);
+                        panel.$el.find('#egp_geo_options').show();
+                        if (Array.isArray(resp.data.countries)) {
+                            panel.$el.find('#egp_countries').val(resp.data.countries);
+                        }
+                        // Add rule summary
+                        var summary = $('<div class="elementor-panel-field"><p class="description">Rule: ' + resp.data.title + ' (Priority ' + (resp.data.priority || 0) + ')</p></div>');
+                        $geoSection.append(summary);
+                        // Quick links
+                        var ruleLinks = $('<div class="elementor-panel-field"><a class="button button-small" target="_blank" href="' + (window.ajaxurl ? window.ajaxurl.replace('admin-ajax.php', 'post.php?post=' + resp.data.id + '&action=edit') : '#') + '">Edit Rule</a></div>');
+                        $geoSection.append(ruleLinks);
+                    }
+                });
+            } catch (e) { }
         },
 
         bindGeoEvents: function (panel, model) {
