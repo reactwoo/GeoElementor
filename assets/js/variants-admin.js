@@ -468,20 +468,30 @@
                             data: { action: 'rw_geo_search_countries', nonce: rwGeoVariants.nonce, q: query },
                             success: function (resp) {
                                 if (resp && resp.success && Array.isArray(resp.data)) {
-                                    var selected = $country.val();
-                                    $country.empty();
-                                    $country.append('<option value="">Select Country</option>');
+                                    var current = $country.val();
+                                    var isFocused = $country.is(':focus');
+                                    // Rebuild options with full results, preserve selection
+                                    var html = ['<option value="">Select Country</option>'];
                                     resp.data.forEach(function (item) {
-                                        var opt = $('<option/>').val(item.code).text(item.name);
-                                        $country.append(opt);
+                                        var sel = (current === item.code) ? ' selected' : '';
+                                        html.push('<option value="' + item.code + '"' + sel + '>' + item.name + '</option>');
                                     });
-                                    if (selected) {
-                                        $country.val(selected);
+                                    $country.html(html.join(''));
+                                    // Keep focus behavior natural
+                                    if (isFocused) {
+                                        $country.trigger('change');
                                     }
                                 }
                             }
                         });
                     }, 200);
+                });
+
+                // Initial load of full list on focus if empty options
+                $country.on('focus', function () {
+                    if ($country.find('option').length <= 1) {
+                        searchBox.trigger('input');
+                    }
                 });
             }
         },

@@ -449,19 +449,17 @@ class RW_Geo_Variant_Groups_Admin {
      * Get countries list
      */
     private function get_countries_list() {
-        // Prefer WooCommerce countries list if available for completeness
-        if (class_exists('WC_Countries')) {
-            try {
-                $wc_countries = new \WC_Countries();
-                $countries = $wc_countries->get_countries();
-                if (is_array($countries) && !empty($countries)) {
-                    return $countries;
-                }
-            } catch (\Exception $e) {
-                // fall back to static list below
+        // Load from bundled ISO-3166 list if available
+        $json_path = dirname(__DIR__) . '/assets/data/countries.json';
+        if (file_exists($json_path)) {
+            $contents = file_get_contents($json_path);
+            $decoded = json_decode($contents, true);
+            if (is_array($decoded) && !empty($decoded)) {
+                return $decoded;
             }
         }
 
+        // Fallback minimal list
         return array(
             'US' => 'United States',
             'GB' => 'United Kingdom',
@@ -543,10 +541,12 @@ class RW_Geo_Variant_Groups_Admin {
             if ($q === '' || strpos($code_str, $q_upper) !== false || strpos(strtolower($name_str), $q_lower) !== false) {
                 $results[] = array('code' => $code_str, 'name' => $name_str);
             }
-            if (count($results) >= 50) {
-                break;
-            }
         }
+
+        // Sort by name for better UX
+        usort($results, function($a, $b) {
+            return strcasecmp($a['name'], $b['name']);
+        });
 
         wp_send_json_success($results);
     }
