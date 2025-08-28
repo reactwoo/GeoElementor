@@ -59,6 +59,7 @@ class EGP_Geo_Rules {
         add_action('wp_ajax_egp_save_elementor_geo_rule', array($this, 'ajax_save_elementor_geo_rule'));
         add_action('wp_ajax_egp_remove_elementor_geo_rule', array($this, 'ajax_remove_elementor_geo_rule'));
         add_action('wp_ajax_egp_get_rule_by_element', array($this, 'ajax_get_rule_by_element'));
+        add_action('wp_ajax_egp_get_rule_by_popup', array($this, 'ajax_get_rule_by_popup'));
         // No-public: internal conflict check helper via AJAX if needed later
     }
     
@@ -889,6 +890,48 @@ class EGP_Geo_Rules {
             'tracking_id' => get_post_meta($rule->ID, $this->meta_prefix . 'tracking_id', true)
         );
 
+        wp_send_json_success($data);
+    }
+
+    /**
+     * AJAX: Get rule details by Popup post ID
+     */
+    public function ajax_get_rule_by_popup() {
+        check_ajax_referer('egp_admin_nonce', 'nonce');
+
+        if (!current_user_can('edit_posts')) {
+            wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
+        }
+
+        $popup_id = isset($_GET['popup_id']) ? intval($_GET['popup_id']) : 0;
+        if (!$popup_id) {
+            wp_send_json_error(__('Missing popup_id', 'elementor-geo-popup'));
+        }
+
+        $args = array(
+            'post_type' => $this->post_type,
+            'post_status' => 'any',
+            'meta_query' => array(
+                array('key' => $this->meta_prefix . 'target_type', 'value' => 'popup'),
+                array('key' => $this->meta_prefix . 'target_id', 'value' => (string) $popup_id),
+            ),
+            'posts_per_page' => 1
+        );
+        $rules = get_posts($args);
+        if (empty($rules)) {
+            wp_send_json_success(null);
+        }
+        $rule = $rules[0];
+        $data = array(
+            'id' => $rule->ID,
+            'title' => $rule->post_title,
+            'type' => get_post_meta($rule->ID, $this->meta_prefix . 'target_type', true),
+            'target_id' => get_post_meta($rule->ID, $this->meta_prefix . 'target_id', true),
+            'countries' => get_post_meta($rule->ID, $this->meta_prefix . 'countries', true),
+            'priority' => get_post_meta($rule->ID, $this->meta_prefix . 'priority', true),
+            'active' => get_post_meta($rule->ID, $this->meta_prefix . 'active', true),
+            'tracking_id' => get_post_meta($rule->ID, $this->meta_prefix . 'tracking_id', true)
+        );
         wp_send_json_success($data);
     }
 

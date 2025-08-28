@@ -188,24 +188,32 @@
 
             // Populate with existing rule (if any)
             try {
-                $.get(ajaxurl, {
-                    action: 'egp_get_rule_by_element',
-                    element_id: model.get('id'),
-                    nonce: (window.egpEditor && egpEditor.nonce) || ''
-                }).done(function (resp) {
+                var elementId = model && model.get ? model.get('id') : '';
+                var popupPostId = (model && model.get && model.get('settings') && model.get('settings').get) ? (model.get('settings').get('post_id') || '') : '';
+                var paramsByElement = { action: 'egp_get_rule_by_element', element_id: elementId, nonce: (window.egpEditor && egpEditor.nonce) || '' };
+                var paramsByPopup = { action: 'egp_get_rule_by_popup', popup_id: popupPostId, nonce: (window.egpEditor && egpEditor.nonce) || '' };
+
+                var applyRule = function (data) {
+                    panel.$el.find('#egp_enable_geo').prop('checked', true);
+                    panel.$el.find('#egp_geo_options').show();
+                    if (Array.isArray(data.countries)) {
+                        panel.$el.find('#egp_countries').val(data.countries);
+                    }
+                    var summary = $('<div class="elementor-panel-field"><p class="description">Rule: ' + data.title + ' (Priority ' + (data.priority || 0) + ')</p></div>');
+                    $geoSection.append(summary);
+                    var ruleLinks = $('<div class="elementor-panel-field"><a class="button button-small" target="_blank" href="' + (window.ajaxurl ? window.ajaxurl.replace('admin-ajax.php', 'post.php?post=' + data.id + '&action=edit') : '#') + '">Edit Rule</a></div>');
+                    $geoSection.append(ruleLinks);
+                };
+
+                $.get(ajaxurl, paramsByElement).done(function (resp) {
                     if (resp && resp.success && resp.data) {
-                        // Auto-enable and fill countries
-                        panel.$el.find('#egp_enable_geo').prop('checked', true);
-                        panel.$el.find('#egp_geo_options').show();
-                        if (Array.isArray(resp.data.countries)) {
-                            panel.$el.find('#egp_countries').val(resp.data.countries);
-                        }
-                        // Add rule summary
-                        var summary = $('<div class="elementor-panel-field"><p class="description">Rule: ' + resp.data.title + ' (Priority ' + (resp.data.priority || 0) + ')</p></div>');
-                        $geoSection.append(summary);
-                        // Quick links
-                        var ruleLinks = $('<div class="elementor-panel-field"><a class="button button-small" target="_blank" href="' + (window.ajaxurl ? window.ajaxurl.replace('admin-ajax.php', 'post.php?post=' + resp.data.id + '&action=edit') : '#') + '">Edit Rule</a></div>');
-                        $geoSection.append(ruleLinks);
+                        applyRule(resp.data);
+                    } else if (popupPostId) {
+                        $.get(ajaxurl, paramsByPopup).done(function (resp2) {
+                            if (resp2 && resp2.success && resp2.data) {
+                                applyRule(resp2.data);
+                            }
+                        });
                     }
                 });
             } catch (e) { }
