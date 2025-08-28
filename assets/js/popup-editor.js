@@ -16,10 +16,11 @@
 
             console.log('[EGP] Popup Editor initializing...');
 
-            // Wait for DOM to be ready
-            $(document).ready(function () {
-                EGP_Popup_Editor_JS.setupOnce();
-            });
+            // Wait for DOM and Elementor events
+            var self = this;
+            var boot = function () { self.setupOnce(); };
+            $(document).ready(boot);
+            $(window).on('elementor/init elementor/editor/init', boot);
         },
 
         setupOnce: function () {
@@ -51,11 +52,21 @@
                     return false;
                 };
 
-                // If not in editor, set up frontend
+                // Retry a few times before assuming frontend
                 if (!tryEditor()) {
-                    this.setupFrontend();
-                    this.isInitialized = true;
-                    console.log('[EGP] Popup Editor initialized successfully (frontend)');
+                    var attempts = 0;
+                    var maxAttempts = 10;
+                    var timer = setInterval(function () {
+                        attempts += 1;
+                        if (tryEditor() || attempts >= maxAttempts) {
+                            clearInterval(timer);
+                            if (!self.isInitialized) {
+                                self.setupFrontend();
+                                self.isInitialized = true;
+                                console.log('[EGP] Popup Editor initialized successfully (frontend)');
+                            }
+                        }
+                    }, 200);
                 }
 
             } catch (error) {
@@ -122,7 +133,8 @@
         },
 
         shouldUseFallbackPopups: function () {
-            return get_option && get_option('egp_use_fallback_popups', false);
+            // JS cannot call PHP get_option; rely on localized setting if provided
+            return !!(window.egpSettings && window.egpSettings.useFallbackPopups);
         },
 
         addGeoControls: function (panel, model) {
