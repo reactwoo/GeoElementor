@@ -286,11 +286,11 @@
                 };
 
                 if (popupPostId) {
-                    $.get(ajaxurl, paramsByPopup).done(function (resp) {
+                    $.post(egpEditor.ajaxUrl, paramsByPopup).done(function (resp) {
                         if (resp && resp.success && resp.data) {
                             applyRule(resp.data);
                         } else if (elementId) {
-                            $.get(ajaxurl, paramsByElement).done(function (resp2) {
+                            $.post(egpEditor.ajaxUrl, paramsByElement).done(function (resp2) {
                                 if (resp2 && resp2.success && resp2.data) {
                                     applyRule(resp2.data);
                                 }
@@ -298,7 +298,7 @@
                         }
                     });
                 } else if (elementId) {
-                    $.get(ajaxurl, paramsByElement).done(function (resp3) {
+                    $.post(egpEditor.ajaxUrl, paramsByElement).done(function (resp3) {
                         if (resp3 && resp3.success && resp3.data) {
                             applyRule(resp3.data);
                         }
@@ -385,27 +385,35 @@
             var isPopupDoc = (docType === 'popup' || model.get('elType') === 'popup');
             var targetType = isPopupDoc ? 'popup' : 'elementor';
             var targetId = isPopupDoc && popupPostId ? String(popupPostId) : String(model.get('id'));
+
             var ruleData = {
-                element_id: model.get('id'),
-                element_type: model.get('elType') || 'widget',
-                element_title: (model.get('settings') && model.get('settings').get('_title')) || 'Untitled Element',
                 target_type: targetType,
                 target_id: targetId,
                 countries: settings.egp_countries,
                 priority: settings.egp_priority,
-                tracking_id: settings.egp_tracking_id,
                 active: true,
-                source: 'elementor'
+                source: 'elementor',
+                title: (model.get('settings') && model.get('settings').get('_title')) || 'Elementor Geo Rule',
+                element_type: model.get('elType') || 'widget',
+                tracking_id: settings.egp_tracking_id
             };
 
-            // Send to backend to save
-            $.post(ajaxurl, {
+            // Send to backend to save using unified endpoint
+            $.post(egpEditor.ajaxUrl, {
                 action: 'egp_save_elementor_geo_rule',
-                rule_data: ruleData,
+                target_type: targetType,
+                target_id: targetId,
+                countries: settings.egp_countries,
+                priority: settings.egp_priority,
+                active: true,
+                source: 'elementor',
+                title: ruleData.title,
+                element_type: ruleData.element_type,
+                tracking_id: settings.egp_tracking_id,
                 nonce: egpEditor.nonce
             }, function (response) {
                 if (response.success) {
-                    console.log('Geo rule saved for element:', model.get('id'));
+                    console.log('Geo rule saved successfully:', response.data);
                 } else {
                     console.error('Failed to save geo rule:', response.data);
                 }
@@ -413,7 +421,7 @@
         },
 
         removeGeoRuleFromDatabase: function (model) {
-            $.post(ajaxurl, {
+            $.post(egpEditor.ajaxUrl, {
                 action: 'egp_remove_elementor_geo_rule',
                 element_id: model.get('id'),
                 nonce: egpEditor.nonce

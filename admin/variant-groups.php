@@ -686,7 +686,7 @@ class RW_Geo_Variant_Groups_Admin {
                 wp_send_json_error(__('Conflict: This Popup is already targeted by a Rule. Remove the Rule or choose a different target.', 'elementor-geo-popup'));
             }
         }
-
+        
         $data = array(
             'variant_id' => $variant_id,
             'country_iso2' => $country_iso2,
@@ -710,14 +710,15 @@ class RW_Geo_Variant_Groups_Admin {
             if (class_exists('EGP_Geo_Rules')) {
                 $rules = EGP_Geo_Rules::get_instance();
                 if (method_exists($rules, 'save_or_update_rule')) {
-                    $rules->save_or_update_rule(array(
-                        'target_type' => 'popup',
-                        'target_id' => (string) $popup_id,
-                        'countries' => array($country_iso2),
-                        'priority' => 50,
-                        'title' => get_the_title($popup_id),
-                        'source' => 'groups'
-                    ));
+                    $rules->save_or_update_rule(
+                        'popup',
+                        (string) $popup_id,
+                        array($country_iso2),
+                        50,
+                        true,
+                        'groups',
+                        get_the_title($popup_id)
+                    );
                 }
             }
         }

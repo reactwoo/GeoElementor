@@ -651,50 +651,32 @@ class EGP_Geo_Rules {
      */
     public function ajax_save_geo_rule() {
         check_ajax_referer('egp_admin_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('edit_posts')) {
             wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
         }
         
-        $rule_data = $_POST['rule_data'];
+        error_log('[EGP Debug] ajax_save_geo_rule called with: ' . print_r($_POST, true));
+
+        $target_type = sanitize_text_field($_POST['target_type'] ?? '');
+        $target_id = sanitize_text_field($_POST['target_id'] ?? '');
+        $countries = isset($_POST['countries']) ? array_map('sanitize_text_field', $_POST['countries']) : array();
+        $priority = intval($_POST['priority'] ?? 50);
+        $active = !empty($_POST['active']);
+        $title = sanitize_text_field($_POST['title'] ?? '');
+        $element_type = sanitize_text_field($_POST['element_type'] ?? '');
+        $tracking_id = sanitize_text_field($_POST['tracking_id'] ?? '');
+
+        error_log('[EGP Debug] Processed data: target_type=' . $target_type . ', target_id=' . $target_id . ', countries=' . implode(',', $countries));
+
+        $result = $this->save_or_update_rule($target_type, $target_id, $countries, $priority, $active, 'admin_rule', $title, $element_type, $tracking_id);
         
-        $post_data = array(
-            'post_title' => sanitize_text_field($rule_data['title']),
-            'post_type' => $this->post_type,
-            'post_status' => 'publish'
-        );
-        
-        if (isset($rule_data['id']) && !empty($rule_data['id'])) {
-            $post_data['ID'] = intval($rule_data['id']);
-            $post_id = wp_update_post($post_data);
+        if ($result['success']) {
+            error_log('[EGP Debug] Rule saved successfully: ' . $result['rule_id']);
+            wp_send_json_success($result);
         } else {
-            $post_id = wp_insert_post($post_data);
+            error_log('[EGP Debug] Rule save failed: ' . $result['error']);
+            wp_send_json_error($result['error']);
         }
-        
-        if (is_wp_error($post_id)) {
-            wp_send_json_error(__('Failed to save rule', 'elementor-geo-popup'));
-        }
-        
-        // Conflict check with Groups before saving target
-        $target_type = sanitize_text_field($rule_data['type']);
-        $target_id_raw = sanitize_text_field($rule_data['target_id']);
-        if (in_array($target_type, array('page','popup'), true) && ctype_digit((string) $target_id_raw)) {
-            if ($this->group_conflict_exists($target_type, intval($target_id_raw))) {
-                wp_send_json_error(__('Conflict: This element is already targeted by a Group. Remove the Group mapping or choose a different target.', 'elementor-geo-popup'));
-            }
-        }
-        
-        // Unified save to ensure consistency across sources
-        $this->save_or_update_rule(array(
-            'target_type' => $target_type,
-            'target_id' => $target_id_raw,
-            'countries' => array_map('sanitize_text_field', $rule_data['countries']),
-            'priority' => intval($rule_data['priority']),
-            'title' => get_the_title($post_id),
-            'source' => 'manual'
-        ));
-        
-        wp_send_json_success(array('id' => $post_id));
     }
     
     /**
@@ -767,62 +749,32 @@ class EGP_Geo_Rules {
      */
     public function ajax_save_elementor_geo_rule() {
         check_ajax_referer('egp_admin_nonce', 'nonce');
-        
         if (!current_user_can('edit_posts')) {
             wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
         }
         
-        $rule_data = $_POST['rule_data'];
-        
-        // Check if rule already exists
-        $existing_rule = $this->get_elementor_geo_rule($rule_data['element_id']);
-        
-        if ($existing_rule) {
-            // Update existing rule
-            $post_id = $existing_rule->ID;
-            $post_data = array(
-                'ID' => $post_id,
-                'post_title' => sanitize_text_field($rule_data['element_title']),
-                'post_content' => 'Elementor element geo targeting rule'
-            );
-            wp_update_post($post_data);
-        } else {
-            // Create new rule
-            $post_data = array(
-                'post_title' => sanitize_text_field($rule_data['element_title']),
-                'post_content' => 'Elementor element geo targeting rule',
-                'post_type' => $this->post_type,
-                'post_status' => 'publish'
-            );
-            $post_id = wp_insert_post($post_data);
-        }
-        
-        if (is_wp_error($post_id)) {
-            wp_send_json_error(__('Failed to save geo rule', 'elementor-geo-popup'));
-        }
-        
-        // Prefer popup targeting when the current document is a popup
-        $target_type = 'elementor';
-        $target_id = sanitize_text_field($rule_data['element_id']);
-        if (!empty($_POST['document_id'])) {
-            $doc_id = sanitize_text_field($_POST['document_id']);
-            $doc = get_post(intval($doc_id));
-            if ($doc && $doc->post_type === 'elementor_library' && get_post_meta($doc->ID, '_elementor_template_type', true) === 'popup') {
-                $target_type = 'popup';
-                $target_id = (string) $doc->ID;
-            }
-        }
+        error_log('[EGP Debug] ajax_save_elementor_geo_rule called with: ' . print_r($_POST, true));
 
-        $this->save_or_update_rule(array(
-            'target_type' => $target_type,
-            'target_id' => $target_id,
-            'countries' => array_map('sanitize_text_field', $rule_data['countries']),
-            'priority' => intval($rule_data['priority']),
-            'title' => sanitize_text_field($rule_data['element_title']),
-            'source' => 'elementor'
-        ));
+        $target_type = sanitize_text_field($_POST['target_type'] ?? '');
+        $target_id = sanitize_text_field($_POST['target_id'] ?? '');
+        $countries = isset($_POST['countries']) ? array_map('sanitize_text_field', $_POST['countries']) : array();
+        $priority = intval($_POST['priority'] ?? 50);
+        $active = !empty($_POST['active']);
+        $title = sanitize_text_field($_POST['title'] ?? '');
+        $element_type = sanitize_text_field($_POST['element_type'] ?? '');
+        $tracking_id = sanitize_text_field($_POST['tracking_id'] ?? '');
+
+        error_log('[EGP Debug] Processed data: target_type=' . $target_type . ', target_id=' . $target_id . ', countries=' . implode(',', $countries));
+
+        $result = $this->save_or_update_rule($target_type, $target_id, $countries, $priority, $active, 'elementor', $title, $element_type, $tracking_id);
         
-        wp_send_json_success(array('id' => $post_id));
+        if ($result['success']) {
+            error_log('[EGP Debug] Elementor rule saved successfully: ' . $result['rule_id']);
+            wp_send_json_success($result);
+        } else {
+            error_log('[EGP Debug] Elementor rule save failed: ' . $result['error']);
+            wp_send_json_error($result['error']);
+        }
     }
     
     /**
@@ -874,75 +826,90 @@ class EGP_Geo_Rules {
     }
 
     /**
+     * Get rule by target type and ID
+     */
+    public function get_rule_by_target($target_type, $target_id) {
+        $args = array(
+            'post_type' => $this->post_type,
+            'post_status' => 'any',
+            'meta_query' => array(
+                array('key' => $this->meta_prefix.'target_type', 'value' => $target_type),
+                array('key' => $this->meta_prefix.'target_id', 'value' => (string) $target_id)
+            ),
+            'posts_per_page' => 1
+        );
+        $rules = get_posts($args);
+        return !empty($rules) ? $rules[0] : null;
+    }
+
+    /**
      * Create or update a geo_rule for a specific target (popup/elementor)
      */
-    private function save_or_update_rule($args) {
-        $defaults = array(
-            'target_type' => '',
-            'target_id' => '',
-            'countries' => array(),
-            'priority' => 50,
-            'title' => '',
-            'source' => 'manual'
-        );
-        $args = wp_parse_args($args, $defaults);
-
-        if (empty($args['target_type']) || empty($args['target_id'])) {
-            return new WP_Error('invalid_target', 'Missing target_type or target_id');
+    public function save_or_update_rule($target_type, $target_id, $countries, $priority, $active, $source, $title, $element_type = null, $tracking_id = null) {
+        // Validate required fields
+        if (empty($target_type) || empty($target_id)) {
+            return array('success' => false, 'error' => 'Missing target_type or target_id');
         }
-
+        
         // Normalize popup: ensure it's an elementor_library popup
-        if ($args['target_type'] === 'popup') {
-            $post = get_post(intval($args['target_id']));
+        if ($target_type === 'popup') {
+            $post = get_post(intval($target_id));
             if (!$post || $post->post_type !== 'elementor_library') {
-                return new WP_Error('invalid_popup', 'Target is not a valid Elementor popup');
+                return array('success' => false, 'error' => 'Target is not a valid Elementor popup');
             }
             $tpl = get_post_meta($post->ID, '_elementor_template_type', true);
             if ($tpl !== 'popup') {
-                return new WP_Error('invalid_popup', 'Target is not an Elementor popup');
+                return array('success' => false, 'error' => 'Target is not an Elementor popup');
             }
-            if (empty($args['title'])) {
-                $args['title'] = $post->post_title ?: 'Popup #'.$post->ID;
+            if (empty($title)) {
+                $title = $post->post_title ?: 'Popup #'.$post->ID;
             }
         }
-
+        
         // Find existing rule by target
         $existing = get_posts(array(
             'post_type' => $this->post_type,
             'post_status' => 'any',
             'meta_query' => array(
-                array('key' => $this->meta_prefix.'target_type', 'value' => $args['target_type']),
-                array('key' => $this->meta_prefix.'target_id', 'value' => (string) $args['target_id'])
+                array('key' => $this->meta_prefix.'target_type', 'value' => $target_type),
+                array('key' => $this->meta_prefix.'target_id', 'value' => (string) $target_id)
             ),
             'fields' => 'ids',
             'posts_per_page' => 1
         ));
-
+        
         if (!empty($existing)) {
             $post_id = $existing[0];
-            if (!empty($args['title'])) {
-                wp_update_post(array('ID' => $post_id, 'post_title' => $args['title']));
+            if (!empty($title)) {
+                wp_update_post(array('ID' => $post_id, 'post_title' => $title));
             }
         } else {
             $post_id = wp_insert_post(array(
-                'post_title' => $args['title'] ?: ucfirst($args['target_type']).' '.$args['target_id'],
+                'post_title' => $title ?: ucfirst($target_type).' '.$target_id,
                 'post_type' => $this->post_type,
                 'post_status' => 'publish'
             ));
             if (is_wp_error($post_id)) {
-                return $post_id;
+                return array('success' => false, 'error' => 'Failed to create rule');
             }
         }
-
+        
         // Save meta
-        update_post_meta($post_id, $this->meta_prefix.'target_type', $args['target_type']);
-        update_post_meta($post_id, $this->meta_prefix.'target_id', (string) $args['target_id']);
-        update_post_meta($post_id, $this->meta_prefix.'countries', array_values(array_unique(array_map('strtoupper', (array)$args['countries']))));
-        update_post_meta($post_id, $this->meta_prefix.'priority', intval($args['priority']));
-        update_post_meta($post_id, $this->meta_prefix.'active', '1');
-        update_post_meta($post_id, $this->meta_prefix.'source', $args['source']);
-
-        return $post_id;
+        update_post_meta($post_id, $this->meta_prefix.'target_type', $target_type);
+        update_post_meta($post_id, $this->meta_prefix.'target_id', (string) $target_id);
+        update_post_meta($post_id, $this->meta_prefix.'countries', array_values(array_unique(array_map('strtoupper', (array)$countries))));
+        update_post_meta($post_id, $this->meta_prefix.'priority', intval($priority));
+        update_post_meta($post_id, $this->meta_prefix.'active', $active ? '1' : '0');
+        update_post_meta($post_id, $this->meta_prefix.'source', $source);
+        
+        if (!empty($element_type)) {
+            update_post_meta($post_id, $this->meta_prefix.'element_type', $element_type);
+        }
+        if (!empty($tracking_id)) {
+            update_post_meta($post_id, $this->meta_prefix.'tracking_id', $tracking_id);
+        }
+        
+        return array('success' => true, 'rule_id' => $post_id);
     }
 
     /**
@@ -950,21 +917,21 @@ class EGP_Geo_Rules {
      */
     public function ajax_get_rule_by_element() {
         check_ajax_referer('egp_admin_nonce', 'nonce');
-
+        
         if (!current_user_can('edit_posts')) {
             wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
         }
-
-        $element_id = isset($_GET['element_id']) ? sanitize_text_field($_GET['element_id']) : '';
+        
+        $element_id = isset($_POST['element_id']) ? sanitize_text_field($_POST['element_id']) : '';
         if (!$element_id) {
             wp_send_json_error(__('Missing element_id', 'elementor-geo-popup'));
         }
-
+        
         $rule = $this->get_elementor_geo_rule($element_id);
         if (!$rule) {
             wp_send_json_success(null);
         }
-
+        
         $data = array(
             'id' => $rule->ID,
             'title' => $rule->post_title,
@@ -975,7 +942,7 @@ class EGP_Geo_Rules {
             'active' => get_post_meta($rule->ID, $this->meta_prefix . 'active', true),
             'tracking_id' => get_post_meta($rule->ID, $this->meta_prefix . 'tracking_id', true)
         );
-
+        
         wp_send_json_success($data);
     }
 
@@ -984,16 +951,16 @@ class EGP_Geo_Rules {
      */
     public function ajax_get_rule_by_popup() {
         check_ajax_referer('egp_admin_nonce', 'nonce');
-
+        
         if (!current_user_can('edit_posts')) {
             wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
         }
-
-        $popup_id = isset($_GET['popup_id']) ? intval($_GET['popup_id']) : 0;
+        
+        $popup_id = isset($_POST['popup_id']) ? intval($_POST['popup_id']) : 0;
         if (!$popup_id) {
             wp_send_json_error(__('Missing popup_id', 'elementor-geo-popup'));
         }
-
+        
         $args = array(
             'post_type' => $this->post_type,
             'post_status' => 'any',
@@ -1061,10 +1028,33 @@ class EGP_Geo_Rules {
             true
         );
         
+        // Determine current Elementor document ID and type (best-effort)
+        $doc_id = 0;
+        if (!empty($_GET['elementor-preview'])) {
+            $doc_id = intval($_GET['elementor-preview']);
+        } elseif (!empty($_GET['post'])) {
+            $doc_id = intval($_GET['post']);
+        }
+        $doc_type = '';
+        $is_popup = false;
+        if ($doc_id) {
+            $p = get_post($doc_id);
+            if ($p && $p->post_type === 'elementor_library') {
+                $tpl = get_post_meta($p->ID, '_elementor_template_type', true);
+                if ($tpl === 'popup') {
+                    $doc_type = 'popup';
+                    $is_popup = true;
+                }
+            }
+        }
+        
         wp_localize_script('egp-editor', 'egpEditor', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('egp_admin_nonce'),
-            'isPro' => $this->is_pro_user()
+            'isPro' => $this->is_pro_user(),
+            'documentId' => $doc_id,
+            'documentType' => $doc_type,
+            'isPopup' => $is_popup
         ));
     }
     

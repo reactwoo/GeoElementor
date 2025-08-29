@@ -34,9 +34,10 @@
                     if (typeof elementor !== 'undefined') {
                         try {
                             var isEditor = false;
-                            if (elementor.getPreviewView && elementor.getPreviewView().isEditMode) {
-                                isEditor = !!elementor.getPreviewView().isEditMode();
-                            } else if (elementor.isEditMode && typeof elementor.isEditMode === 'function') {
+                            var previewView = (elementor.getPreviewView && typeof elementor.getPreviewView === 'function') ? elementor.getPreviewView() : null;
+                            if (previewView && typeof previewView.isEditMode === 'function') {
+                                isEditor = !!previewView.isEditMode();
+                            } else if (typeof elementor.isEditMode === 'function') {
                                 isEditor = !!elementor.isEditMode();
                             }
                             if (isEditor) {
