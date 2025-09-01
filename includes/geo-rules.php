@@ -268,7 +268,7 @@ class EGP_Geo_Rules {
             } else if (targetType === 'widget') {
                 html = '<select name="egp_target_id_select" id="egp_target_id_select" onchange="egpUpdateTargetId(this.value)">';
                 html += '<option value=""><?php _e('Select a widget', 'elementor-geo-popup'); ?></option>';
-                html += '<option value="all" ' + (selectedValue === 'all' ? 'selected' : '') + '><?php _e('All Widgets', 'elementor-geo-popup'); ?></option>';
+                html += '<option value="all" ' + (selectedValue == option.id ? 'selected' : '') + '><?php _e('All Widgets', 'elementor-geo-popup'); ?></option>';
                 options.forEach(function(option) {
                     html += '<option value="' + option.id + '" ' + (selectedValue == option.id ? 'selected' : '') + '>' + option.title + '</option>';
                 });
@@ -276,16 +276,80 @@ class EGP_Geo_Rules {
             }
             
             targetSelection.innerHTML = html;
+            
+            // If we have a selected value, set it in the dropdown and show the selection
+            if (selectedValue && selectedValue !== '') {
+                var selectElement = targetSelection.querySelector('select');
+                if (selectElement) {
+                    selectElement.value = selectedValue;
+                    // Update the display to show what's currently selected
+                    egpUpdateTargetId(selectedValue);
+                }
+            }
         }
         
         function egpUpdateTargetId(value) {
-            document.getElementById('egp_target_id').value = value;
+            var targetIdField = document.getElementById('egp_target_id');
+            targetIdField.value = value;
+            
+            // Debug: Log the update
+            if (window.console && console.log) {
+                console.log('EGP: Updated target ID to:', value);
+                console.log('EGP: Target ID field value is now:', targetIdField.value);
+            }
+            
+            // Update the display to show what was selected, but keep the dropdown for editing
+            var targetSelection = document.getElementById('egp_target_selection');
+            var currentSelect = targetSelection.querySelector('select');
+            if (currentSelect) {
+                // Update the select value
+                currentSelect.value = value;
+                
+                // Add a visual indicator of what's selected
+                var selectedIndicator = targetSelection.querySelector('.selected-indicator');
+                if (!selectedIndicator) {
+                    selectedIndicator = document.createElement('p');
+                    selectedIndicator.className = 'selected-indicator description';
+                    selectedIndicator.style.marginTop = '5px';
+                    selectedIndicator.style.fontWeight = 'bold';
+                    targetSelection.appendChild(selectedIndicator);
+                }
+                
+                var selectedOption = currentSelect.querySelector('option[value="' + value + '"]');
+                if (selectedOption) {
+                    selectedIndicator.innerHTML = '<?php _e('Currently selected:', 'elementor-geo-popup'); ?> <span style="color: #0073aa;">' + selectedOption.textContent + '</span>';
+                }
+            }
         }
         
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
-            if (document.getElementById('egp_target_type').value) {
+            var targetType = document.getElementById('egp_target_type').value;
+            var targetId = document.getElementById('egp_target_id').value;
+            if (targetType && targetId) {
+                // If we have both type and ID, load the options and show the current selection
                 egpUpdateTargetOptions();
+            }
+            
+            // Add form submit handler to ensure target_id is properly set
+            var form = document.querySelector('form#post');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    var targetType = document.getElementById('egp_target_type').value;
+                    var targetId = document.getElementById('egp_target_id').value;
+                    
+                    // Debug logging
+                    if (window.console && console.log) {
+                        console.log('EGP Form Submit - Target Type:', targetType, 'Target ID:', targetId);
+                    }
+                    
+                    // Ensure target_id is set if target_type is selected
+                    if (targetType && !targetId) {
+                        e.preventDefault();
+                        alert('<?php _e('Please select a target before saving.', 'elementor-geo-popup'); ?>');
+                        return false;
+                    }
+                });
             }
         });
         </script>
