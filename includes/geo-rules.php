@@ -61,6 +61,9 @@ class EGP_Geo_Rules {
         add_action('wp_ajax_egp_get_rule_by_element', array($this, 'ajax_get_rule_by_element'));
         add_action('wp_ajax_egp_get_rule_by_popup', array($this, 'ajax_get_rule_by_popup'));
         // No-public: internal conflict check helper via AJAX if needed later
+
+        // Sync: When an Elementor Popup is saved with geo targeting enabled, create/update a matching Rule
+        add_action('save_post_elementor_library', array($this, 'maybe_sync_rule_from_popup_settings'), 20, 3);
     }
     
     /**
@@ -909,7 +912,62 @@ class EGP_Geo_Rules {
             update_post_meta($post_id, $this->meta_prefix.'tracking_id', $tracking_id);
         }
         
+        // Keep Elementor Popup settings in sync so display logic and UI reflect Rule state
+        if ($target_type === 'popup') {
+            $popup_id = intval($target_id);
+            // Ensure this really is an Elementor Popup
+            $tpl_type = get_post_meta($popup_id, '_elementor_template_type', true);
+            if ($tpl_type === 'popup') {
+                $page_settings = get_post_meta($popup_id, '_elementor_page_settings', true);
+                if (!is_array($page_settings)) {
+                    $page_settings = array();
+                }
+                // Normalize countries to ISO2 uppercase
+                $normalized_countries = array_values(array_unique(array_map('strtoupper', (array) $countries)));
+                // Reflect rule active state in Elementor popup settings
+                $page_settings['egp_enable_geo_targeting'] = $active ? 'yes' : 'no';
+                // Only persist countries if enabled
+                if ($active) {
+                    $page_settings['egp_countries'] = $normalized_countries;
+                }
+                update_post_meta($popup_id, '_elementor_page_settings', $page_settings);
+            }
+        }
+
         return array('success' => true, 'rule_id' => $post_id);
+    }
+
+    /**
+     * If a Popup document is saved with geo targeting enabled, ensure a corresponding Rule exists.
+     */
+    public function maybe_sync_rule_from_popup_settings($post_id, $post, $update) {
+        // Basic guards
+        if (wp_is_post_autosave($post_id) || wp_is_post_revision($post_id)) {
+            return;
+        }
+        if (get_post_type($post_id) !== 'elementor_library') {
+            return;
+        }
+        // Only handle Elementor Pro Popups
+        $tpl_type = get_post_meta($post_id, '_elementor_template_type', true);
+        if ($tpl_type !== 'popup') {
+            return;
+        }
+        // Read Elementor Popup page settings
+        $page_settings = get_post_meta($post_id, '_elementor_page_settings', true);
+        if (!is_array($page_settings)) {
+            return;
+        }
+        $enabled = isset($page_settings['egp_enable_geo_targeting']) && $page_settings['egp_enable_geo_targeting'] === 'yes';
+        $countries = isset($page_settings['egp_countries']) && is_array($page_settings['egp_countries']) ? $page_settings['egp_countries'] : array();
+
+        // If enabled and countries provided, save or update a Rule to mirror these settings
+        if ($enabled && !empty($countries)) {
+            $title = get_the_title($post_id);
+            $normalized_countries = array_values(array_unique(array_map('strtoupper', (array) $countries)));
+            // Use medium priority default and mark active; source is 'elementor'
+            $this->save_or_update_rule('popup', (string) $post_id, $normalized_countries, 50, true, 'elementor', $title, 'popup');
+        }
     }
 
     /**
