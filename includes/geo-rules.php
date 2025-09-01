@@ -134,6 +134,11 @@ class EGP_Geo_Rules {
         $priority = get_post_meta($post->ID, $this->meta_prefix . 'priority', true);
         $active = get_post_meta($post->ID, $this->meta_prefix . 'active', true);
         
+        // Debug: Log what's being retrieved
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log("EGP Debug: Retrieved countries for rule {$post->ID}: " . print_r($countries, true));
+        }
+        
         if (!is_array($countries)) {
             $countries = array();
         }
@@ -369,6 +374,10 @@ class EGP_Geo_Rules {
         
         if (isset($_POST['egp_countries'])) {
             $countries = array_map('sanitize_text_field', $_POST['egp_countries']);
+            // Debug: Log what's being saved
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("EGP Debug: Saving countries for rule {$post_id}: " . print_r($countries, true));
+            }
             update_post_meta($post_id, $this->meta_prefix . 'countries', $countries);
         }
         
@@ -599,16 +608,75 @@ class EGP_Geo_Rules {
             $contents = file_get_contents($json_path);
             $decoded = json_decode($contents, true);
             if (is_array($decoded) && !empty($decoded)) {
-                return $decoded;
+                // Convert from array of objects to associative array
+                $countries = array();
+                foreach ($decoded as $country) {
+                    if (isset($country['code']) && isset($country['name'])) {
+                        $countries[$country['code']] = $country['name'];
+                    }
+                }
+                if (!empty($countries)) {
+                    return $countries;
+                }
             }
         }
 
-        // Fallback minimal list
+        // Fallback comprehensive list
         return array(
             'US' => 'United States',
             'GB' => 'United Kingdom',
             'CA' => 'Canada',
-            'AU' => 'Australia'
+            'AU' => 'Australia',
+            'DE' => 'Germany',
+            'FR' => 'France',
+            'IT' => 'Italy',
+            'ES' => 'Spain',
+            'NL' => 'Netherlands',
+            'BE' => 'Belgium',
+            'SE' => 'Sweden',
+            'NO' => 'Norway',
+            'DK' => 'Denmark',
+            'FI' => 'Finland',
+            'CH' => 'Switzerland',
+            'AT' => 'Austria',
+            'IE' => 'Ireland',
+            'NZ' => 'New Zealand',
+            'JP' => 'Japan',
+            'KR' => 'South Korea',
+            'CN' => 'China',
+            'IN' => 'India',
+            'BR' => 'Brazil',
+            'MX' => 'Mexico',
+            'AR' => 'Argentina',
+            'CL' => 'Chile',
+            'CO' => 'Colombia',
+            'PE' => 'Peru',
+            'VE' => 'Venezuela',
+            'ZA' => 'South Africa',
+            'EG' => 'Egypt',
+            'NG' => 'Nigeria',
+            'KE' => 'Kenya',
+            'MA' => 'Morocco',
+            'SA' => 'Saudi Arabia',
+            'AE' => 'United Arab Emirates',
+            'IL' => 'Israel',
+            'TR' => 'Turkey',
+            'RU' => 'Russia',
+            'PL' => 'Poland',
+            'CZ' => 'Czech Republic',
+            'HU' => 'Hungary',
+            'RO' => 'Romania',
+            'BG' => 'Bulgaria',
+            'HR' => 'Croatia',
+            'SI' => 'Slovenia',
+            'SK' => 'Slovakia',
+            'LT' => 'Lithuania',
+            'LV' => 'Latvia',
+            'EE' => 'Estonia',
+            'MT' => 'Malta',
+            'CY' => 'Cyprus',
+            'GR' => 'Greece',
+            'PT' => 'Portugal'
         );
     }
     
