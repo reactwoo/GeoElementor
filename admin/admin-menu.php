@@ -164,7 +164,14 @@ class EGP_Admin_Menu {
 			// Format countries
 			$countries_display = '';
 			if (is_array($countries) && !empty($countries)) {
-				$countries_display = implode(', ', array_slice($countries, 0, 3));
+				// Get country names from codes
+				$country_names = array();
+				foreach (array_slice($countries, 0, 3) as $code) {
+					$code = strtoupper(trim($code));
+					// Try to get full country name, fallback to code
+					$country_names[] = $this->get_country_name($code) ?: $code;
+				}
+				$countries_display = implode(', ', $country_names);
 				if (count($countries) > 3) {
 					$countries_display .= ' (+' . (count($countries) - 3) . ' more)';
 				}
@@ -234,6 +241,70 @@ class EGP_Admin_Menu {
 		</script>';
 		
 		echo '</div>';
+	}
+
+	/**
+	 * Get country name from ISO code
+	 */
+	private function get_country_name($code) {
+		$countries = array(
+			'US' => 'United States',
+			'GB' => 'United Kingdom',
+			'CA' => 'Canada',
+			'AU' => 'Australia',
+			'DE' => 'Germany',
+			'FR' => 'France',
+			'IT' => 'Italy',
+			'ES' => 'Spain',
+			'NL' => 'Netherlands',
+			'BE' => 'Belgium',
+			'SE' => 'Sweden',
+			'NO' => 'Norway',
+			'DK' => 'Denmark',
+			'FI' => 'Finland',
+			'CH' => 'Switzerland',
+			'AT' => 'Austria',
+			'IE' => 'Ireland',
+			'NZ' => 'New Zealand',
+			'JP' => 'Japan',
+			'KR' => 'South Korea',
+			'CN' => 'China',
+			'IN' => 'India',
+			'BR' => 'Brazil',
+			'MX' => 'Mexico',
+			'AR' => 'Argentina',
+			'CL' => 'Chile',
+			'CO' => 'Colombia',
+			'PE' => 'Peru',
+			'VE' => 'Venezuela',
+			'ZA' => 'South Africa',
+			'EG' => 'Egypt',
+			'NG' => 'Nigeria',
+			'KE' => 'Kenya',
+			'MA' => 'Morocco',
+			'SA' => 'Saudi Arabia',
+			'AE' => 'United Arab Emirates',
+			'IL' => 'Israel',
+			'TR' => 'Turkey',
+			'RU' => 'Russia',
+			'PL' => 'Poland',
+			'CZ' => 'Czech Republic',
+			'HU' => 'Hungary',
+			'RO' => 'Romania',
+			'BG' => 'Bulgaria',
+			'HR' => 'Croatia',
+			'SI' => 'Slovenia',
+			'SK' => 'Slovakia',
+			'LT' => 'Lithuania',
+			'LV' => 'Latvia',
+			'EE' => 'Estonia',
+			'MT' => 'Malta',
+			'CY' => 'Cyprus',
+			'GR' => 'Greece',
+			'PT' => 'Portugal'
+		);
+		
+		return isset($countries[$code]) ? $countries[$code] : null;
 	}
 
 	public function render_variants() {
