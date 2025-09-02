@@ -596,6 +596,9 @@ class EGP_Geo_Rules {
         if ($this->is_pro_user()) {
             $this->add_pro_tracking($geo_rules);
         }
+
+        // Add popup geo filter script to footer
+        $this->add_popup_geo_filter();
     }
     
     /**
@@ -1306,6 +1309,108 @@ class EGP_Geo_Rules {
      */
     public function register_dynamic_tags($dynamic_tags_manager) {
         // This will be implemented when we add widget targeting
+    }
+
+    /**
+     * Add popup geo filter script to footer
+     */
+    private function add_popup_geo_filter() {
+        if (is_admin()) {
+            return;
+        }
+
+        $user_country = $this->get_user_country();
+        
+        // Get all popups with geo-targeting enabled
+        $popups = get_posts(array(
+            'post_type' => 'elementor_library',
+            'post_status' => 'publish',
+            'meta_query' => array(
+                array(
+                    'key' => '_elementor_template_type',
+                    'value' => 'popup'
+                ),
+                array(
+                    'key' => '_elementor_page_settings',
+                    'value' => 'egp_enable_geo_targeting',
+                    'compare' => 'LIKE'
+                )
+            ),
+            'posts_per_page' => -1
+        ));
+        
+        $popup_data = array();
+        foreach ($popups as $popup) {
+            $page_settings = get_post_meta($popup->ID, '_elementor_page_settings', true);
+            if (is_array($page_settings) && isset($page_settings['egp_enable_geo_targeting']) && $page_settings['egp_enable_geo_targeting'] === 'yes') {
+                $countries = isset($page_settings['egp_countries']) ? $page_settings['egp_countries'] : array();
+                $popup_data[$popup->ID] = array(
+                    'id' => $popup->ID,
+                    'title' => $popup->post_title,
+                    'countries' => $countries
+                );
+            }
+        }
+        
+        if (empty($popup_data)) {
+            return;
+        }
+        
+        echo '<script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var userCountry = "' . esc_js($user_country) . '";
+            var popupData = ' . wp_json_encode($popup_data) . ';
+            
+            // Add geo-targeting as an additional condition to Elementor popups
+            if (typeof elementorFrontend !== "undefined") {
+                // Store original popup show method
+                var originalShowPopup = elementorFrontend.documents.manager.documents[0].showPopup;
+                
+                // Override the showPopup method to add geo-targeting check
+                elementorFrontend.documents.manager.documents[0].showPopup = function(popupId) {
+                    // Check if this popup has geo-targeting enabled
+                    if (popupData[popupId]) {
+                        var allowedCountries = popupData[popupId].countries;
+                        if (allowedCountries && allowedCountries.length > 0) {
+                            // Check if user\'s country is in the allowed list
+                            if (!allowedCountries.includes(userCountry.toUpperCase())) {
+                                // Country doesn\'t match - don\'t show the popup
+                                if (window.console && console.log) {
+                                    console.log("EGP: Popup " + popupId + " blocked - user country " + userCountry + " not in allowed list: " + allowedCountries.join(", "));
+                                }
+                                return false; // Prevent popup from showing
+                            }
+                        }
+                    }
+                    
+                    // Country check passed (or no geo-targeting) - proceed with original popup logic
+                    return originalShowPopup.call(this, popupId);
+                };
+                
+                // Also override the popup trigger method
+                var originalTriggerPopup = elementorFrontend.documents.manager.documents[0].triggerPopup;
+                elementorFrontend.documents.manager.documents[0].triggerPopup = function(popupId) {
+                    // Check if this popup has geo-targeting enabled
+                    if (popupData[popupId]) {
+                        var allowedCountries = popupData[popupId].countries;
+                        if (allowedCountries && allowedCountries.length > 0) {
+                            // Check if user\'s country is in the allowed list
+                            if (!allowedCountries.includes(userCountry.toUpperCase())) {
+                                // Country doesn\'t match - don\'t trigger the popup
+                                if (window.console && console.log) {
+                                    console.log("EGP: Popup " + popupId + " trigger blocked - user country " + userCountry + " not in allowed list: " + allowedCountries.join(", "));
+                                }
+                                return false; // Prevent popup from triggering
+                            }
+                        }
+                    }
+                    
+                    // Country check passed (or no geo-targeting) - proceed with original trigger logic
+                    return originalTriggerPopup.call(this, popupId);
+                };
+            }
+        });
+        </script>';
     }
 }
 
