@@ -850,7 +850,7 @@ class EGP_Geo_Rules {
     public function ajax_get_target_options() {
         check_ajax_referer('egp_admin_nonce', 'nonce');
 
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('edit_posts')) {
             wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
         }
 
@@ -866,6 +866,7 @@ class EGP_Geo_Rules {
             // Use Elementor Pro popup templates
             $popups = get_posts(array(
                 'post_type' => 'elementor_library',
+                'post_status' => array('publish','draft','private','inherit','future','pending'),
                 'meta_query' => array(
                     array(
                         'key' => '_elementor_template_type',
