@@ -250,7 +250,7 @@ class EGP_Geo_Rules {
             var html = '';
             
             if (targetType === 'page') {
-                html = '<select name="egp_target_id_select" id="egp_target_id_select" onchange="egpUpdateTargetId(this.value)">';
+                html = '<select name="egp_target_id_select" id="egp_target_id_select">';
                 html += '<option value=""><?php _e('Select a page', 'elementor-geo-popup'); ?></option>';
                 html += '<option value="all" ' + (selectedValue === 'all' ? 'selected' : '') + '><?php _e('All Pages', 'elementor-geo-popup'); ?></option>';
                 options.forEach(function(option) {
@@ -258,7 +258,7 @@ class EGP_Geo_Rules {
                 });
                 html += '</select>';
             } else if (targetType === 'popup') {
-                html = '<select name="egp_target_id_select" id="egp_target_id_select" onchange="egpUpdateTargetId(this.value)">';
+                html = '<select name="egp_target_id_select" id="egp_target_id_select">';
                 html += '<option value=""><?php _e('Select a popup', 'elementor-geo-popup'); ?></option>';
                 html += '<option value="all" ' + (selectedValue === 'all' ? 'selected' : '') + '><?php _e('All Popups', 'elementor-geo-popup'); ?></option>';
                 options.forEach(function(option) {
@@ -266,7 +266,7 @@ class EGP_Geo_Rules {
                 });
                 html += '</select>';
             } else if (targetType === 'widget') {
-                html = '<select name="egp_target_id_select" id="egp_target_id_select" onchange="egpUpdateTargetId(this.value)">';
+                html = '<select name="egp_target_id_select" id="egp_target_id_select">';
                 html += '<option value=""><?php _e('Select a widget', 'elementor-geo-popup'); ?></option>';
                 html += '<option value="all" ' + (selectedValue == option.id ? 'selected' : '') + '><?php _e('All Widgets', 'elementor-geo-popup'); ?></option>';
                 options.forEach(function(option) {
@@ -277,10 +277,15 @@ class EGP_Geo_Rules {
             
             targetSelection.innerHTML = html;
             
-            // If we have a selected value, set it in the dropdown and show the selection
-            if (selectedValue && selectedValue !== '') {
-                var selectElement = targetSelection.querySelector('select');
-                if (selectElement) {
+            // Now add the event listener to the newly created select element
+            var selectElement = targetSelection.querySelector('select');
+            if (selectElement) {
+                selectElement.addEventListener('change', function() {
+                    egpUpdateTargetId(this.value);
+                });
+                
+                // If we have a selected value, set it in the dropdown and show the selection
+                if (selectedValue && selectedValue !== '') {
                     selectElement.value = selectedValue;
                     // Update the display to show what's currently selected
                     egpUpdateTargetId(selectedValue);
@@ -326,9 +331,17 @@ class EGP_Geo_Rules {
         document.addEventListener('DOMContentLoaded', function() {
             var targetType = document.getElementById('egp_target_type').value;
             var targetId = document.getElementById('egp_target_id').value;
+            
+            // Debug logging
+            if (window.console && console.log) {
+                console.log('EGP DOM Ready - Target Type:', targetType, 'Target ID:', targetId);
+            }
+            
             if (targetType && targetId) {
                 // If we have both type and ID, load the options and show the current selection
-                egpUpdateTargetOptions();
+                setTimeout(function() {
+                    egpUpdateTargetOptions();
+                }, 100); // Small delay to ensure DOM is fully ready
             }
             
             // Add form submit handler to ensure target_id is properly set
