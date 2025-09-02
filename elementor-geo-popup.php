@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: Elementor Geo Popup
+ * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
- * Description: Trigger Elementor Pro Popups based on visitor IP/country using MaxMind GeoLite2. Deep integration with Elementor for geo-targeting popups.
+ * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration with MaxMind GeoLite2 database.
  * Version: 1.0.0
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
@@ -279,7 +279,7 @@ class ElementorGeoPopup {
      */
     public function elementor_missing_notice() {
         $message = sprintf(
-            __('Elementor Geo Popup requires %1$sElementor%2$s plugin to be installed and activated.', 'elementor-geo-popup'),
+            __('Geo Elementor requires %1$sElementor%2$s plugin to be installed and activated.', 'elementor-geo-popup'),
             '<a href="' . esc_url(admin_url('plugin-install.php?s=Elementor&tab=search&type=term')) . '">',
             '</a>'
         );
@@ -292,7 +292,7 @@ class ElementorGeoPopup {
      */
     public function elementor_pro_missing_notice() {
         $message = sprintf(
-            __('Elementor Geo Popup requires %1$sElementor Pro%2$s plugin to be installed and activated.', 'elementor-geo-popup'),
+            __('Geo Elementor requires %1$sElementor Pro%2$s plugin to be installed and activated.', 'elementor-geo-popup'),
             '<a href="' . esc_url(admin_url('plugin-install.php?s=Elementor+Pro&tab=search&type=term')) . '">',
             '</a>'
         );

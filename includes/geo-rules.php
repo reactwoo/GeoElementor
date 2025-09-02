@@ -502,6 +502,15 @@ class EGP_Geo_Rules {
         if (!get_post_meta($post_id, $this->meta_prefix . 'clicks', true)) {
             update_post_meta($post_id, $this->meta_prefix . 'clicks', 0);
         }
+        
+        // Sync with Elementor popup settings if this is a popup rule
+        if ($target_type === 'popup' && $posted_target_id !== null) {
+            $popup_id = intval($posted_target_id);
+            // Only sync if the target_id matches the popup_id
+            if ($popup_id > 0) {
+                $this->sync_rule_to_popup_settings($post_id, $popup_id);
+            }
+        }
     }
     
     /**

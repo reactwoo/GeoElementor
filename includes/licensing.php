@@ -366,7 +366,7 @@ class EGP_Licensing {
         
         ?>
         <div class="wrap">
-            <h1><?php _e('Elementor Geo Popup License', 'elementor-geo-popup'); ?></h1>
+            <h1><?php _e('Geo Elementor License', 'elementor-geo-popup'); ?></h1>
             
             <?php if (isset($_GET['license_updated'])) : ?>
                 <div class="notice notice-success is-dismissible">
@@ -618,7 +618,7 @@ class EGP_Licensing {
         $license_status = get_option('egp_license_status', '');
         
         if ($license_status === 'invalid' || $license_status === 'expired') {
-            $message = __('Your Elementor Geo Popup license is invalid or expired. Please <a href="%s">activate your license</a> to continue using all features.', 'elementor-geo-popup');
+            $message = __('Your Geo Elementor license is invalid or expired. Please <a href="%s">activate your license</a> to continue using all features.', 'elementor-geo-popup');
             $license_page_url = admin_url('admin.php?page=geo-elementor-license');
             
             echo '<div class="notice notice-error is-dismissible">';

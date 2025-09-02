@@ -1,6 +1,6 @@
-=== Elementor Geo Popup ===
+=== Geo Elementor ===
 Contributors: reactwoo
-Tags: elementor, popup, geolocation, geo-targeting, maxmind, country-specific, widget, globals
+Tags: elementor, popup, geolocation, geo-targeting, maxmind, country-specific, widget, globals, geo-rules, location-based
 Requires at least: 5.0
 Tested up to: 6.4
 Requires PHP: 7.4
@@ -8,14 +8,16 @@ Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Trigger Elementor Pro Popups based on visitor IP/country using MaxMind GeoLite2. Deep integration with Elementor for geo-targeting popups, widgets, and global settings.
+Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content with comprehensive geo rules management system.
 
 == Description ==
 
-**Elementor Geo Popup** is a powerful WordPress plugin that enables you to show different Elementor Pro Popups to visitors based on their geographical location. Using MaxMind's GeoLite2 database, the plugin automatically detects visitor countries and displays targeted popups accordingly.
+**Geo Elementor** is a comprehensive WordPress plugin that provides advanced geo-targeting capabilities for Elementor websites. Using MaxMind's GeoLite2 database, the plugin enables you to create sophisticated location-based rules for popups, pages, and content, with a powerful geo rules management system.
 
 = Key Features =
 
+* **Geo Rules Management**: Create and manage complex geo-targeting rules from a dedicated admin interface
+* **Multi-Target Support**: Target popups, pages, sections, and widgets with geo rules
 * **Geo-Targeted Popups**: Show specific popups to visitors from selected countries
 * **Geo Widget**: Dedicated Elementor widget for geo-targeting any content
 * **Global Settings Integration**: Apply geo-targeting to Elementor's global widgets, colors, and typography
@@ -27,16 +29,18 @@ Trigger Elementor Pro Popups based on visitor IP/country using MaxMind GeoLite2.
 * **Performance Optimized**: Cached geolocation results for better performance
 * **Analytics & Tracking**: Monitor popup performance by country
 * **Professional Licensing**: Integrated with reactwoo.com license server
+* **Two-Way Synchronization**: Manual rules sync with Elementor popup settings automatically
 
 = How It Works =
 
 1. **Setup**: Configure your MaxMind license key and preferred countries in the plugin settings
 2. **Database**: Download the latest GeoLite2 country database
-3. **Configure Popups**: Add geo-targeting rules to your Elementor popups
-4. **Use Geo Widget**: Drag the "Geo" widget into any Elementor design for content geo-targeting
-5. **Global Settings**: Apply geo-targeting to Elementor's global widgets, colors, and typography
-6. **Automatic Detection**: Plugin detects visitor countries and shows appropriate content
-7. **Analytics**: Track popup performance and visitor engagement by country
+3. **Create Geo Rules**: Use the Geo Rules admin interface to create targeting rules for popups, pages, or content
+4. **Configure Popups**: Add geo-targeting rules to your Elementor popups (manual or automatic sync)
+5. **Use Geo Widget**: Drag the "Geo" widget into any Elementor design for content geo-targeting
+6. **Global Settings**: Apply geo-targeting to Elementor's global widgets, colors, and typography
+7. **Automatic Detection**: Plugin detects visitor countries and shows appropriate content
+8. **Analytics**: Track popup performance and visitor engagement by country
 
 = Use Cases =
 
@@ -48,6 +52,7 @@ Trigger Elementor Pro Popups based on visitor IP/country using MaxMind GeoLite2.
 * **Content Personalization**: Use the Geo Widget to show different content blocks based on visitor location
 * **Global Branding**: Apply different colors, fonts, and styles to global elements based on geography
 * **Regional Navigation**: Show different navigation elements or CTAs based on visitor country
+* **Complex Targeting**: Create sophisticated rules that target multiple content types based on visitor location
 
 = Requirements =
 
@@ -59,11 +64,11 @@ Trigger Elementor Pro Popups based on visitor IP/country using MaxMind GeoLite2.
 
 == Installation ==
 
-1. Upload the plugin files to the `/wp-content/plugins/elementor-geo-popup` directory, or install the plugin through the WordPress plugins screen directly.
+1. Upload the plugin files to the `/wp-content/plugins/geo-elementor` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress
-3. Go to **Settings > Elementor Geo Popup** to configure your MaxMind license key
+3. Go to **Settings > Geo Elementor** to configure your MaxMind license key
 4. Download the GeoLite2 database using the "Update Database" button
-5. Edit your Elementor popups and configure geo-targeting rules in the new "Geo Targeting" section
+5. Create geo rules using the **Geo Elementor > Geo Rules** menu or edit your Elementor popups and configure geo-targeting rules in the new "Geo Targeting" section
 
 == Frequently Asked Questions ==
 
@@ -147,7 +152,7 @@ Yes, the plugin works on all devices and automatically detects mobile IP address
 == Upgrade Notice ==
 
 = 1.0.0 =
-Initial release of Elementor Geo Popup. This plugin requires Elementor Pro and a MaxMind GeoLite2 license key to function.
+Initial release of Geo Elementor. This plugin requires Elementor Pro and a MaxMind GeoLite2 license key to function.
 
 == Support ==
 
