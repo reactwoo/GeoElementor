@@ -434,17 +434,27 @@ class EGP_Geo_Rules {
             $target_type = get_post_meta($post_id, $this->meta_prefix . 'target_type', true);
         }
         
-        if (isset($_POST['egp_target_id'])) {
-            $target_id = sanitize_text_field($_POST['egp_target_id']);
-            // Only check numeric IDs
+        // Determine target_id from hidden field, with fallback to the visible select
+        $posted_target_id = null;
+        if (isset($_POST['egp_target_id']) && $_POST['egp_target_id'] !== '') {
+            $posted_target_id = sanitize_text_field($_POST['egp_target_id']);
+        } elseif (isset($_POST['egp_target_id_select']) && $_POST['egp_target_id_select'] !== '') {
+            $posted_target_id = sanitize_text_field($_POST['egp_target_id_select']);
+        }
+        
+        if ($posted_target_id !== null) {
+            $target_id = $posted_target_id;
+            // Only check numeric IDs for page/popup types
             if (in_array($target_type, array('page','popup'), true) && ctype_digit((string) $target_id)) {
                 if ($this->group_conflict_exists($target_type, intval($target_id))) {
-                    // Do not save conflicting target; mark inactive
+                    // Save the selection but mark rule inactive to surface the conflict clearly
+                    update_post_meta($post_id, $this->meta_prefix . 'target_id', $target_id);
                     update_post_meta($post_id, $this->meta_prefix . 'active', '0');
                 } else {
                     update_post_meta($post_id, $this->meta_prefix . 'target_id', $target_id);
                 }
             } else {
+                // Non-numeric or other types: just persist
                 update_post_meta($post_id, $this->meta_prefix . 'target_id', $target_id);
             }
         }
