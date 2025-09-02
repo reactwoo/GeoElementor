@@ -337,11 +337,11 @@ class EGP_Geo_Rules {
                 console.log('EGP DOM Ready - Target Type:', targetType, 'Target ID:', targetId);
             }
             
-            if (targetType && targetId) {
-                // If we have both type and ID, load the options and show the current selection
+            // If we have a target type (even without an ID), load options so user can select
+            if (targetType) {
                 setTimeout(function() {
                     egpUpdateTargetOptions();
-                }, 100); // Small delay to ensure DOM is fully ready
+                }, 50);
             }
             
             // Add form submit handler to ensure target_id is properly set
@@ -863,22 +863,42 @@ class EGP_Geo_Rules {
                 $options[] = array('id' => $page->ID, 'title' => $page->post_title);
             }
         } elseif ($target_type === 'popup') {
-            // Use Elementor Pro popup templates
-            $popups = get_posts(array(
-                'post_type' => 'elementor_library',
-                'post_status' => array('publish','draft','private','inherit','future','pending'),
-                'meta_query' => array(
-                    array(
-                        'key' => '_elementor_template_type',
-                        'value' => 'popup'
-                    )
-                ),
-                'posts_per_page' => -1,
-                'orderby' => 'title',
-                'order' => 'asc'
-            ));
-            foreach ($popups as $popup) {
-                $options[] = array('id' => $popup->ID, 'title' => $popup->post_title);
+            // Support multiple popup post types via filter; default to Elementor and a generic 'popup'
+            $popup_post_types = apply_filters('egp_popup_post_types', array('elementor_library', 'popup'));
+            $seen_ids = array();
+            foreach ($popup_post_types as $ppt) {
+                $args = array(
+                    'post_type' => $ppt,
+                    'post_status' => array('publish','draft','private','inherit','future','pending'),
+                    'posts_per_page' => -1,
+                    'orderby' => 'title',
+                    'order' => 'asc',
+                    'no_found_rows' => true,
+                    'cache_results' => false,
+                    'update_post_meta_cache' => false,
+                    'update_post_term_cache' => false,
+                    'fields' => 'ids'
+                );
+                // Only restrict by Elementor popup meta when querying elementor_library
+                if ($ppt === 'elementor_library') {
+                    $args['meta_query'] = array(
+                        array(
+                            'key' => '_elementor_template_type',
+                            'value' => 'popup'
+                        )
+                    );
+                }
+                $ids = get_posts($args);
+                if (!empty($ids)) {
+                    foreach ($ids as $pid) {
+                        if (isset($seen_ids[$pid])) continue;
+                        $seen_ids[$pid] = true;
+                        $options[] = array('id' => $pid, 'title' => get_the_title($pid));
+                    }
+                }
+            }
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[EGP Debug] ajax_get_target_options popups count: ' . count($options));
             }
         } elseif ($target_type === 'section') {
             // This part needs to be implemented to fetch sections from Elementor
