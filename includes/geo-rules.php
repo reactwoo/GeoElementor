@@ -356,11 +356,20 @@ class EGP_Geo_Rules {
                         console.log('EGP Form Submit - Target Type:', targetType, 'Target ID:', targetId);
                     }
                     
-                    // Ensure target_id is set if target_type is selected
+                    // If target type is selected but no target ID, try to get it from the dropdown
                     if (targetType && !targetId) {
-                        e.preventDefault();
-                        alert('<?php _e('Please select a target before saving.', 'elementor-geo-popup'); ?>');
-                        return false;
+                        var targetSelect = document.getElementById('egp_target_id_select');
+                        if (targetSelect && targetSelect.value) {
+                            document.getElementById('egp_target_id').value = targetSelect.value;
+                            if (window.console && console.log) {
+                                console.log('EGP Form Submit - Updated target_id to:', targetSelect.value);
+                            }
+                        } else {
+                            // Only prevent if no target is selected in dropdown
+                            e.preventDefault();
+                            alert('<?php _e('Please select a target before saving.', 'elementor-geo-popup'); ?>');
+                            return false;
+                        }
                     }
                 });
             }
