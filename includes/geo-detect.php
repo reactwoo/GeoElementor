@@ -502,14 +502,38 @@ class EGP_Geo_Detect {
                         var pid = parseInt(idAttr.replace(/\D+/g,'') || '0', 10);
                         if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] scan open popup element', pid); } catch(e){} }
                         if (pid && !shouldAllow(pid)){
-                            if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?> && window.console && console.log){ console.log('[EGP] closing disallowed already-open popup', pid); }
-                            if (window.elementorProFrontend && elementorProFrontend.modules && elementorProFrontend.modules.popup){
-                                try { elementorProFrontend.modules.popup.closePopup({ id: pid }); } catch(e){}
-                            }
-                            // Do not force styles; let Elementor handle closing for proper state and close button behavior
+                            if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?> && window.console && console.log){ console.log('[EGP] hiding disallowed popup element', pid); }
+                            // Hide non-matching popup elements without touching allowed ones
+                            el.style.display = 'none';
+                            el.style.visibility = 'hidden';
                         }
                     });
                 }catch(e){}
+            }
+
+            function observePopups(){
+                try {
+                    var observer = new MutationObserver(function(mutations){
+                        mutations.forEach(function(m){
+                            if (!m.addedNodes || !m.addedNodes.length) { return; }
+                            m.addedNodes.forEach(function(node){
+                                try {
+                                    if (!(node instanceof Element)) { return; }
+                                    if (node.matches && node.matches('.elementor-popup-modal, .dialog-widget')){
+                                        var idAttr = node.getAttribute('data-elementor-id') || node.id || '';
+                                        var pid = parseInt((idAttr || '').replace(/\D+/g,'') || '0', 10);
+                                        if (pid && !shouldAllow(pid)){
+                                            if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?> && window.console && console.log){ console.log('[EGP] observer: hiding disallowed popup', pid); }
+                                            node.style.display = 'none';
+                                            node.style.visibility = 'hidden';
+                                        }
+                                    }
+                                } catch(e){}
+                            });
+                        });
+                    });
+                    observer.observe(document.documentElement || document.body, { childList: true, subtree: true });
+                } catch(e) { if (window.console && console.warn){ console.warn('[EGP] observer error', e); } }
             }
 
             function setupGuards(){
@@ -523,6 +547,7 @@ class EGP_Geo_Detect {
                 }
                 // Clean up any early rendered items and unhide UI
                 closeDisallowedIfOpen();
+                observePopups();
                 unhidePopups();
                 if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] guards active (pro+docs patched)'); } catch(e){} }
             }
