@@ -414,6 +414,15 @@ class EGP_Geo_Detect {
         <script type="text/javascript">
         (function(){
             var debug = <?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>;
+            // Mirror rules map in JS to know allowed vs disallowed for optional enhancements
+            var egpRules = <?php echo $json_rules ? $json_rules : '{}'; ?>;
+            function isAllowed(id){
+                try { id = parseInt(id,10); } catch(e){}
+                var r = egpRules && egpRules[id];
+                if (!r || !r.enabled) { return true; }
+                var t = String(<?php echo json_encode(strtoupper($country)); ?>);
+                return Array.isArray(r.countries) && r.countries.indexOf(t) !== -1;
+            }
             function getPopupIdFromNode(node){
                 try {
                     var el = node instanceof Element ? node : null;
@@ -477,6 +486,44 @@ class EGP_Geo_Detect {
                     }
                 } catch(e){}
             }, true);
+
+            // Ensure a close button exists for allowed popups (Elementor templates may omit it)
+            try {
+                var obs = new MutationObserver(function(muts){
+                    muts.forEach(function(m){
+                        if (!m.addedNodes || !m.addedNodes.length) { return; }
+                        m.addedNodes.forEach(function(node){
+                            try {
+                                if (!(node instanceof Element)) { return; }
+                                if (node.classList && node.classList.contains('elementor-popup-modal')){
+                                    var idAttr = node.getAttribute('data-elementor-id') || node.id || '';
+                                    var pid = parseInt((idAttr||'').replace(/\D+/g,'')||'0', 10);
+                                    if (!pid || !isAllowed(pid)) { return; }
+                                    // If no standard close button present, inject one
+                                    var hasClose = node.querySelector('.dialog-close-button, .elementor-button--close');
+                                    if (!hasClose){
+                                        if (debug && window.console) console.log('[EGP] injecting close button for popup', pid);
+                                        var btn = document.createElement('div');
+                                        btn.className = 'dialog-close-button';
+                                        btn.setAttribute('role','button');
+                                        btn.setAttribute('aria-label','Close');
+                                        btn.innerHTML = '<span aria-hidden="true">×</span>';
+                                        btn.style.position = 'absolute';
+                                        btn.style.top = '8px';
+                                        btn.style.right = '8px';
+                                        btn.style.cursor = 'pointer';
+                                        btn.addEventListener('click', function(){ ensureClose(pid); });
+                                        // Append into the widget container
+                                        var container = node.querySelector('.dialog-widget') || node;
+                                        container.appendChild(btn);
+                                    }
+                                }
+                            } catch(e){}
+                        });
+                    });
+                });
+                obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
+            } catch(e){}
         })();
         </script>
         <?php
