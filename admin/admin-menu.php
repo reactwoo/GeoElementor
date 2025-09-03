@@ -240,7 +240,7 @@ class EGP_Admin_Menu {
 		echo '<script>
 		function egpEditElementorRule(ruleId) {
 			try {
-				var row = document.querySelector("tr[id^='post-']");
+				var row = document.querySelector("tr[id^=\'post-\']");
 			} catch(e) {}
 			// Request the target popup ID via AJAX to build proper Elementor edit URL
 			var xhr = new XMLHttpRequest();
