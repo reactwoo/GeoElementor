@@ -14,6 +14,24 @@
     border-radius: 4px;
 }
 
+/* Modern settings layout */
+.egp-settings h1 {
+    margin-bottom: 12px;
+}
+
+.egp-section-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+}
+
+.egp-section-card h2 {
+    margin-top: 0;
+    font-size: 18px;
+}
 .egp-database-actions h2 {
     margin-top: 0;
     color: #23282d;

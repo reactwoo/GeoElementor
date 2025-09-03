@@ -239,15 +239,9 @@ class EGP_Admin_Settings {
             
             <form method="post" action="options.php">
                 <?php settings_fields('egp_settings'); ?>
-                <div class="egp-grid">
-                    <div class="egp-section-card">
-                        <h2><?php _e('General', 'elementor-geo-popup'); ?></h2>
-                        <?php do_settings_sections('egp_settings'); ?>
-                    </div>
-                    <div class="egp-section-card">
-                        <h2><?php _e('Preferred Countries', 'elementor-geo-popup'); ?></h2>
-                        <?php do_settings_sections('egp_preferred_countries_section'); ?>
-                    </div>
+                <div class="egp-section-card">
+                    <h2><?php _e('Settings', 'elementor-geo-popup'); ?></h2>
+                    <?php do_settings_sections('egp_settings'); ?>
                 </div>
                 <?php submit_button(); ?>
             </form>
