@@ -65,6 +65,10 @@ class EGP_Geo_Rules {
 
         // Sync: When an Elementor Popup is saved with geo targeting enabled, create/update a matching Rule
         add_action('save_post_elementor_library', array($this, 'maybe_sync_rule_from_popup_settings'), 20, 3);
+
+        // Cleanup: When a Geo Rule is deleted or trashed, disable geo-targeting on linked popup
+        add_action('before_delete_post', array($this, 'maybe_disable_popup_on_rule_delete'));
+        add_action('trashed_post', array($this, 'maybe_disable_popup_on_rule_delete'));
     }
     
     /**
@@ -1236,6 +1240,39 @@ class EGP_Geo_Rules {
         );
         
         wp_send_json_success($data);
+    }
+
+    /**
+     * Disable popup geo settings when a geo rule is removed
+     */
+    public function maybe_disable_popup_on_rule_delete($post_id) {
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== $this->post_type) {
+            return;
+        }
+        $target_type = get_post_meta($post_id, $this->meta_prefix . 'target_type', true);
+        $target_id = get_post_meta($post_id, $this->meta_prefix . 'target_id', true);
+        if ($target_type !== 'popup' || empty($target_id)) {
+            return;
+        }
+        $popup_id = intval($target_id);
+        if ($popup_id <= 0) {
+            return;
+        }
+        $tpl = get_post_meta($popup_id, '_elementor_template_type', true);
+        if ($tpl !== 'popup') {
+            return;
+        }
+        $page_settings = get_post_meta($popup_id, '_elementor_page_settings', true);
+        if (!is_array($page_settings)) {
+            $page_settings = array();
+        }
+        $page_settings['egp_enable_geo_targeting'] = 'no';
+        unset($page_settings['egp_countries']);
+        update_post_meta($popup_id, '_elementor_page_settings', $page_settings);
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log("EGP Debug: Disabled geo-targeting on popup {$popup_id} due to rule {$post_id} deletion");
+        }
     }
 
     /**
