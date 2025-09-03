@@ -90,28 +90,28 @@ class EGP_Admin_Settings {
         // Add settings sections
         add_settings_section(
             'egp_maxmind_section',
-            __('MaxMind Integration', 'elementor-geo-popup'),
+            '',
             array($this, 'render_maxmind_section'),
             'egp_settings_maxmind'
         );
         
         add_settings_section(
             'egp_general_section',
-            __('General Settings', 'elementor-geo-popup'),
+            '',
             array($this, 'render_general_section'),
             'egp_settings_general'
         );
         
         add_settings_section(
             'egp_preferred_countries_section',
-            __('Preferred Countries', 'elementor-geo-popup'),
+            '',
             array($this, 'render_preferred_countries_section'),
             'egp_settings_preferred'
         );
         
         add_settings_section(
             'egp_database_section',
-            __('Database Management', 'elementor-geo-popup'),
+            '',
             array($this, 'render_database_section'),
             'egp_settings_database'
         );
