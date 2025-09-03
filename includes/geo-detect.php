@@ -518,6 +518,12 @@ class EGP_Geo_Detect {
                     } catch(e){}
                 } catch(e){}
             }
+            if (!window.__egpCloseHandlersAttached) { window.__egpCloseHandlersAttached = true; }
+            var __egpLastClose = { pid: null, ts: 0 };
+            function __egpShouldHandle(pid){
+                try { var now = Date.now(); if (__egpLastClose.pid === pid && (now - __egpLastClose.ts) < 300) { return false; } __egpLastClose.pid = pid; __egpLastClose.ts = now; return true; } catch(e){ return true; }
+            }
+
             document.addEventListener('click', function(evt){
                 try {
                     var t = evt.target;
@@ -526,6 +532,7 @@ class EGP_Geo_Detect {
                     var isOverlay = t.classList && (t.classList.contains('dialog-overlay') || t.classList.contains('elementor-popup-modal-overlay'));
                     if (isCloseBtn || isOverlay){
                         var pid = getPopupIdFromNode(t) || getActivePopupId();
+                        if (!__egpShouldHandle(pid)) { return; }
                         if (debug && window.console) console.log('[EGP] close intent detected; pid=', pid);
                         ensureClose(pid);
                         setTimeout(function(){ var active = getActivePopupId(); if (active === pid) { hardClose(pid); } }, 100);
@@ -541,7 +548,7 @@ class EGP_Geo_Detect {
                             var open = document.querySelector('.elementor-popup-modal');
                             if (open) { pid = getPopupIdFromNode(open); }
                         }
-                        if (pid) { ensureClose(pid); if (debug && window.console) console.log('[EGP] ESC close intent; pid=', pid); setTimeout(function(){ var active = getActivePopupId(); if (active === pid) { hardClose(pid); } }, 100); pollAndHardClose(pid); }
+                        if (pid && __egpShouldHandle(pid)) { ensureClose(pid); if (debug && window.console) console.log('[EGP] ESC close intent; pid=', pid); setTimeout(function(){ var active = getActivePopupId(); if (active === pid) { hardClose(pid); } }, 100); pollAndHardClose(pid); }
                     }
                 } catch(e){}
             }, true);
