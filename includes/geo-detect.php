@@ -384,7 +384,30 @@ class EGP_Geo_Detect {
         $preferred = get_option('egp_preferred_countries', array('US','CA','GB'));
         if (!is_array($preferred)) { $preferred = array(); }
         $preferred = array_map('strtoupper', $preferred);
-        // Server-side CSS guard removed to avoid interfering with native close behavior; use JS only
+        // Server-side CSS guard: hide popups that do not include this country (non-invasive, does not affect allowed popups)
+        $disallowed = array();
+        foreach ($rules as $pid => $rule) {
+            if (!isset($rule['enabled']) || !$rule['enabled']) {
+                continue;
+            }
+            $countries = isset($rule['countries']) && is_array($rule['countries']) ? array_map('strtoupper', $rule['countries']) : array();
+            if (!in_array($country, $countries, true)) {
+                $disallowed[] = (int) $pid;
+            }
+        }
+        if (get_option('egp_debug_mode')) {
+            error_log('EGP: Rule IDs: ' . implode(',', array_keys($rules)) . ' | Disallowed for ' . $country . ': ' . (empty($disallowed) ? '(none)' : implode(',', $disallowed)));
+        }
+        if (!empty($disallowed)) {
+            echo '<style id="egp-popup-css-guard">';
+            foreach ($disallowed as $pid) {
+                $pid = (int) $pid;
+                echo '.elementor-popup-modal[data-elementor-id="' . $pid . '"],.dialog-widget[data-elementor-id="' . $pid . '"],#elementor-popup-modal-' . $pid . '{display:none!important;visibility:hidden!important;}';
+            }
+            echo '</style>';
+        }
+        // Only CSS guard is needed; skip JS guard to avoid lifecycle conflicts
+        return;
         ?>
         <script type="text/javascript">
         (function(){
