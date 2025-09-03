@@ -203,6 +203,8 @@ class EGP_Admin_Settings {
             EGP_VERSION,
             true
         );
+        // Ensure jQuery UI tooltip is available for admin.js if used
+        wp_enqueue_script('jquery-ui-tooltip');
         
         wp_enqueue_style(
             'egp-admin-style',
