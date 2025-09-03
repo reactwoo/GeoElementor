@@ -418,9 +418,39 @@ class EGP_Geo_Detect {
                 } catch(e) {}
                 return null;
             }
-            // Do not attach jQuery event bus interceptions; rely on patching only to avoid conflicts with close buttons
+            // Do not attach jQuery event bus interceptions; prefer a minimal showPopup patch
 
-            // We do NOT patch showPopup anymore to avoid any lifecycle conflicts.
+            function getPidFromArgs(args){
+                try {
+                    if (!args) { return null; }
+                    if (typeof args === 'number') { return args; }
+                    if (args.id) { return args.id; }
+                    if (args.popup && args.popup.id) { return args.popup.id; }
+                } catch(e) {}
+                return null;
+            }
+
+            function patchShow(){
+                try {
+                    var mod = window.elementorProFrontend && window.elementorProFrontend.modules && window.elementorProFrontend.modules.popup;
+                    if (mod && typeof mod.showPopup === 'function' && !mod.__egpPatched) {
+                        if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] patching showPopup (safe)'); } catch(e){} }
+                        var originalShow = mod.showPopup;
+                        mod.showPopup = function(){
+                            var pid = getPidFromArgs(arguments[0]);
+                            if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] showPopup?', pid, arguments[0]); } catch(e){} }
+                            if (pid && !shouldAllow(pid)){
+                                if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?> && window.console && console.log){ console.log('[EGP] blocked showPopup', pid, 'for country', egpCountry); }
+                                return; // block disallowed
+                            }
+                            return originalShow.apply(this, arguments);
+                        };
+                        mod.__egpPatched = true;
+                        return true;
+                    }
+                } catch(e) { if (window.console && console.warn){ console.warn('[EGP] guard patch error', e); } }
+                return false;
+            }
             function unhidePopups(){
                 if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] unhidePopups'); } catch(e){} }
                 if (cssHider && cssHider.parentNode){ cssHider.parentNode.removeChild(cssHider); }
@@ -448,28 +478,15 @@ class EGP_Geo_Detect {
 
             function setupGuards(){
                 if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] setupGuards start'); } catch(e){} }
-                // Attach safe listeners that only close disallowed popups after they open, without preventing default
-                try {
-                    var $w = window.jQuery ? window.jQuery(window) : null;
-                    var $d = window.jQuery ? window.jQuery(document) : null;
-                    var onShow = function(evt, id, instance){
-                        var pid = (id && id.id) ? id.id : id;
-                        if(!pid){ pid = getPopupIdFromInstance(instance); }
-                        if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] (event) elementor/popup/show', pid); } catch(e){} }
-                        if (pid && !shouldAllow(pid)){
-                            if (window.elementorProFrontend && elementorProFrontend.modules && elementorProFrontend.modules.popup){
-                                try { elementorProFrontend.modules.popup.closePopup({ id: pid }); } catch(e){}
-                            }
-                            if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?> && window.console && console.log){ console.log('[EGP] closed disallowed popup via event', pid); }
-                        }
-                    };
-                    if ($w && typeof $w.on === 'function'){ $w.on('elementor/popup/show', onShow); }
-                    if ($d && typeof $d.on === 'function'){ $d.on('elementor/popup/show', onShow); }
-                } catch(e) { if (window.console && console.warn){ console.warn('[EGP] listener attach error', e); } }
+                // Ensure showPopup is patched (retry until ready)
+                if (!patchShow()) {
+                    setTimeout(setupGuards, 100);
+                    return;
+                }
                 // Clean up any early rendered items and unhide UI
                 closeDisallowedIfOpen();
                 unhidePopups();
-                if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] guards active (no patch)'); } catch(e){} }
+                if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] guards active (with safe show patch)'); } catch(e){} }
             }
 
             // Start as soon as possible
