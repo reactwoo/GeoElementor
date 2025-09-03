@@ -451,6 +451,21 @@ class EGP_Geo_Detect {
                 } catch(e) {}
                 return null;
             }
+            function pollAndHardClose(pid){
+                try {
+                    var tries = 0;
+                    var iv = setInterval(function(){
+                        tries++;
+                        var active = getActivePopupId();
+                        var modal = document.querySelector('.elementor-popup-modal[data-elementor-id="' + pid + '"]');
+                        if (!modal || active !== pid){ clearInterval(iv); return; }
+                        if (tries >= 10){ // ~1s
+                            hardClose(pid);
+                            clearInterval(iv);
+                        }
+                    }, 100);
+                } catch(e){}
+            }
             function ensureClose(pid){
                 try {
                     if (!pid) { return; }
@@ -500,6 +515,7 @@ class EGP_Geo_Detect {
                         if (debug && window.console) console.log('[EGP] close intent detected; pid=', pid);
                         ensureClose(pid);
                         setTimeout(function(){ var active = getActivePopupId(); if (active === pid) { hardClose(pid); } }, 150);
+                        pollAndHardClose(pid);
                     }
                 } catch(e){}
             }, true);
@@ -511,7 +527,7 @@ class EGP_Geo_Detect {
                             var open = document.querySelector('.elementor-popup-modal');
                             if (open) { pid = getPopupIdFromNode(open); }
                         }
-                        if (pid) { ensureClose(pid); if (debug && window.console) console.log('[EGP] ESC close intent; pid=', pid); setTimeout(function(){ var active = getActivePopupId(); if (active === pid) { hardClose(pid); } }, 150); }
+                        if (pid) { ensureClose(pid); if (debug && window.console) console.log('[EGP] ESC close intent; pid=', pid); setTimeout(function(){ var active = getActivePopupId(); if (active === pid) { hardClose(pid); } }, 150); pollAndHardClose(pid); }
                     }
                 } catch(e){}
             }, true);
