@@ -228,7 +228,7 @@ class EGP_Admin_Settings {
         }
         
         ?>
-        <div class="wrap">
+        <div class="wrap egp-settings">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
             
             <?php if (isset($_GET['settings-updated'])) : ?>
@@ -238,11 +238,18 @@ class EGP_Admin_Settings {
             <?php endif; ?>
             
             <form method="post" action="options.php">
-                <?php
-                settings_fields('egp_settings');
-                do_settings_sections('egp_settings');
-                submit_button();
-                ?>
+                <?php settings_fields('egp_settings'); ?>
+                <div class="egp-grid">
+                    <div class="egp-section-card">
+                        <h2><?php _e('General', 'elementor-geo-popup'); ?></h2>
+                        <?php do_settings_sections('egp_settings'); ?>
+                    </div>
+                    <div class="egp-section-card">
+                        <h2><?php _e('Preferred Countries', 'elementor-geo-popup'); ?></h2>
+                        <?php do_settings_sections('egp_preferred_countries_section'); ?>
+                    </div>
+                </div>
+                <?php submit_button(); ?>
             </form>
             
             <div class="egp-database-actions">
