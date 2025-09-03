@@ -211,7 +211,21 @@ class EGP_Admin_Menu {
 			echo '<td>' . esc_html($clicks) . '</td>';
 			echo '<td>';
 			if ($source === 'elementor') {
-				echo '<a href="#" onclick="egpEditElementorRule(' . $rule->ID . ')" class="button button-small">' . esc_html__('Edit in Elementor', 'elementor-geo-popup') . '</a> ';
+				$target_type_val = get_post_meta($rule->ID, 'egp_target_type', true);
+				$target_id_val = get_post_meta($rule->ID, 'egp_target_id', true);
+				$edit_url = '';
+				if ($target_type_val === 'popup' && !empty($target_id_val)) {
+					$popup_id_val = intval($target_id_val);
+					$tpl_val = get_post_meta($popup_id_val, '_elementor_template_type', true);
+					if ($tpl_val === 'popup') {
+						$edit_url = admin_url('post.php?post=' . $popup_id_val . '&action=elementor');
+					}
+				}
+				if ($edit_url) {
+					echo '<a href="' . esc_url($edit_url) . '" target="_blank" class="button button-small">' . esc_html__('Edit in Elementor', 'elementor-geo-popup') . '</a> ';
+				} else {
+					echo '<span class="button button-small" title="' . esc_attr__('Open this popup directly in Elementor from Templates > Popups.', 'elementor-geo-popup') . '" style="opacity:.6;cursor:not-allowed;">' . esc_html__('Edit in Elementor', 'elementor-geo-popup') . '</span> ';
+				}
 			} else {
 				echo '<a href="' . esc_url(get_edit_post_link($rule->ID)) . '" class="button button-small">' . esc_html__('Edit', 'elementor-geo-popup') . '</a> ';
 			}
