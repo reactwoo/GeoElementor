@@ -186,7 +186,13 @@ class EGP_Admin_Settings {
      * Enqueue admin scripts
      */
     public function enqueue_admin_scripts($hook) {
-        if ('settings_page_elementor-geo-popup' !== $hook) {
+        // Load styles on our top-level and sub pages
+        $allowed = array(
+            'toplevel_page_geo-elementor',
+            'geo-elementor_page_elementor-geo-popup',
+            'geo-elementor_page_geo-elementor-rules',
+        );
+        if (!in_array($hook, $allowed, true) && strpos($hook, 'geo-elementor_page_') === false) {
             return;
         }
         
