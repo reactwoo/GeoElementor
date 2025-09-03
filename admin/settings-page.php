@@ -92,28 +92,28 @@ class EGP_Admin_Settings {
             'egp_maxmind_section',
             __('MaxMind Integration', 'elementor-geo-popup'),
             array($this, 'render_maxmind_section'),
-            'egp_settings'
+            'egp_settings_maxmind'
         );
         
         add_settings_section(
             'egp_general_section',
             __('General Settings', 'elementor-geo-popup'),
             array($this, 'render_general_section'),
-            'egp_settings'
+            'egp_settings_general'
         );
         
         add_settings_section(
             'egp_preferred_countries_section',
             __('Preferred Countries', 'elementor-geo-popup'),
             array($this, 'render_preferred_countries_section'),
-            'egp_settings'
+            'egp_settings_preferred'
         );
         
         add_settings_section(
             'egp_database_section',
             __('Database Management', 'elementor-geo-popup'),
             array($this, 'render_database_section'),
-            'egp_settings'
+            'egp_settings_database'
         );
         
         // Add settings fields
@@ -121,7 +121,7 @@ class EGP_Admin_Settings {
             'egp_maxmind_license_key',
             __('MaxMind License Key', 'elementor-geo-popup'),
             array($this, 'render_license_key_field'),
-            'egp_settings',
+            'egp_settings_maxmind',
             'egp_maxmind_section'
         );
         
@@ -129,7 +129,7 @@ class EGP_Admin_Settings {
             'egp_auto_update',
             __('Auto Update Database', 'elementor-geo-popup'),
             array($this, 'render_auto_update_field'),
-            'egp_settings',
+            'egp_settings_maxmind',
             'egp_maxmind_section'
         );
         
@@ -137,7 +137,7 @@ class EGP_Admin_Settings {
             'egp_default_popup_id',
             __('Default Popup ID', 'elementor-geo-popup'),
             array($this, 'render_default_popup_field'),
-            'egp_settings',
+            'egp_settings_general',
             'egp_general_section'
         );
         
@@ -145,7 +145,7 @@ class EGP_Admin_Settings {
             'egp_fallback_behavior',
             __('Fallback Behavior', 'elementor-geo-popup'),
             array($this, 'render_fallback_field'),
-            'egp_settings',
+            'egp_settings_general',
             'egp_general_section'
         );
         
@@ -153,7 +153,7 @@ class EGP_Admin_Settings {
             'egp_debug_mode',
             __('Debug Mode', 'elementor-geo-popup'),
             array($this, 'render_debug_field'),
-            'egp_settings',
+            'egp_settings_general',
             'egp_general_section'
         );
 
@@ -169,7 +169,7 @@ class EGP_Admin_Settings {
             'egp_preferred_countries',
             __('Preferred Countries', 'elementor-geo-popup'),
             array($this, 'render_preferred_countries_field'),
-            'egp_settings',
+            'egp_settings_preferred',
             'egp_preferred_countries_section'
         );
 
@@ -177,7 +177,7 @@ class EGP_Admin_Settings {
             'egp_apply_preferred_to_untargeted',
             __('Apply preferred countries to untargeted popups', 'elementor-geo-popup'),
             array($this, 'render_apply_preferred_field'),
-            'egp_settings',
+            'egp_settings_preferred',
             'egp_preferred_countries_section'
         );
     }
@@ -240,8 +240,20 @@ class EGP_Admin_Settings {
             <form method="post" action="options.php">
                 <?php settings_fields('egp_settings'); ?>
                 <div class="egp-section-card">
-                    <h2><?php _e('Settings', 'elementor-geo-popup'); ?></h2>
-                    <?php do_settings_sections('egp_settings'); ?>
+                    <h2><?php _e('General', 'elementor-geo-popup'); ?></h2>
+                    <?php do_settings_sections('egp_settings_general'); ?>
+                </div>
+                <div class="egp-section-card">
+                    <h2><?php _e('MaxMind Integration', 'elementor-geo-popup'); ?></h2>
+                    <?php do_settings_sections('egp_settings_maxmind'); ?>
+                </div>
+                <div class="egp-section-card">
+                    <h2><?php _e('Preferred Countries', 'elementor-geo-popup'); ?></h2>
+                    <?php do_settings_sections('egp_settings_preferred'); ?>
+                </div>
+                <div class="egp-section-card">
+                    <h2><?php _e('Database Management', 'elementor-geo-popup'); ?></h2>
+                    <?php do_settings_sections('egp_settings_database'); ?>
                 </div>
                 <?php submit_button(); ?>
             </form>
