@@ -461,6 +461,23 @@ class EGP_Geo_Detect {
                     }, 0);
                 } catch(e){}
             }
+            function hardClose(pid){
+                try {
+                    if (!pid) { return; }
+                    var sel = '.elementor-popup-modal[data-elementor-id="' + pid + '"]';
+                    var modal = document.querySelector(sel);
+                    if (!modal) { return; }
+                    // 1) Try clicking native close button
+                    var btn = modal.querySelector('.dialog-close-button, .elementor-button--close');
+                    if (btn) { try { btn.click(); } catch(e){} }
+                    // 2) Hide via style as last resort
+                    modal.style.display = 'none';
+                    modal.style.visibility = 'hidden';
+                    // 3) Clean body state
+                    try { document.body.classList.remove('elementor-popup-modal-open'); } catch(e){}
+                    if (debug && window.console) console.log('[EGP] hardClose applied for', pid);
+                } catch(e){}
+            }
             document.addEventListener('click', function(evt){
                 try {
                     var t = evt.target;
@@ -471,6 +488,7 @@ class EGP_Geo_Detect {
                         var pid = getPopupIdFromNode(t) || getActivePopupId();
                         if (debug && window.console) console.log('[EGP] close intent detected; pid=', pid);
                         ensureClose(pid);
+                        setTimeout(function(){ var active = getActivePopupId(); if (active === pid) { hardClose(pid); } }, 150);
                     }
                 } catch(e){}
             }, true);
@@ -482,7 +500,7 @@ class EGP_Geo_Detect {
                             var open = document.querySelector('.elementor-popup-modal');
                             if (open) { pid = getPopupIdFromNode(open); }
                         }
-                        if (pid) { ensureClose(pid); if (debug && window.console) console.log('[EGP] ESC close intent; pid=', pid); }
+                        if (pid) { ensureClose(pid); if (debug && window.console) console.log('[EGP] ESC close intent; pid=', pid); setTimeout(function(){ var active = getActivePopupId(); if (active === pid) { hardClose(pid); } }, 150); }
                     }
                 } catch(e){}
             }, true);

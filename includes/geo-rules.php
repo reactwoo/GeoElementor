@@ -69,6 +69,7 @@ class EGP_Geo_Rules {
         // Cleanup: When a Geo Rule is deleted or trashed, disable geo-targeting on linked popup
         add_action('before_delete_post', array($this, 'maybe_disable_popup_on_rule_delete'));
         add_action('trashed_post', array($this, 'maybe_disable_popup_on_rule_delete'));
+        add_action('deleted_post', array($this, 'maybe_disable_popup_on_rule_delete'));
     }
     
     /**
@@ -1267,8 +1268,9 @@ class EGP_Geo_Rules {
         if (!is_array($page_settings)) {
             $page_settings = array();
         }
+        // Turn off and clear geo fields in a way Elementor UI reads properly
         $page_settings['egp_enable_geo_targeting'] = 'no';
-        unset($page_settings['egp_countries']);
+        $page_settings['egp_countries'] = array();
         update_post_meta($popup_id, '_elementor_page_settings', $page_settings);
         if (defined('WP_DEBUG') && WP_DEBUG) {
             error_log("EGP Debug: Disabled geo-targeting on popup {$popup_id} due to rule {$post_id} deletion");
