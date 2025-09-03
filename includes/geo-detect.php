@@ -439,27 +439,7 @@ class EGP_Geo_Detect {
                 } catch(e) {}
                 return null;
             }
-            // Intercept event bus shows
-            var $w = window.jQuery ? window.jQuery(window) : null;
-            var $d = window.jQuery ? window.jQuery(document) : null;
-            function onPopupShow(evt, id, instance){
-                    var pid = (id && id.id) ? id.id : id;
-                    if(!pid){ pid = getPopupIdFromInstance(instance); }
-                    if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] event: elementor/popup/show', pid); } catch(e){} }
-                    if(!shouldAllow(pid)){
-                        try { instance && instance.hide && instance.hide(); } catch(e){}
-                        if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?> && window.console && console.log){ console.log('[EGP] blocked popup', pid, 'for country', egpCountry); }
-                        if (evt && evt.preventDefault){ evt.preventDefault(); }
-                        return false;
-                    }
-                    if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] allowed popup via event', pid); } catch(e){} }
-            }
-            if ($w && typeof $w.on === 'function'){
-                $w.on('elementor/popup/show', onPopupShow);
-            }
-            if ($d && typeof $d.on === 'function'){
-                $d.on('elementor/popup/show', onPopupShow);
-            }
+            // Do not attach jQuery event bus interceptions; rely on patching only to avoid conflicts with close buttons
 
             function patchShow(){
                 try {
@@ -504,8 +484,7 @@ class EGP_Geo_Detect {
                             if (window.elementorProFrontend && elementorProFrontend.modules && elementorProFrontend.modules.popup){
                                 try { elementorProFrontend.modules.popup.closePopup({ id: pid }); } catch(e){}
                             }
-                            el.style.display = 'none';
-                            el.style.visibility = 'hidden';
+                            // Do not force styles; let Elementor handle closing for proper state and close button behavior
                         }
                     });
                 }catch(e){}
