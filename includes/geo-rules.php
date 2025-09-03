@@ -1390,6 +1390,13 @@ class EGP_Geo_Rules {
 
         $page_settings['egp_enable_geo_targeting'] = $active === '1' ? 'yes' : 'no';
         $page_settings['egp_countries'] = $normalized_countries;
+        // Ensure sane close behavior for Elementor popups
+        if (!isset($page_settings['prevent_close_on_background'])) {
+            $page_settings['prevent_close_on_background'] = '';
+        }
+        if (!isset($page_settings['prevent_close_on_esc'])) {
+            $page_settings['prevent_close_on_esc'] = '';
+        }
 
         $result = update_post_meta($popup_id, '_elementor_page_settings', $page_settings);
         
