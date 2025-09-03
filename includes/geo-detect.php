@@ -71,6 +71,10 @@ class EGP_Geo_Detect {
             // Inject guard to prevent non-matching popups from showing
             if (get_option('egp_debug_mode')) { error_log('EGP: Injecting head guard for country ' . $country); }
             $this->render_popup_guard_script($country);
+        } else {
+            // Inject only the JS guard (no CSS), so popups can still be closed and are filtered by country
+            if (get_option('egp_debug_mode')) { error_log('EGP: Injecting JS guard only for country ' . $country); }
+            $this->render_popup_guard_script($country);
         }
 
         // Optionally trigger a specifically matched popup (if you want auto-open behavior)
