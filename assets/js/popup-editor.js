@@ -160,18 +160,7 @@
                     <div class="elementor-panel-field">
                         <label class="elementor-panel-field-label">Target Countries</label>
                         <div class="elementor-panel-field-control">
-                            <select id="egp_countries" multiple="multiple" style="width: 100%; min-height: 80px;">
-                                <option value="US">United States</option>
-                                <option value="CA">Canada</option>
-                                <option value="GB">United Kingdom</option>
-                                <option value="DE">Germany</option>
-                                <option value="FR">France</option>
-                                <option value="AU">Australia</option>
-                                <option value="JP">Japan</option>
-                                <option value="BR">Brazil</option>
-                                <option value="IN">India</option>
-                                <option value="CN">China</option>
-                            </select>
+                            <select id="egp_countries" multiple="multiple" style="width: 100%; min-height: 120px;"></select>
                             <p class="description">Hold Ctrl/Cmd to select multiple countries</p>
                         </div>
                     </div>
@@ -183,6 +172,21 @@
             if ($popupLayoutSection.length) {
                 $popupLayoutSection.append($geoSection);
             }
+
+            // Populate countries list from server
+            try {
+                var params = { action: 'egp_get_countries', nonce: (window.egpEditor && egpEditor.nonce) || '' };
+                $.post(ajaxurl, params).done(function (resp) {
+                    if (resp && resp.success && resp.data) {
+                        var $sel = panel.$el.find('#egp_countries');
+                        $sel.empty();
+                        Object.keys(resp.data).forEach(function (code) {
+                            var name = resp.data[code];
+                            $sel.append('<option value="' + code + '">' + name + '</option>');
+                        });
+                    }
+                });
+            } catch (e) { }
 
             // Bind events
             EGP_Popup_Editor_JS.bindGeoEvents(panel, model);

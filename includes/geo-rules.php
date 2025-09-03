@@ -61,6 +61,7 @@ class EGP_Geo_Rules {
         add_action('wp_ajax_egp_get_rule_by_element', array($this, 'ajax_get_rule_by_element'));
         add_action('wp_ajax_egp_get_rule_by_popup', array($this, 'ajax_get_rule_by_popup'));
         add_action('wp_ajax_egp_get_rule_target', array($this, 'ajax_get_rule_target'));
+        add_action('wp_ajax_egp_get_countries', array($this, 'ajax_get_countries'));
         // No-public: internal conflict check helper via AJAX if needed later
 
         // Sync: When an Elementor Popup is saved with geo targeting enabled, create/update a matching Rule
@@ -824,6 +825,19 @@ class EGP_Geo_Rules {
             'GR' => 'Greece',
             'PT' => 'Portugal'
         );
+    }
+
+    /**
+     * AJAX: Provide full countries list for editor UIs
+     */
+    public function ajax_get_countries() {
+        check_ajax_referer('egp_admin_nonce', 'nonce');
+        if (!current_user_can('edit_posts')) {
+            wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
+        }
+        $countries = $this->get_countries_list();
+        asort($countries);
+        wp_send_json_success($countries);
     }
     
     /**
