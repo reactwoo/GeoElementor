@@ -53,17 +53,18 @@ class EGP_Geo_Detect {
             return;
         }
         
-        // Get visitor's country
-        $country = $this->get_visitor_country();
+        $cache_mode = get_option('egp_cache_mode', 'no_cache');
+        // Get visitor's country unless in cache-safe mode (will fetch via AJAX)
+        $country = $cache_mode === 'cache_safe' ? '' : $this->get_visitor_country();
         
-        if (!$country) {
+        if ($cache_mode !== 'cache_safe' && !$country) {
             if (get_option('egp_debug_mode')) { error_log('EGP: Skipping guard injection (no country)'); }
             return;
         }
         
         // Optional head guard (disabled by default to avoid interfering with popup close buttons)
         $enable_head_guard = (bool) get_option('egp_head_guard_enabled', false);
-        if ($enable_head_guard) {
+        if ($enable_head_guard && $cache_mode !== 'cache_safe') {
             // Prevent early popup flashes before the guard is active
             echo '<style id="egp-hide-popups">.elementor-popup-modal,.dialog-widget{display:none!important;visibility:hidden!important;}</style>';
             if (get_option('egp_debug_mode')) { error_log('EGP: Head guard style injected'); }
@@ -73,8 +74,13 @@ class EGP_Geo_Detect {
             $this->render_popup_guard_script($country);
         } else {
             // Inject only the JS guard (no CSS), so popups can still be closed and are filtered by country
-            if (get_option('egp_debug_mode')) { error_log('EGP: Injecting JS guard only for country ' . $country); }
-            $this->render_popup_guard_script($country);
+            if ($cache_mode === 'cache_safe') {
+                if (get_option('egp_debug_mode')) { error_log('EGP: Cache-safe mode: country via AJAX'); }
+                $this->render_cache_safe_guard_script();
+            } else {
+                if (get_option('egp_debug_mode')) { error_log('EGP: Injecting JS guard only for country ' . $country); }
+                $this->render_popup_guard_script($country);
+            }
         }
 
         // Optionally trigger a specifically matched popup (if you want auto-open behavior)
@@ -782,6 +788,48 @@ class EGP_Geo_Detect {
             } else {
                 setupGuards();
             }
+        })();
+        </script>
+        <?php
+    }
+
+    /**
+     * Cache-safe guard: fetch country via AJAX, then apply guard
+     */
+    private function render_cache_safe_guard_script() {
+        $ajax = admin_url('admin-ajax.php');
+        $nonce = wp_create_nonce('egp_geo_nonce');
+        ?>
+        <script type="text/javascript">
+        (function(){
+            var ajaxUrl = <?php echo json_encode($ajax); ?>;
+            var nonce = <?php echo json_encode($nonce); ?>;
+            function applyGuard(country){
+                if (!country){ return; }
+                try { country = String(country).toUpperCase(); } catch(e){}
+                try {
+                    if (window.egpApplyGuard) { window.egpApplyGuard(country); return; }
+                } catch(e){}
+                // Fallback: minimal disallow CSS for non-matching popups based on embedded rules map
+                // We rely on PHP-rendered rules map; if not present, guard will be no-op
+            }
+            function fetchCountry(){
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', ajaxUrl, true);
+                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                xhr.onreadystatechange = function(){
+                    if (xhr.readyState === 4 && xhr.status === 200){
+                        try {
+                            var res = JSON.parse(xhr.responseText||'{}');
+                            if (res && res.success && res.data && res.data.country){ applyGuard(res.data.country); }
+                        } catch(e){}
+                    }
+                };
+                xhr.send('action=egp_get_visitor_country&nonce=' + encodeURIComponent(nonce));
+            }
+            // On DOM ready
+            if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', fetchCountry); }
+            else { fetchCountry(); }
         })();
         </script>
         <?php

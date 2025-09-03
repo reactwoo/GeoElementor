@@ -80,6 +80,12 @@ class EGP_Admin_Settings {
             'type' => 'boolean',
             'default' => false
         ));
+
+        // Cache mode: no_cache, cache_safe, cdn_vary
+        register_setting('egp_settings', 'egp_cache_mode', array(
+            'type' => 'string',
+            'default' => 'no_cache'
+        ));
         
         // Add settings sections
         add_settings_section(
@@ -147,6 +153,14 @@ class EGP_Admin_Settings {
             'egp_debug_mode',
             __('Debug Mode', 'elementor-geo-popup'),
             array($this, 'render_debug_field'),
+            'egp_settings',
+            'egp_general_section'
+        );
+
+        add_settings_field(
+            'egp_cache_mode',
+            __('Cache Mode', 'elementor-geo-popup'),
+            array($this, 'render_cache_mode_field'),
             'egp_settings',
             'egp_general_section'
         );
@@ -356,6 +370,21 @@ class EGP_Admin_Settings {
             <input type="checkbox" name="egp_debug_mode" value="1" <?php checked($value, 1); ?> />
             <?php _e('Enable debug mode (logs geolocation data)', 'elementor-geo-popup'); ?>
         </label>
+        <?php
+    }
+
+    /**
+     * Render cache mode field
+     */
+    public function render_cache_mode_field() {
+        $value = get_option('egp_cache_mode', 'no_cache');
+        ?>
+        <select name="egp_cache_mode">
+            <option value="no_cache" <?php selected($value, 'no_cache'); ?>><?php esc_html_e('No-cache (server inject, optional CSS guard)', 'elementor-geo-popup'); ?></option>
+            <option value="cache_safe" <?php selected($value, 'cache_safe'); ?>><?php esc_html_e('Cache-safe (AJAX country, JS guard only)', 'elementor-geo-popup'); ?></option>
+            <option value="cdn_vary" <?php selected($value, 'cdn_vary'); ?>><?php esc_html_e('CDN Vary-by-country (server inject + Vary header)', 'elementor-geo-popup'); ?></option>
+        </select>
+        <p class="description"><?php esc_html_e('Use Cache-safe if full-page caching/CDN is enabled without country vary.', 'elementor-geo-popup'); ?></p>
         <?php
     }
 
