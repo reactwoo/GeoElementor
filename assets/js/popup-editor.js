@@ -186,7 +186,7 @@
                     } catch (e) { }
                 };
                 var tryJson = function () {
-                    var base = (window.egpEditor && egpEditor.assetsUrl) ? egpEditor.assetsUrl : '';
+                    var base = (window.egpPopupEditor && egpPopupEditor.assetsUrl) ? egpPopupEditor.assetsUrl : ((window.egpEditor && egpEditor.assetsUrl) ? egpEditor.assetsUrl : '');
                     var url = base ? (base + 'data/countries.json') : '';
                     if (!url && window.location && window.location.origin) {
                         url = window.location.origin + '/wp-content/plugins/geo-elementor/assets/data/countries.json';
@@ -200,9 +200,10 @@
                     });
                 };
                 try {
-                    var params = { action: 'egp_get_countries', nonce: (window.egpEditor && egpEditor.nonce) || '' };
-                    if (!window.ajaxurl || !params.nonce) { throw new Error('missing'); }
-                    $.post(ajaxurl, params).done(function (resp) {
+                    var params = { action: 'egp_get_countries', nonce: (window.egpPopupEditor && egpPopupEditor.nonce) || (window.egpEditor && egpEditor.nonce) || '' };
+                    var aj = (window.egpPopupEditor && egpPopupEditor.ajaxUrl) || (window.egpEditor && egpEditor.ajaxUrl) || window.ajaxurl;
+                    if (!aj || !params.nonce) { throw new Error('missing'); }
+                    $.post(aj, params).done(function (resp) {
                         if (resp && resp.success && resp.data) { fill(resp.data); }
                         else { tryJson(); }
                     }).fail(tryJson);
