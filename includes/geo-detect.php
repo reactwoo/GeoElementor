@@ -406,7 +406,60 @@ class EGP_Geo_Detect {
             }
             echo '</style>';
         }
-        // Only CSS guard is needed; skip JS guard to avoid lifecycle conflicts
+        // Add minimal close fallback to assist Elementor-created popups without altering allowed/disallowed logic
+        ?>
+        <script type="text/javascript">
+        (function(){
+            var debug = <?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>;
+            function getPopupIdFromNode(node){
+                try {
+                    var el = node instanceof Element ? node : null;
+                    while (el && el !== document.documentElement){
+                        if (el.classList && el.classList.contains('elementor-popup-modal')){
+                            var idAttr = el.getAttribute('data-elementor-id') || el.id || '';
+                            var pid = parseInt((idAttr||'').replace(/\D+/g,'')||'0', 10);
+                            return pid || null;
+                        }
+                        el = el.parentNode;
+                    }
+                } catch(e) {}
+                return null;
+            }
+            function ensureClose(pid){
+                try {
+                    if (!pid) { return; }
+                    var mod = window.elementorProFrontend && elementorProFrontend.modules && elementorProFrontend.modules.popup;
+                    if (!mod || typeof mod.closePopup !== 'function') { return; }
+                    setTimeout(function(){
+                        try { mod.closePopup({ id: pid }); if (debug && window.console) console.log('[EGP] fallback close invoked for', pid); } catch(e){}
+                    }, 0);
+                } catch(e){}
+            }
+            document.addEventListener('click', function(evt){
+                try {
+                    var t = evt.target;
+                    if (!t) { return; }
+                    var isCloseBtn = t.closest ? t.closest('.dialog-close-button, .elementor-button--close') : null;
+                    var isOverlay = t.classList && (t.classList.contains('dialog-overlay') || t.classList.contains('elementor-popup-modal-overlay'));
+                    if (isCloseBtn || isOverlay){
+                        var pid = getPopupIdFromNode(t);
+                        if (debug && window.console) console.log('[EGP] close intent detected; pid=', pid);
+                        ensureClose(pid);
+                    }
+                } catch(e){}
+            }, true);
+            document.addEventListener('keydown', function(evt){
+                try {
+                    if (evt.key === 'Escape' || evt.key === 'Esc' || evt.keyCode === 27){
+                        var open = document.querySelector('.elementor-popup-modal');
+                        if (open){ var pid = getPopupIdFromNode(open); ensureClose(pid); if (debug && window.console) console.log('[EGP] ESC close intent; pid=', pid); }
+                    }
+                } catch(e){}
+            }, true);
+        })();
+        </script>
+        <?php
+        // Only CSS guard plus close fallback is needed; skip other JS guards to avoid lifecycle conflicts
         return;
         ?>
         <script type="text/javascript">
