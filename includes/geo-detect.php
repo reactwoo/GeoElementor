@@ -480,8 +480,10 @@ class EGP_Geo_Detect {
             function hardClose(pid){
                 try {
                     if (!pid) { return; }
-                    var sel = '.elementor-popup-modal[data-elementor-id="' + pid + '"]';
-                    var modal = document.querySelector(sel);
+                    var selA = '.elementor-popup-modal[data-elementor-id="' + pid + '"]';
+                    var selB = '#elementor-popup-modal-' + pid;
+                    var selC = '.dialog-widget[data-elementor-id="' + pid + '"]';
+                    var modal = document.querySelector(selA) || document.querySelector(selB) || document.querySelector(selC);
                     if (!modal) { return; }
                     // 1) Try clicking native close button
                     var btn = modal.querySelector('.dialog-close-button, .elementor-button--close');
@@ -501,7 +503,12 @@ class EGP_Geo_Detect {
                     try { if (modal.parentNode) { modal.parentNode.removeChild(modal); } } catch(e){}
                     // 6) Restore scrolling in case Elementor locked it
                     try { document.documentElement.style.overflow=''; document.body.style.overflow=''; } catch(e){}
-                    if (debug && window.console) console.log('[EGP] hardClose applied for', pid);
+                    if (debug && window.console) console.log('[EGP] hardClose applied for', pid, 'selectors tried:', selA, selB, selC);
+                    // 7) Try internal APIs if available
+                    try {
+                        var mgr = window.elementorFrontend && elementorFrontend.documents && elementorFrontend.documents.manager && elementorFrontend.documents.manager.documents && elementorFrontend.documents.manager.documents[0];
+                        if (mgr && typeof mgr.closePopup === 'function') { mgr.closePopup(pid); }
+                    } catch(e){}
                 } catch(e){}
             }
             document.addEventListener('click', function(evt){
