@@ -477,6 +477,15 @@ class EGP_Geo_Detect {
                     // 3) Clean body state
                     try { document.body.classList.remove('elementor-popup-modal-open'); } catch(e){}
                     try { sessionStorage.setItem('egp_closed_'+pid, '1'); } catch(e){}
+                    // 4) Remove overlay/backdrop elements if present
+                    try {
+                        var overlays = document.querySelectorAll('.dialog-widget-overlay, .dialog-overlay, .elementor-popup-modal-overlay');
+                        overlays.forEach(function(ov){ ov.style.display='none'; ov.style.visibility='hidden'; if (ov.parentNode) { ov.parentNode.removeChild(ov); } });
+                    } catch(e){}
+                    // 5) Remove the modal node entirely to avoid reflows trapping focus
+                    try { if (modal.parentNode) { modal.parentNode.removeChild(modal); } } catch(e){}
+                    // 6) Restore scrolling in case Elementor locked it
+                    try { document.documentElement.style.overflow=''; document.body.style.overflow=''; } catch(e){}
                     if (debug && window.console) console.log('[EGP] hardClose applied for', pid);
                 } catch(e){}
             }
