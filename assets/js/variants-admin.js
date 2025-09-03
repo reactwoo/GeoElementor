@@ -13,17 +13,13 @@
     $(document).ready(function () {
         try {
             RW_Geo_Variants_Admin.init();
-            if (window.console && console.log) {
+            if (window.rwGeoVariants && rwGeoVariants.debug && window.console && console.log) {
                 console.log('[RW_Geo_Variants_Admin] Initialized', {
                     addMappingButtons: $('.add-mapping').length,
                     mappingRows: $('.mapping-row').length
                 });
             }
-        } catch (e) {
-            if (window.console && console.error) {
-                console.error('[RW_Geo_Variants_Admin] Init error:', e);
-            }
-        }
+        } catch (e) { }
     });
 
     /**
@@ -228,7 +224,7 @@
          */
         handleAddMapping: function (e) {
             e.preventDefault();
-            if (window.console && console.log) {
+            if (window.rwGeoVariants && rwGeoVariants.debug && window.console && console.log) {
                 console.log('[RW_Geo_Variants_Admin] Add mapping clicked');
             }
 
@@ -256,11 +252,7 @@
                     if ($tplRow.length) {
                         templateHtml = $tplRow.html();
                     }
-                } catch (err) {
-                    if (window.console && console.warn) {
-                        console.warn('[RW_Geo_Variants_Admin] Template unwrap failed:', err);
-                    }
-                }
+                } catch (err) { }
             })();
 
             // Generate unique ID for new mapping
@@ -273,7 +265,7 @@
             $newRow.css('display', 'block');
             $newRow.find('tr').css('display', 'table-row');
 
-            if (window.console && console.log) {
+            if (window.rwGeoVariants && rwGeoVariants.debug && window.console && console.log) {
                 console.log('[RW_Geo_Variants_Admin] Mapping row added', { id: newId, usedTemplate: !!templateHtml, htmlLen: (newHtml || '').length });
             }
 

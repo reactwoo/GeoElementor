@@ -83,6 +83,20 @@ class EGP_Geo_Detect {
             }
         }
 
+        // If fallback behavior is set to apply group rule, invoke variant router injection
+        $fallback = get_option('egp_fallback_behavior', 'show_to_all');
+        if ($fallback === 'apply_group_rule') {
+            if (class_exists('RW_Geo_Database')) {
+                try {
+                    $db = RW_Geo_Database::get_instance();
+                    $db->inject_frontend_content();
+                    if (get_option('egp_debug_mode')) { error_log('EGP: Applied group rule fallback injection'); }
+                } catch (\Throwable $e) {
+                    if (get_option('egp_debug_mode')) { error_log('EGP: Group rule injection error: ' . $e->getMessage()); }
+                }
+            }
+        }
+
         // Optionally trigger a specifically matched popup (if you want auto-open behavior)
         // $popup_id = $this->get_matching_popup($country);
         // if ($popup_id) {

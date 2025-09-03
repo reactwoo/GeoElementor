@@ -91,6 +91,7 @@ class RW_Geo_Variant_Groups_Admin {
         wp_localize_script('rw-geo-variants-admin', 'rwGeoVariants', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('rw_geo_variants_nonce'),
+            'debug' => (bool) get_option('egp_debug_mode'),
             'strings' => array(
                 'confirmDelete' => __('Are you sure you want to delete this group?', 'elementor-geo-popup'),
                 'confirmDeleteMapping' => __('Are you sure you want to delete this mapping?', 'elementor-geo-popup'),

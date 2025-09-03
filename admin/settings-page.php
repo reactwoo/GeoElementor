@@ -366,9 +366,9 @@ class EGP_Admin_Settings {
     public function render_fallback_field() {
         $value = get_option('egp_fallback_behavior');
         $options = array(
-            'show_to_all' => __('Show to all visitors', 'elementor-geo-popup'),
             'show_to_none' => __('Show to none', 'elementor-geo-popup'),
-            'show_default' => __('Show default popup', 'elementor-geo-popup')
+            'show_to_all' => __('Show to all visitors', 'elementor-geo-popup'),
+            'apply_group_rule' => __('Apply Group Rule', 'elementor-geo-popup'),
         );
         ?>
         <select name="egp_fallback_behavior">
