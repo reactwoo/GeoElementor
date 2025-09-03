@@ -262,7 +262,8 @@ class EGP_Popup_Editor {
         
         wp_localize_script('egp-popup-editor', 'egpPopupEditor', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('egp_popup_editor_nonce'),
+            'nonce' => wp_create_nonce('egp_admin_nonce'),
+            'assetsUrl' => EGP_PLUGIN_URL . 'assets/',
             'preferredCountries' => get_option('egp_preferred_countries', array('US','CA','GB')),
             'strings' => array(
                 'saving' => __('Saving geo targeting settings...', 'elementor-geo-popup'),
