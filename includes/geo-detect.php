@@ -456,10 +456,11 @@ class EGP_Geo_Detect {
                     var tries = 0;
                     var iv = setInterval(function(){
                         tries++;
-                        var active = getActivePopupId();
-                        var modal = document.querySelector('.elementor-popup-modal[data-elementor-id="' + pid + '"]');
-                        if (!modal || active !== pid){ clearInterval(iv); return; }
-                        if (tries >= 10){ // ~1s
+                        var modal = document.querySelector('.elementor-popup-modal[data-elementor-id="' + pid + '"]')
+                                  || document.querySelector('#elementor-popup-modal-' + pid)
+                                  || document.querySelector('.dialog-widget[data-elementor-id="' + pid + '"]');
+                        if (!modal){ clearInterval(iv); return; }
+                        if (tries >= 10){ // ~1s and modal still present
                             hardClose(pid);
                             clearInterval(iv);
                         }
