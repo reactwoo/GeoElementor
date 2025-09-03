@@ -1195,7 +1195,11 @@ class EGP_Geo_Rules {
             $title = get_the_title($post_id);
             $normalized_countries = array_values(array_unique(array_map('strtoupper', (array) $countries)));
             // Use medium priority default and mark active; source is 'elementor'
-            $this->save_or_update_rule('popup', (string) $post_id, $normalized_countries, 50, true, 'elementor', $title, 'popup');
+            $result = $this->save_or_update_rule('popup', (string) $post_id, $normalized_countries, 50, true, 'elementor', $title, 'popup');
+            // Align Elementor-created rules with manual path by syncing back to popup settings
+            if (is_array($result) && !empty($result['success']) && !empty($result['rule_id'])) {
+                $this->sync_rule_to_popup_settings(intval($result['rule_id']), intval($post_id));
+            }
         }
     }
 

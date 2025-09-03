@@ -360,6 +360,9 @@ class EGP_Geo_Detect {
                     continue;
                 }
                 if (isset($settings['egp_enable_geo_targeting']) && $settings['egp_enable_geo_targeting'] === 'yes') {
+                    if (get_option('egp_debug_mode')) {
+                        error_log('EGP: Popup ' . $popup_id . ' Elementor page settings: ' . print_r($settings, true));
+                    }
                     $countries = array();
                     if (!empty($settings['egp_countries']) && is_array($settings['egp_countries'])) {
                         foreach ($settings['egp_countries'] as $c) {
