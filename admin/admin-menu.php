@@ -222,21 +222,33 @@ class EGP_Admin_Menu {
 		echo '</tbody>';
 		echo '</table>';
 		
-		// Add JavaScript for Elementor rule editing
+		// Add JavaScript for Elementor rule editing: open Elementor editor for the target popup
 		echo '<script>
 		function egpEditElementorRule(ruleId) {
-			// Find the Elementor element and open it in editor
-			if (typeof elementor !== "undefined") {
-				var element = elementor.getPreviewView().collection.findWhere({id: ruleId});
-				if (element) {
-					elementor.channels.editor.trigger("section:activated", element);
-					elementor.channels.editor.trigger("panel:open:editor", element);
-				} else {
-					alert("Element not found in current page. Please navigate to the page containing this element.");
+			try {
+				var row = document.querySelector("tr[id^='post-']");
+			} catch(e) {}
+			// Request the target popup ID via AJAX to build proper Elementor edit URL
+			var xhr = new XMLHttpRequest();
+			xhr.open("POST", "' . admin_url('admin-ajax.php') . '", true);
+			xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+			xhr.onreadystatechange = function(){
+				if (xhr.readyState === 4) {
+					try {
+						var res = JSON.parse(xhr.responseText || "{}");
+						if (res && res.success && res.data && res.data.target_id) {
+							var pid = parseInt(res.data.target_id, 10);
+							if (pid > 0) {
+								var url = "' . admin_url('post.php') . '?post=" + pid + "&action=elementor";
+								window.open(url, "_blank");
+								return;
+							}
+						}
+					} catch(e) {}
+					alert("Elementor editor not available for this popup. Please open the popup directly in Elementor.");
 				}
-			} else {
-				alert("Elementor editor not available. Please open the page in Elementor editor.");
-			}
+			};
+			xhr.send("action=egp_get_rule_target&nonce=' . wp_create_nonce('egp_admin_nonce') . '&rule_id=" + encodeURIComponent(ruleId));
 		}
 		</script>';
 		

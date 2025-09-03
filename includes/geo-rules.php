@@ -60,6 +60,7 @@ class EGP_Geo_Rules {
         add_action('wp_ajax_egp_remove_elementor_geo_rule', array($this, 'ajax_remove_elementor_geo_rule'));
         add_action('wp_ajax_egp_get_rule_by_element', array($this, 'ajax_get_rule_by_element'));
         add_action('wp_ajax_egp_get_rule_by_popup', array($this, 'ajax_get_rule_by_popup'));
+        add_action('wp_ajax_egp_get_rule_target', array($this, 'ajax_get_rule_target'));
         // No-public: internal conflict check helper via AJAX if needed later
 
         // Sync: When an Elementor Popup is saved with geo targeting enabled, create/update a matching Rule
@@ -1235,6 +1236,31 @@ class EGP_Geo_Rules {
         );
         
         wp_send_json_success($data);
+    }
+
+    /**
+     * AJAX: Return target info for a rule (to open in Elementor editor)
+     */
+    public function ajax_get_rule_target() {
+        check_ajax_referer('egp_admin_nonce', 'nonce');
+        if (!current_user_can('edit_posts')) {
+            wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
+        }
+        $rule_id = isset($_POST['rule_id']) ? intval($_POST['rule_id']) : 0;
+        if (!$rule_id) {
+            wp_send_json_error(__('Invalid rule ID', 'elementor-geo-popup'));
+        }
+        $target_type = get_post_meta($rule_id, $this->meta_prefix . 'target_type', true);
+        $target_id = get_post_meta($rule_id, $this->meta_prefix . 'target_id', true);
+        if ($target_type !== 'popup' || empty($target_id)) {
+            wp_send_json_error(__('This rule does not target a popup', 'elementor-geo-popup'));
+        }
+        $pid = intval($target_id);
+        $tpl = get_post_meta($pid, '_elementor_template_type', true);
+        if ($tpl !== 'popup') {
+            wp_send_json_error(__('Target is not an Elementor popup', 'elementor-geo-popup'));
+        }
+        wp_send_json_success(array('target_id' => $pid));
     }
 
     /**
