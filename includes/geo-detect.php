@@ -460,7 +460,7 @@ class EGP_Geo_Detect {
                                   || document.querySelector('#elementor-popup-modal-' + pid)
                                   || document.querySelector('.dialog-widget[data-elementor-id="' + pid + '"]');
                         if (!modal){ clearInterval(iv); return; }
-                        if (tries >= 10){ // ~1s and modal still present
+                        if (tries >= 3){ // ~300ms and modal still present
                             hardClose(pid);
                             clearInterval(iv);
                         }
@@ -522,7 +522,7 @@ class EGP_Geo_Detect {
                         var pid = getPopupIdFromNode(t) || getActivePopupId();
                         if (debug && window.console) console.log('[EGP] close intent detected; pid=', pid);
                         ensureClose(pid);
-                        setTimeout(function(){ var active = getActivePopupId(); if (active === pid) { hardClose(pid); } }, 150);
+                        setTimeout(function(){ var active = getActivePopupId(); if (active === pid) { hardClose(pid); } }, 100);
                         pollAndHardClose(pid);
                     }
                 } catch(e){}
@@ -535,7 +535,7 @@ class EGP_Geo_Detect {
                             var open = document.querySelector('.elementor-popup-modal');
                             if (open) { pid = getPopupIdFromNode(open); }
                         }
-                        if (pid) { ensureClose(pid); if (debug && window.console) console.log('[EGP] ESC close intent; pid=', pid); setTimeout(function(){ var active = getActivePopupId(); if (active === pid) { hardClose(pid); } }, 150); pollAndHardClose(pid); }
+                        if (pid) { ensureClose(pid); if (debug && window.console) console.log('[EGP] ESC close intent; pid=', pid); setTimeout(function(){ var active = getActivePopupId(); if (active === pid) { hardClose(pid); } }, 100); pollAndHardClose(pid); }
                     }
                 } catch(e){}
             }, true);
