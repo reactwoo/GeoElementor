@@ -128,6 +128,26 @@ class EGP_Popup_Editor {
      * Get countries list for select control
      */
     private function get_countries_list() {
+        // Try full list from assets/data/countries.json
+        $json_path = EGP_PLUGIN_DIR . 'assets/data/countries.json';
+        if (file_exists($json_path)) {
+            $raw = file_get_contents($json_path);
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded) && !empty($decoded)) {
+                $all = array();
+                foreach ($decoded as $item) {
+                    if (isset($item['code']) && isset($item['name'])) {
+                        $all[$item['code']] = $item['name'];
+                    }
+                }
+                if (!empty($all)) {
+                    asort($all, SORT_NATURAL | SORT_FLAG_CASE);
+                    foreach ($all as $code => $name) { $all[$code] = sprintf('%s (%s)', $name, $code); }
+                    return $all;
+                }
+            }
+        }
+
         $countries = array(
             'US' => __('United States', 'elementor-geo-popup'),
             'CA' => __('Canada', 'elementor-geo-popup'),
@@ -238,6 +258,7 @@ class EGP_Popup_Editor {
             'UG' => __('Uganda', 'elementor-geo-popup'),
             'MZ' => __('Mozambique', 'elementor-geo-popup'),
             'MW' => __('Malawi', 'elementor-geo-popup'),
+            'SG' => __('Singapore', 'elementor-geo-popup'),
         );
 
         // Enhance labels for UX to include ISO code, e.g., "United Kingdom (GB)"
