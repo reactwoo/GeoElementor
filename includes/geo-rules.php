@@ -639,8 +639,7 @@ class EGP_Geo_Rules {
             $this->add_pro_tracking($geo_rules);
         }
 
-        // Add popup geo filter script to footer
-        $this->add_popup_geo_filter();
+        // Popup geo filtering handled by JS guard in geo-detect to avoid API conflicts
     }
     
     /**
