@@ -451,6 +451,42 @@ class EGP_Geo_Detect {
                 } catch(e) { if (window.console && console.warn){ console.warn('[EGP] guard patch error', e); } }
                 return false;
             }
+
+            function patchDocumentsManager(){
+                try {
+                    var mgr = window.elementorFrontend && elementorFrontend.documents && elementorFrontend.documents.manager && elementorFrontend.documents.manager.documents && elementorFrontend.documents.manager.documents[0];
+                    if (mgr && !mgr.__egpPatched) {
+                        if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] patching documents[0] show/trigger'); } catch(e){} }
+                        var origShow = typeof mgr.showPopup === 'function' ? mgr.showPopup : null;
+                        var origTrigger = typeof mgr.triggerPopup === 'function' ? mgr.triggerPopup : null;
+                        if (origShow) {
+                            mgr.showPopup = function(pid){
+                                var id = pid;
+                                try { if (pid && typeof pid === 'object' && pid.id){ id = pid.id; } } catch(e){}
+                                if (id && !shouldAllow(id)){
+                                    if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?> && window.console && console.log){ console.log('[EGP] blocked documents.showPopup', id, 'for country', egpCountry); }
+                                    return false;
+                                }
+                                return origShow.apply(this, arguments);
+                            };
+                        }
+                        if (origTrigger) {
+                            mgr.triggerPopup = function(pid){
+                                var id = pid;
+                                try { if (pid && typeof pid === 'object' && pid.id){ id = pid.id; } } catch(e){}
+                                if (id && !shouldAllow(id)){
+                                    if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?> && window.console && console.log){ console.log('[EGP] blocked documents.triggerPopup', id, 'for country', egpCountry); }
+                                    return false;
+                                }
+                                return origTrigger.apply(this, arguments);
+                            };
+                        }
+                        mgr.__egpPatched = true;
+                        return true;
+                    }
+                } catch(e) { if (window.console && console.warn){ console.warn('[EGP] documents patch error', e); } }
+                return false;
+            }
             function unhidePopups(){
                 if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] unhidePopups'); } catch(e){} }
                 if (cssHider && cssHider.parentNode){ cssHider.parentNode.removeChild(cssHider); }
@@ -478,15 +514,17 @@ class EGP_Geo_Detect {
 
             function setupGuards(){
                 if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] setupGuards start'); } catch(e){} }
-                // Ensure showPopup is patched (retry until ready)
-                if (!patchShow()) {
+                // Ensure both Elementor Pro popup module and Documents manager are patched (retry until ready)
+                var ok1 = patchShow();
+                var ok2 = patchDocumentsManager();
+                if (!ok1 || !ok2) {
                     setTimeout(setupGuards, 100);
                     return;
                 }
                 // Clean up any early rendered items and unhide UI
                 closeDisallowedIfOpen();
                 unhidePopups();
-                if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] guards active (with safe show patch)'); } catch(e){} }
+                if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] guards active (pro+docs patched)'); } catch(e){} }
             }
 
             // Start as soon as possible
