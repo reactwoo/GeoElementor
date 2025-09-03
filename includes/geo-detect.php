@@ -458,6 +458,7 @@ class EGP_Geo_Detect {
                     if (!mod || typeof mod.closePopup !== 'function') { return; }
                     setTimeout(function(){
                         try { mod.closePopup({ id: pid }); if (debug && window.console) console.log('[EGP] fallback close invoked for', pid); } catch(e){}
+                        try { sessionStorage.setItem('egp_closed_'+pid, '1'); } catch(e){}
                     }, 0);
                 } catch(e){}
             }
@@ -475,6 +476,7 @@ class EGP_Geo_Detect {
                     modal.style.visibility = 'hidden';
                     // 3) Clean body state
                     try { document.body.classList.remove('elementor-popup-modal-open'); } catch(e){}
+                    try { sessionStorage.setItem('egp_closed_'+pid, '1'); } catch(e){}
                     if (debug && window.console) console.log('[EGP] hardClose applied for', pid);
                 } catch(e){}
             }
@@ -504,6 +506,33 @@ class EGP_Geo_Detect {
                     }
                 } catch(e){}
             }, true);
+
+            // Prevent immediate re-open of a popup that was closed this session
+            (function(){
+                function getPidFromArgs(args){
+                    if (!args) return null; if (typeof args === 'number') return args; if (args.id) return args.id; if (args.popup && args.popup.id) return args.popup.id; return null;
+                }
+                function patchReopenBlock(){
+                    try {
+                        var mod = window.elementorProFrontend && window.elementorProFrontend.modules && window.elementorProFrontend.modules.popup;
+                        if (mod && typeof mod.showPopup === 'function' && !mod.__egpClosedPatched){
+                            var original = mod.showPopup;
+                            mod.showPopup = function(){
+                                var pid = getPidFromArgs(arguments[0]);
+                                try { var closed = pid ? sessionStorage.getItem('egp_closed_'+pid) === '1' : false; } catch(e) { var closed = false; }
+                                if (closed){ if (debug && window.console) console.log('[EGP] blocked reopen for closed popup', pid); return; }
+                                return original.apply(this, arguments);
+                            };
+                            mod.__egpClosedPatched = true;
+                            if (debug && window.console) console.log('[EGP] reopen-block patch active');
+                            return true;
+                        }
+                    } catch(e){}
+                    return false;
+                }
+                function ready(){ if (!patchReopenBlock()){ setTimeout(ready, 100); } }
+                ready();
+            })();
 
             // Ensure a close button exists for allowed popups (Elementor templates may omit it)
             try {
