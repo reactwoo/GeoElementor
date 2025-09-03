@@ -447,24 +447,46 @@ class EGP_Geo_Rules {
         $posted_target_id = null;
         if (isset($_POST['egp_target_id']) && $_POST['egp_target_id'] !== '') {
             $posted_target_id = sanitize_text_field($_POST['egp_target_id']);
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("EGP Debug: Using egp_target_id: {$posted_target_id}");
+            }
         } elseif (isset($_POST['egp_target_id_select']) && $_POST['egp_target_id_select'] !== '') {
             $posted_target_id = sanitize_text_field($_POST['egp_target_id_select']);
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("EGP Debug: Using egp_target_id_select: {$posted_target_id}");
+            }
+        } else {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("EGP Debug: No target_id found in POST data");
+            }
         }
         
         if ($posted_target_id !== null) {
             $target_id = $posted_target_id;
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("EGP Debug: Saving target_id: {$target_id} for target_type: {$target_type}");
+            }
             // Only check numeric IDs for page/popup types
             if (in_array($target_type, array('page','popup'), true) && ctype_digit((string) $target_id)) {
                 if ($this->group_conflict_exists($target_type, intval($target_id))) {
                     // Save the selection but mark rule inactive to surface the conflict clearly
                     update_post_meta($post_id, $this->meta_prefix . 'target_id', $target_id);
                     update_post_meta($post_id, $this->meta_prefix . 'active', '0');
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log("EGP Debug: Group conflict detected, rule marked inactive");
+                    }
                 } else {
                     update_post_meta($post_id, $this->meta_prefix . 'target_id', $target_id);
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log("EGP Debug: Target ID saved successfully");
+                    }
                 }
             } else {
                 // Non-numeric or other types: just persist
                 update_post_meta($post_id, $this->meta_prefix . 'target_id', $target_id);
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log("EGP Debug: Non-numeric target ID saved");
+                }
             }
         }
         
@@ -508,7 +530,18 @@ class EGP_Geo_Rules {
             $popup_id = intval($posted_target_id);
             // Only sync if the target_id matches the popup_id
             if ($popup_id > 0) {
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log("EGP Debug: Attempting to sync rule {$post_id} to popup {$popup_id}");
+                }
                 $this->sync_rule_to_popup_settings($post_id, $popup_id);
+            } else {
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log("EGP Debug: Invalid popup_id for sync: {$posted_target_id}");
+                }
+            }
+        } else {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("EGP Debug: Not syncing - target_type: {$target_type}, posted_target_id: " . var_export($posted_target_id, true));
             }
         }
     }
@@ -1321,6 +1354,48 @@ class EGP_Geo_Rules {
     }
 
     /**
+     * Sync rule settings to Elementor popup settings
+     */
+    private function sync_rule_to_popup_settings($rule_id, $popup_id) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log("EGP Debug: Starting sync for rule {$rule_id} to popup {$popup_id}");
+        }
+        
+        $tpl_type = get_post_meta($popup_id, '_elementor_template_type', true);
+        if ($tpl_type !== 'popup') {
+            if (defined('WP_DEBUG') && WP_DEBUG) { 
+                error_log("EGP Debug: Popup {$popup_id} is not an Elementor popup (template type: {$tpl_type})"); 
+            }
+            return;
+        }
+        
+        $page_settings = get_post_meta($popup_id, '_elementor_page_settings', true);
+        if (!is_array($page_settings)) { 
+            $page_settings = array(); 
+        }
+
+        $target_type = get_post_meta($rule_id, $this->meta_prefix . 'target_type', true);
+        $target_id = get_post_meta($rule_id, $this->meta_prefix . 'target_id', true);
+        $countries = get_post_meta($rule_id, $this->meta_prefix . 'countries', true);
+        $active = get_post_meta($rule_id, $this->meta_prefix . 'active', true);
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log("EGP Debug: Rule data - target_type: {$target_type}, target_id: {$target_id}, active: {$active}, countries: " . print_r($countries, true));
+        }
+
+        $normalized_countries = array_values(array_unique(array_map('strtoupper', (array) $countries)));
+
+        $page_settings['egp_enable_geo_targeting'] = $active === '1' ? 'yes' : 'no';
+        $page_settings['egp_countries'] = $normalized_countries;
+
+        $result = update_post_meta($popup_id, '_elementor_page_settings', $page_settings);
+        
+        if (defined('WP_DEBUG') && WP_DEBUG) { 
+            error_log("EGP Debug: Synced rule {$rule_id} to popup {$popup_id} - Active: {$active}, Countries: " . implode(',', $normalized_countries) . ", Update result: " . var_export($result, true)); 
+        }
+    }
+
+    /**
      * Add popup geo filter script to footer
      */
     private function add_popup_geo_filter() {
@@ -1329,6 +1404,10 @@ class EGP_Geo_Rules {
         }
 
         $user_country = $this->get_user_country();
+        
+        // Get fallback popup setting
+        $fallback_popup_id = get_option('egp_default_popup_id', '');
+        $fallback_behavior = get_option('egp_fallback_behavior', 'show_to_all');
         
         // Get all popups with geo-targeting enabled
         $popups = get_posts(array(
@@ -1369,6 +1448,8 @@ class EGP_Geo_Rules {
         document.addEventListener("DOMContentLoaded", function() {
             var userCountry = "' . esc_js($user_country) . '";
             var popupData = ' . wp_json_encode($popup_data) . ';
+            var fallbackPopupId = "' . esc_js($fallback_popup_id) . '";
+            var fallbackBehavior = "' . esc_js($fallback_behavior) . '";
             
             // Add geo-targeting as an additional condition to Elementor popups
             if (typeof elementorFrontend !== "undefined") {
@@ -1383,11 +1464,21 @@ class EGP_Geo_Rules {
                         if (allowedCountries && allowedCountries.length > 0) {
                             // Check if user\'s country is in the allowed list
                             if (!allowedCountries.includes(userCountry.toUpperCase())) {
-                                // Country doesn\'t match - don\'t show the popup
+                                // Country doesn\'t match - handle based on fallback behavior
                                 if (window.console && console.log) {
                                     console.log("EGP: Popup " + popupId + " blocked - user country " + userCountry + " not in allowed list: " + allowedCountries.join(", "));
                                 }
-                                return false; // Prevent popup from showing
+                                
+                                // If fallback popup is configured and behavior allows it, show fallback
+                                if (fallbackPopupId && fallbackPopupId !== "" && fallbackBehavior === "show_fallback") {
+                                    if (window.console && console.log) {
+                                        console.log("EGP: Showing fallback popup " + fallbackPopupId + " instead");
+                                    }
+                                    return originalShowPopup.call(this, fallbackPopupId);
+                                }
+                                
+                                // Otherwise, don\'t show any popup
+                                return false;
                             }
                         }
                     }
@@ -1405,11 +1496,21 @@ class EGP_Geo_Rules {
                         if (allowedCountries && allowedCountries.length > 0) {
                             // Check if user\'s country is in the allowed list
                             if (!allowedCountries.includes(userCountry.toUpperCase())) {
-                                // Country doesn\'t match - don\'t trigger the popup
+                                // Country doesn\'t match - handle based on fallback behavior
                                 if (window.console && console.log) {
                                     console.log("EGP: Popup " + popupId + " trigger blocked - user country " + userCountry + " not in allowed list: " + allowedCountries.join(", "));
                                 }
-                                return false; // Prevent popup from triggering
+                                
+                                // If fallback popup is configured and behavior allows it, trigger fallback
+                                if (fallbackPopupId && fallbackPopupId !== "" && fallbackBehavior === "show_fallback") {
+                                    if (window.console && console.log) {
+                                        console.log("EGP: Triggering fallback popup " + fallbackPopupId + " instead");
+                                    }
+                                    return originalTriggerPopup.call(this, fallbackPopupId);
+                                }
+                                
+                                // Otherwise, don\'t trigger any popup
+                                return false;
                             }
                         }
                     }
