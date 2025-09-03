@@ -61,13 +61,17 @@ class EGP_Geo_Detect {
             return;
         }
         
-        // Prevent early popup flashes before the guard is active
-        echo '<style id="egp-hide-popups">.elementor-popup-modal,.dialog-widget{display:none!important;visibility:hidden!important;}</style>';
-        if (get_option('egp_debug_mode')) { error_log('EGP: Head guard style injected'); }
+        // Optional head guard (disabled by default to avoid interfering with popup close buttons)
+        $enable_head_guard = (bool) get_option('egp_head_guard_enabled', false);
+        if ($enable_head_guard) {
+            // Prevent early popup flashes before the guard is active
+            echo '<style id="egp-hide-popups">.elementor-popup-modal,.dialog-widget{display:none!important;visibility:hidden!important;}</style>';
+            if (get_option('egp_debug_mode')) { error_log('EGP: Head guard style injected'); }
 
-        // Inject guard to prevent non-matching popups from showing
-        if (get_option('egp_debug_mode')) { error_log('EGP: Injecting head guard for country ' . $country); }
-        $this->render_popup_guard_script($country);
+            // Inject guard to prevent non-matching popups from showing
+            if (get_option('egp_debug_mode')) { error_log('EGP: Injecting head guard for country ' . $country); }
+            $this->render_popup_guard_script($country);
+        }
 
         // Optionally trigger a specifically matched popup (if you want auto-open behavior)
         // $popup_id = $this->get_matching_popup($country);
