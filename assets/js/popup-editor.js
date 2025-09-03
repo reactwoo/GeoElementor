@@ -173,20 +173,43 @@
                 $popupLayoutSection.append($geoSection);
             }
 
-            // Populate countries list from server
-            try {
-                var params = { action: 'egp_get_countries', nonce: (window.egpEditor && egpEditor.nonce) || '' };
-                $.post(ajaxurl, params).done(function (resp) {
-                    if (resp && resp.success && resp.data) {
+            // Populate countries list from server, with JSON fallback
+            (function () {
+                var fill = function (map) {
+                    try {
                         var $sel = panel.$el.find('#egp_countries');
+                        if (!$sel.length) { return; }
                         $sel.empty();
-                        Object.keys(resp.data).forEach(function (code) {
-                            var name = resp.data[code];
-                            $sel.append('<option value="' + code + '">' + name + '</option>');
-                        });
+                        var codes = Object.keys(map || {});
+                        codes.sort(function (a, b) { return String(map[a]).localeCompare(String(map[b])); });
+                        codes.forEach(function (code) { $sel.append('<option value="' + code + '">' + map[code] + '</option>'); });
+                    } catch (e) { }
+                };
+                var tryJson = function () {
+                    var base = (window.egpEditor && egpEditor.assetsUrl) ? egpEditor.assetsUrl : '';
+                    var url = base ? (base + 'data/countries.json') : '';
+                    if (!url && window.location && window.location.origin) {
+                        url = window.location.origin + '/wp-content/plugins/geo-elementor/assets/data/countries.json';
                     }
-                });
-            } catch (e) { }
+                    if (!url) return;
+                    $.getJSON(url).done(function (arr) {
+                        if (Array.isArray(arr)) {
+                            var map = {}; arr.forEach(function (it) { if (it && it.code && it.name) { map[it.code] = it.name; } });
+                            fill(map);
+                        }
+                    });
+                };
+                try {
+                    var params = { action: 'egp_get_countries', nonce: (window.egpEditor && egpEditor.nonce) || '' };
+                    if (!window.ajaxurl || !params.nonce) { throw new Error('missing'); }
+                    $.post(ajaxurl, params).done(function (resp) {
+                        if (resp && resp.success && resp.data) { fill(resp.data); }
+                        else { tryJson(); }
+                    }).fail(tryJson);
+                } catch (e) {
+                    tryJson();
+                }
+            })();
 
             // Bind events
             EGP_Popup_Editor_JS.bindGeoEvents(panel, model);
