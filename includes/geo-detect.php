@@ -425,6 +425,20 @@ class EGP_Geo_Detect {
                 } catch(e) {}
                 return null;
             }
+            function getActivePopupId(){
+                try {
+                    var mod = window.elementorProFrontend && elementorProFrontend.modules && elementorProFrontend.modules.popup;
+                    if (!mod) { return null; }
+                    if (typeof mod.getActiveModal === 'function') {
+                        var m = mod.getActiveModal();
+                        if (m && typeof m.getSettings === 'function') { return m.getSettings('id') || null; }
+                    }
+                    if (mod.activeModal && typeof mod.activeModal.getSettings === 'function') {
+                        return mod.activeModal.getSettings('id') || null;
+                    }
+                } catch(e) {}
+                return null;
+            }
             function ensureClose(pid){
                 try {
                     if (!pid) { return; }
@@ -442,7 +456,7 @@ class EGP_Geo_Detect {
                     var isCloseBtn = t.closest ? t.closest('.dialog-close-button, .elementor-button--close') : null;
                     var isOverlay = t.classList && (t.classList.contains('dialog-overlay') || t.classList.contains('elementor-popup-modal-overlay'));
                     if (isCloseBtn || isOverlay){
-                        var pid = getPopupIdFromNode(t);
+                        var pid = getPopupIdFromNode(t) || getActivePopupId();
                         if (debug && window.console) console.log('[EGP] close intent detected; pid=', pid);
                         ensureClose(pid);
                     }
@@ -451,8 +465,12 @@ class EGP_Geo_Detect {
             document.addEventListener('keydown', function(evt){
                 try {
                     if (evt.key === 'Escape' || evt.key === 'Esc' || evt.keyCode === 27){
-                        var open = document.querySelector('.elementor-popup-modal');
-                        if (open){ var pid = getPopupIdFromNode(open); ensureClose(pid); if (debug && window.console) console.log('[EGP] ESC close intent; pid=', pid); }
+                        var pid = getActivePopupId();
+                        if (!pid) {
+                            var open = document.querySelector('.elementor-popup-modal');
+                            if (open) { pid = getPopupIdFromNode(open); }
+                        }
+                        if (pid) { ensureClose(pid); if (debug && window.console) console.log('[EGP] ESC close intent; pid=', pid); }
                     }
                 } catch(e){}
             }, true);
