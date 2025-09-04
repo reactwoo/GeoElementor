@@ -106,6 +106,11 @@
             var popupChecked = $('input[name="type_mask[]"][value="' + this.getTypeMaskValue('popup') + '"]').is(':checked');
             $('.mapping-row .page-select').closest('tr').toggle(!!pageChecked);
             $('.mapping-row .popup-select').closest('tr').toggle(!!popupChecked);
+            // Toggle Section/Widget ref rows
+            var sectionChecked = $('input[name="type_mask[]"][value="' + this.getTypeMaskValue('section') + '"]').is(':checked');
+            var widgetChecked = $('input[name="type_mask[]"][value="' + this.getTypeMaskValue('widget') + '"]').is(':checked');
+            $('.mapping-row .section-ref-row').toggle(!!sectionChecked);
+            $('.mapping-row .widget-ref-row').toggle(!!widgetChecked);
         },
 
         /**
@@ -297,7 +302,9 @@
                 variant_id: $('input[name="variant_id"]').val(),
                 country_iso2: $row.find('.country-select').val(),
                 page_id: $row.find('.page-select').val() || '',
-                popup_id: $row.find('.popup-select').val() || ''
+                popup_id: $row.find('.popup-select').val() || '',
+                section_ref: ($row.find('.section-ref').val() || '').replace(/^#/, ''),
+                widget_ref: ($row.find('.widget-ref').val() || '').replace(/^#/, '')
             };
 
             // Validate required fields

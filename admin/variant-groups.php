@@ -495,6 +495,30 @@ class RW_Geo_Variant_Groups_Admin {
             echo '</td>';
             echo '</tr>';
         }
+
+        // Section (if enabled) - by CSS ID or Elementor data-id
+        if ($variant && ($variant->type_mask & RW_GEO_TYPE_SECTION)) {
+            $section_ref = $mapping ? ($mapping->section_ref ?? '') : '';
+            echo '<tr class="section-ref-row">';
+            echo '<th scope="row"><label>' . __('Section ID', 'elementor-geo-popup') . '</label></th>';
+            echo '<td>';
+            echo '# <input type="text" name="mappings[' . $mapping_id . '][section_ref]" class="section-ref" value="' . esc_attr($section_ref) . '" placeholder="hero-us or Elementor data-id" style="min-width:260px;" />';
+            echo '<p class="description" style="margin:4px 0 0 0;">' . __('Set this in Elementor > Advanced > CSS ID (without #), or use the element\'s data-id from the editor.', 'elementor-geo-popup') . '</p>';
+            echo '</td>';
+            echo '</tr>';
+        }
+
+        // Widget (if enabled) - by CSS ID or Elementor data-id
+        if ($variant && ($variant->type_mask & RW_GEO_TYPE_WIDGET)) {
+            $widget_ref = $mapping ? ($mapping->widget_ref ?? '') : '';
+            echo '<tr class="widget-ref-row">';
+            echo '<th scope="row"><label>' . __('Widget ID', 'elementor-geo-popup') . '</label></th>';
+            echo '<td>';
+            echo '# <input type="text" name="mappings[' . $mapping_id . '][widget_ref]" class="widget-ref" value="' . esc_attr($widget_ref) . '" placeholder="cta-button or Elementor data-id" style="min-width:260px;" />';
+            echo '<p class="description" style="margin:4px 0 0 0;">' . __('Set this in Elementor > Advanced > CSS ID (without #), or use the element\'s data-id from the editor.', 'elementor-geo-popup') . '</p>';
+            echo '</td>';
+            echo '</tr>';
+        }
         
         echo '</table>';
         

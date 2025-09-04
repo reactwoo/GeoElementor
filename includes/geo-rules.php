@@ -272,29 +272,32 @@ class EGP_Geo_Rules {
                 });
                 html += '</select>';
             } else if (targetType === 'section') {
-                html = '<select name="egp_target_id_select" id="egp_target_id_select">';
-                html += '<option value=""><?php _e('Select a section', 'elementor-geo-popup'); ?></option>';
-                html += '<option value="all" ' + (selectedValue === 'all' ? 'selected' : '') + '><?php _e('All Sections', 'elementor-geo-popup'); ?></option>';
-                (options||[]).forEach(function(option) {
-                    html += '<option value="' + option.id + '" ' + (selectedValue == option.id ? 'selected' : '') + '>' + option.title + '</option>';
-                });
-                html += '</select>';
+                // Two modes: All Sections (default) or Selected by CSS ID/Element ID
+                html = '<div class="egp-target-mode">';
+                html += '<label><input type="radio" name="egp_section_mode" value="all" ' + ((selectedValue === 'all' || !selectedValue) ? 'checked' : '') + '> <?php _e('All Sections', 'elementor-geo-popup'); ?></label><br>';
+                html += '<label><input type="radio" name="egp_section_mode" value="by_id" ' + ((selectedValue && selectedValue !== 'all') ? 'checked' : '') + '> <?php _e('Selected Section by CSS ID or Elementor ID', 'elementor-geo-popup'); ?></label>';
+                html += '<div style="margin-top:6px;"># <input type="text" id="egp_section_ref" placeholder="my-section-id or elementor data-id" value="' + (selectedValue && selectedValue !== 'all' ? selectedValue.replace(/^#/, '') : '') + '" style="min-width:280px;">';
+                html += '<p class="description" style="margin:4px 0 0 0;">' +
+                        '<?php echo esc_js(__('Tip: In Elementor > Advanced, set a CSS ID (without #). Or copy the element\'s data-id from the panel. This value becomes the Rule target identifier.', 'elementor-geo-popup')); ?>' +
+                        '</p></div>';
                 if (!egpProGranularEnabled) {
-                    html += '<span class="egp-pro-badge" style="display:inline-block;vertical-align:middle;background:#f0b849;color:#23282d;border-radius:3px;padding:2px 6px;margin-left:8px;font-weight:600;font-size:11px;">PRO</span>';
-                    html += '<p class="description"><?php _e('Granular section selection requires Pro. Use All Sections, or enable via filter.', 'elementor-geo-popup'); ?></p>';
+                    html += '<span class="egp-pro-badge" style="display:inline-block;vertical-align:middle;background:#f0b849;color:#23282d;border-radius:3px;padding:2px 6px;margin-left:0;font-weight:600;font-size:11px;">PRO</span>';
+                    html += '<p class="description"><?php _e('Granular lists are Pro. Manual ID targeting works in all versions.', 'elementor-geo-popup'); ?></p>';
                 }
+                html += '</div>';
             } else if (targetType === 'widget') {
-                html = '<select name="egp_target_id_select" id="egp_target_id_select">';
-                html += '<option value=""><?php _e('Select a widget', 'elementor-geo-popup'); ?></option>';
-                html += '<option value="all" ' + (selectedValue === 'all' ? 'selected' : '') + '><?php _e('All Widgets', 'elementor-geo-popup'); ?></option>';
-                (options||[]).forEach(function(option) {
-                    html += '<option value="' + option.id + '" ' + (selectedValue == option.id ? 'selected' : '') + '>' + option.title + '</option>';
-                });
-                html += '</select>';
+                html = '<div class="egp-target-mode">';
+                html += '<label><input type="radio" name="egp_widget_mode" value="all" ' + ((selectedValue === 'all' || !selectedValue) ? 'checked' : '') + '> <?php _e('All Widgets', 'elementor-geo-popup'); ?></label><br>';
+                html += '<label><input type="radio" name="egp_widget_mode" value="by_id" ' + ((selectedValue && selectedValue !== 'all') ? 'checked' : '') + '> <?php _e('Selected Widget by CSS ID or Elementor ID', 'elementor-geo-popup'); ?></label>';
+                html += '<div style="margin-top:6px;"># <input type="text" id="egp_widget_ref" placeholder="my-widget-id or elementor data-id" value="' + (selectedValue && selectedValue !== 'all' ? selectedValue.replace(/^#/, '') : '') + '" style="min-width:280px;">';
+                html += '<p class="description" style="margin:4px 0 0 0;">' +
+                        '<?php echo esc_js(__('Tip: In Elementor > Advanced, set a CSS ID (without #). Or copy the element\'s data-id from the panel. This value becomes the Rule target identifier.', 'elementor-geo-popup')); ?>' +
+                        '</p></div>';
                 if (!egpProGranularEnabled) {
-                    html += '<span class="egp-pro-badge" style="display:inline-block;vertical-align:middle;background:#f0b849;color:#23282d;border-radius:3px;padding:2px 6px;margin-left:8px;font-weight:600;font-size:11px;">PRO</span>';
-                    html += '<p class="description"><?php _e('Granular widget selection requires Pro. Use All Widgets, or enable via filter.', 'elementor-geo-popup'); ?></p>';
+                    html += '<span class="egp-pro-badge" style="display:inline-block;vertical-align:middle;background:#f0b849;color:#23282d;border-radius:3px;padding:2px 6px;margin-left:0;font-weight:600;font-size:11px;">PRO</span>';
+                    html += '<p class="description"><?php _e('Granular lists are Pro. Manual ID targeting works in all versions.', 'elementor-geo-popup'); ?></p>';
                 }
+                html += '</div>';
             }
             
             targetSelection.innerHTML = html;
@@ -302,17 +305,34 @@ class EGP_Geo_Rules {
             // Now add the event listener to the newly created select element
             var selectElement = targetSelection.querySelector('select');
             if (selectElement) {
-                selectElement.addEventListener('change', function() {
-                    egpUpdateTargetId(this.value);
-                });
-                
-                // If we have a selected value, set it in the dropdown and show the selection
-                if (selectedValue && selectedValue !== '') {
-                    selectElement.value = selectedValue;
-                    // Update the display to show what's currently selected
-                    egpUpdateTargetId(selectedValue);
-                }
+                selectElement.addEventListener('change', function() { egpUpdateTargetId(this.value); });
             }
+            // Section/Widget ID inputs
+            var secMode = targetSelection.querySelector('input[name="egp_section_mode"]');
+            var widMode = targetSelection.querySelector('input[name="egp_widget_mode"]');
+            var secRef = targetSelection.querySelector('#egp_section_ref');
+            var widRef = targetSelection.querySelector('#egp_widget_ref');
+            function wireMode(modeInputs, refInput){
+                if (!modeInputs) { return; }
+                var inputs = targetSelection.querySelectorAll('input[name="' + modeInputs.name + '"]');
+                inputs.forEach(function(inp){
+                    inp.addEventListener('change', function(){
+                        if (this.value === 'all') { egpUpdateTargetId('all'); }
+                        else if (refInput) { egpUpdateTargetId((refInput.value || '').replace(/^#/, '')); }
+                    });
+                });
+                if (refInput) {
+                    refInput.addEventListener('input', function(){
+                        var val = (this.value || '').replace(/^#/, '');
+                        egpUpdateTargetId(val);
+                    });
+                }
+                // Initialize hidden field
+                if (refInput && refInput.value) { egpUpdateTargetId((refInput.value || '').replace(/^#/, '')); }
+                else { egpUpdateTargetId('all'); }
+            }
+            if (secMode) { wireMode(secMode, secRef); }
+            if (widMode) { wireMode(widMode, widRef); }
         }
         
         function egpUpdateTargetId(value) {
