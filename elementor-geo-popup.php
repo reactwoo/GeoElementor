@@ -288,10 +288,37 @@ class ElementorGeoPopup {
             echo '<script>console.log("[EGP] register_elementor_geo_controls() called");</script>';
         });
 
-        // Hook into all element types using the common element class - this covers most elements
+        // Add debugging for all possible Elementor hooks to see which ones work
+        add_action('elementor/element/after_add_attributes', function($element) {
+            static $count = 0;
+            if ($count < 3) { // Only log first 3 to avoid spam
+                $name = method_exists($element, 'get_name') ? $element->get_name() : 'unknown';
+                error_log('[EGP] DEBUG: elementor/element/after_add_attributes fired for: ' . $name);
+                $count++;
+            }
+        });
+
+        add_action('elementor/element/before_render', function($element) {
+            static $count = 0;
+            if ($count < 3) {
+                $name = method_exists($element, 'get_name') ? $element->get_name() : 'unknown';
+                error_log('[EGP] DEBUG: elementor/element/before_render fired for: ' . $name);
+                $count++;
+            }
+        });
+
+        // Try a more general hook that should definitely fire
+        add_action('elementor/element/after_section_end', function($element, $section_id, $args) {
+            if ($section_id === 'section_advanced') {
+                $name = method_exists($element, 'get_name') ? $element->get_name() : 'unknown';
+                error_log('[EGP] GENERAL HOOK: section_advanced ended for element: ' . $name);
+                $this->add_geo_targeting_controls($element);
+            }
+        }, 20, 3);
+
+        // Also try the specific hooks as backup
         add_action('elementor/element/common/section_advanced/after_section_end', function($element, $args) {
-            error_log('[EGP] Common hook fired for element: ' . (method_exists($element, 'get_name') ? $element->get_name() : 'unknown'));
-            error_log('[EGP] Element type: ' . (method_exists($element, 'get_type') ? $element->get_type() : 'unknown'));
+            error_log('[EGP] SPECIFIC HOOK: Common hook fired for element: ' . (method_exists($element, 'get_name') ? $element->get_name() : 'unknown'));
             $this->add_geo_targeting_controls($element);
         }, 20, 2);
 
@@ -340,6 +367,73 @@ class ElementorGeoPopup {
         // Add test hook for when elements are initialized
         add_action('elementor/frontend/element_ready/global', function($element) {
             error_log('[EGP] Elementor frontend element ready - Elementor is working');
+        });
+
+        // Add console debugging
+        add_action('admin_footer', function() {
+            ?>
+            <script>
+                console.log('[EGP] JavaScript debugging loaded');
+
+                // Check if Elementor is available
+                if (typeof elementor !== 'undefined') {
+                    console.log('[EGP] Elementor is available');
+
+                    // Listen for panel opening
+                    if (elementor.channels && elementor.channels.editor) {
+                        elementor.channels.editor.on('section:activated', function(sectionName, editor) {
+                            console.log('[EGP] Section activated:', sectionName);
+                        });
+
+                        elementor.channels.editor.on('element:clicked', function(model) {
+                            console.log('[EGP] Element clicked:', model.get('elType'));
+                        });
+                    }
+
+                    // Listen for panel opening via hooks
+                    elementor.hooks.addAction('panel/open_editor/widget', function(panel, model) {
+                        console.log('[EGP] Widget editor opened:', model.get('widgetType'));
+                    });
+
+                    elementor.hooks.addAction('panel/open_editor/section', function(panel, model) {
+                        console.log('[EGP] Section editor opened');
+                    });
+
+                    elementor.hooks.addAction('panel/open_editor/container', function(panel, model) {
+                        console.log('[EGP] Container editor opened');
+                    });
+
+                    elementor.hooks.addAction('panel/open_editor/column', function(panel, model) {
+                        console.log('[EGP] Column editor opened');
+                    });
+
+                } else {
+                    console.log('[EGP] Elementor not available');
+                }
+
+                // Listen for any DOM changes that might indicate element panel opening
+                document.addEventListener('DOMNodeInserted', function(e) {
+                    if (e.target.classList && e.target.classList.contains('elementor-panel')) {
+                        console.log('[EGP] Elementor panel inserted');
+                    }
+                });
+
+                // Check for Elementor panel every second for 30 seconds
+                var checkCount = 0;
+                var checkInterval = setInterval(function() {
+                    checkCount++;
+                    var panels = document.querySelectorAll('.elementor-panel');
+                    if (panels.length > 0) {
+                        console.log('[EGP] Found Elementor panels:', panels.length);
+                        clearInterval(checkInterval);
+                    }
+                    if (checkCount >= 30) {
+                        console.log('[EGP] No Elementor panels found after 30 seconds');
+                        clearInterval(checkInterval);
+                    }
+                }, 1000);
+            </script>
+            <?php
         });
 
         // Test basic Elementor hooks
