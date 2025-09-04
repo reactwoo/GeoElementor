@@ -42,6 +42,7 @@ class RW_Geo_Variant_Groups_Admin {
         add_action('wp_ajax_rw_geo_get_pages', array($this, 'ajax_get_pages'));
         add_action('wp_ajax_rw_geo_get_popups', array($this, 'ajax_get_popups'));
         add_action('wp_ajax_rw_geo_search_countries', array($this, 'ajax_search_countries'));
+        add_action('wp_ajax_rw_geo_preview_mapping', array($this, 'ajax_preview_mapping'));
     }
     
     /**
@@ -73,10 +74,18 @@ class RW_Geo_Variant_Groups_Admin {
         wp_enqueue_style('wp-admin');
         wp_enqueue_style('wp-list-table');
         
+        // Reuse global admin styles (cards, layout)
+        wp_enqueue_style(
+            'egp-admin-style',
+            EGP_PLUGIN_URL . 'assets/css/admin.css',
+            array(),
+            EGP_VERSION
+        );
+
         wp_enqueue_style(
             'rw-geo-variants-admin',
             EGP_PLUGIN_URL . 'assets/css/variants-admin.css',
-            array('wp-admin'),
+            array('wp-admin','egp-admin-style'),
             EGP_VERSION
         );
         
@@ -87,6 +96,34 @@ class RW_Geo_Variant_Groups_Admin {
             EGP_VERSION,
             true
         );
+
+        // Inline script for preview action
+        add_action('admin_print_footer_scripts', function () {
+            ?>
+            <script type="text/javascript">
+            (function($){
+                $(document).on('click', '#egp-preview-country', function(){
+                    var cc = $('#egp-test-country').val() || '';
+                    if (!cc) { return; }
+                    var $out = $('#egp-preview-result').text('<?php echo esc_js(__('Resolving...', 'elementor-geo-popup')); ?>');
+                    $.post(ajaxurl, { action: 'rw_geo_preview_mapping', nonce: '<?php echo wp_create_nonce('rw_geo_variants_nonce'); ?>', country: cc }, function(resp){
+                        if (resp && resp.success && resp.data){
+                            var s = [];
+                            if (resp.data.variant){ s.push('Group: '+resp.data.variant.name+' ('+resp.data.variant.slug+')'); }
+                            if (resp.data.mapping){
+                                if (resp.data.mapping.popup_id){ s.push('Popup ID: '+resp.data.mapping.popup_id); }
+                                if (resp.data.mapping.page_id){ s.push('Page ID: '+resp.data.mapping.page_id); }
+                            }
+                            $out.text(s.join(' • ') || '<?php echo esc_js(__('No mapping resolved', 'elementor-geo-popup')); ?>');
+                        } else {
+                            $out.text((resp && resp.data) ? resp.data : '<?php echo esc_js(__('No mapping resolved', 'elementor-geo-popup')); ?>');
+                        }
+                    });
+                });
+            })(jQuery);
+            </script>
+            <?php
+        });
         
         wp_localize_script('rw-geo-variants-admin', 'rwGeoVariants', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
@@ -135,8 +172,12 @@ class RW_Geo_Variant_Groups_Admin {
     public function render_admin_page() {
         $action = $_GET['action'] ?? 'list';
         
-        echo '<div class="wrap">';
-        echo '<h1>' . __('Groups', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="Groups manage a default target plus country-specific overrides in one place. If a Rule already targets the same Page/Popup, you cannot add it here to avoid conflicts."></span></h1>';
+        echo '<div class="wrap egp-settings">';
+        echo '<h1>' . __('Groups', 'elementor-geo-popup') . '</h1>';
+        echo '<div class="egp-section-card">';
+        echo '<p style="margin:0 0 8px 0;">' . __('Manage variant Groups that map content (Pages/Popups/Sections/Widgets) to countries.', 'elementor-geo-popup') . '</p>';
+        echo '<p style="margin:0 0 8px 0;">' . __('Tip: Use a default target for the group, then add specific overrides for selected countries. Rules on the same target take precedence and may block group mappings.', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="If a Rule already targets the same Page/Popup, the Group mapping will not apply to avoid conflicts."></span></p>';
+        echo '</div>';
         
         switch ($action) {
             case 'add':
@@ -158,7 +199,20 @@ class RW_Geo_Variant_Groups_Admin {
         $variant_crud = new RW_Geo_Variant_CRUD();
         $variants = $variant_crud->get_all();
         
-        echo '<p><a href="' . admin_url('admin.php?page=geo-elementor-variants&action=add') . '" class="button button-primary">' . __('Add New Group', 'elementor-geo-popup') . '</a></p>';
+        echo '<div class="egp-section-card">';
+        echo '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">';
+        echo '<a href="' . admin_url('admin.php?page=geo-elementor-variants&action=add') . '" class="button button-primary">' . __('Add New Group', 'elementor-geo-popup') . '</a>';
+        echo '<div class="egp-test-country" style="margin-left:auto;display:flex;gap:8px;align-items:center;">';
+        echo '<label for="egp-test-country" style="margin:0;">' . __('Test as Country', 'elementor-geo-popup') . '</label>';
+        echo '<select id="egp-test-country" class="egp-enhanced-input" style="min-width:180px;">';
+        // Populate simple country list (subset) for quick testing; full search done server-side
+        $quick = array('US'=>'United States','GB'=>'United Kingdom','RO'=>'Romania','SG'=>'Singapore','DE'=>'Germany','FR'=>'France');
+        foreach ($quick as $cc=>$nn){ echo '<option value="' . esc_attr($cc) . '">' . esc_html($nn) . '</option>'; }
+        echo '</select>';
+        echo '<button type="button" id="egp-preview-country" class="button">' . __('Preview', 'elementor-geo-popup') . '</button>';
+        echo '</div>';
+        echo '</div>';
+        echo '<div id="egp-preview-result" style="margin-top:8px;color:#555;"></div>';
         
         if (empty($variants)) {
             echo '<div class="notice notice-info"><p>' . __('No groups found. Create your first one to get started with geo-targeting.', 'elementor-geo-popup') . '</p></div>';
@@ -170,8 +224,8 @@ class RW_Geo_Variant_Groups_Admin {
         echo '<tr>';
         echo '<th>' . __('Name', 'elementor-geo-popup') . '</th>';
         echo '<th>' . __('Slug', 'elementor-geo-popup') . '</th>';
-        echo '<th>' . __('Types', 'elementor-geo-popup') . '</th>';
-        echo '<th>' . __('Countries', 'elementor-geo-popup') . '</th>';
+        echo '<th>' . __('Types', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="Which targets this group can map."></span></th>';
+        echo '<th>' . __('Countries', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="Number of country-specific overrides."></span></th>';
         echo '<th>' . __('Updated', 'elementor-geo-popup') . '</th>';
         echo '<th>' . __('Actions', 'elementor-geo-popup') . '</th>';
         echo '</tr>';
@@ -193,7 +247,9 @@ class RW_Geo_Variant_Groups_Admin {
             echo '<td><strong>' . esc_html($variant->name) . '</strong></td>';
             echo '<td><code>' . esc_html($variant->slug) . '</code></td>';
             echo '<td>' . implode(', ', $types) . '</td>';
-            echo '<td>' . sprintf(_n('%d country', '%d countries', $country_count, 'elementor-geo-popup'), $country_count) . '</td>';
+            $badges = array();
+            if ($country_count === 0) { $badges[] = '<span class="egp-badge" style="background:#fff3cd;color:#856404;border:1px solid #ffeaa7;border-radius:3px;padding:2px 6px;">' . __('Incomplete', 'elementor-geo-popup') . '</span>'; }
+            echo '<td>' . sprintf(_n('%d country', '%d countries', $country_count, 'elementor-geo-popup'), $country_count) . ' ' . implode(' ', $badges) . '</td>';
             echo '<td>' . esc_html(date_i18n(get_option('date_format'), strtotime($variant->updated_at))) . '</td>';
             echo '<td>';
             echo '<a href="' . admin_url('admin.php?page=geo-elementor-variants&action=edit&id=' . $variant->id) . '" class="button button-small">' . __('Edit', 'elementor-geo-popup') . '</a> ';
@@ -204,6 +260,7 @@ class RW_Geo_Variant_Groups_Admin {
         
         echo '</tbody>';
         echo '</table>';
+        echo '</div>';
     }
     
     /**

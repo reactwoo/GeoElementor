@@ -917,3 +917,21 @@ class RW_Geo_Mapping_CRUD {
         return true;
     }
 }
+
+// AJAX: preview mapping for a given country (admin)
+add_action('wp_ajax_rw_geo_preview_mapping', function(){
+    check_ajax_referer('rw_geo_variants_nonce', 'nonce');
+    if (!current_user_can('manage_options')) { wp_send_json_error(__('Insufficient permissions', 'elementor-geo-popup')); }
+    $country = isset($_POST['country']) ? sanitize_text_field($_POST['country']) : '';
+    if (!$country) { wp_send_json_error(__('Missing country', 'elementor-geo-popup')); }
+    $router = RW_Geo_Router::get_instance();
+    $variant = $router->get_active_variant_group_for_route();
+    if (!$variant) { wp_send_json_error(__('No group for this route', 'elementor-geo-popup')); }
+    $db = RW_Geo_Database::get_instance();
+    $mapping = $db->resolve_mapping($variant, strtoupper($country));
+    $out = array(
+        'variant' => array('id'=>$variant->id, 'name'=>$variant->name, 'slug'=>$variant->slug),
+        'mapping' => $mapping ? array('id'=>$mapping->id, 'popup_id'=>$mapping->popup_id, 'page_id'=>$mapping->page_id) : null,
+    );
+    wp_send_json_success($out);
+});
