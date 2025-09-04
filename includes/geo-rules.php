@@ -1720,3 +1720,70 @@ class EGP_Geo_Rules {
 
 // Initialize the Geo Rules system
 EGP_Geo_Rules::get_instance();
+
+/**
+ * Elementor Advanced Tab: Register a Geo Targeting section for containers, sections, columns, all widgets, and forms
+ * This complements the JS editor panel injection and is robust across Elementor versions (incl. Containers).
+ */
+if (!function_exists('egp_register_elementor_advanced_geo_section')) {
+    function egp_register_elementor_advanced_geo_section($element, $args) {
+        // Determine Pro gating (same heuristic as elsewhere)
+        $is_pro = current_user_can('manage_woocommerce') || apply_filters('egp_is_pro_user', false);
+
+        $element->start_controls_section(
+            'egp_geo_tools',
+            array(
+                'label' => __('Geo Targeting', 'elementor-geo-popup'),
+                'tab'   => \Elementor\Controls_Manager::TAB_ADVANCED,
+            )
+        );
+
+        if ($is_pro) {
+            $element->add_control(
+                'egp_geo_enabled',
+                array(
+                    'label'        => __('Enable Geo Targeting', 'elementor-geo-popup'),
+                    'type'         => \Elementor\Controls_Manager::SWITCHER,
+                    'label_on'     => __('On', 'elementor-geo-popup'),
+                    'label_off'    => __('Off', 'elementor-geo-popup'),
+                    'return_value' => 'yes',
+                    'default'      => '',
+                )
+            );
+
+            // Do NOT use Select2: accept comma-separated ISO2 codes in a simple input
+            $element->add_control(
+                'egp_geo_countries_csv',
+                array(
+                    'label'       => __('Target Countries (CSV)', 'elementor-geo-popup'),
+                    'type'        => \Elementor\Controls_Manager::TEXT,
+                    'placeholder' => 'US, GB, CA',
+                    'condition'   => array('egp_geo_enabled' => 'yes'),
+                    'description' => __('Enter ISO2 codes separated by commas (e.g., US, GB, CA).', 'elementor-geo-popup'),
+                    'label_block' => true,
+                )
+            );
+        } else {
+            // Free: show upgrade callout; do not expose controls
+            $element->add_control(
+                'egp_geo_upgrade',
+                array(
+                    'type' => \Elementor\Controls_Manager::RAW_HTML,
+                    'raw'  => '<div style="background:#fff3cd;border:1px solid #ffeaa7;color:#856404;padding:10px;border-radius:4px;">'
+                            . esc_html__('Upgrade to Pro to target Sections, Containers, Columns, Widgets, and Forms by country.', 'elementor-geo-popup')
+                            . '</div>',
+                    'content_classes' => 'egp-upgrade-box',
+                )
+            );
+        }
+
+        $element->end_controls_section();
+    }
+
+    // Attach after Elementor's Advanced section so ours appears below
+    add_action('elementor/element/container/section_advanced/after_section_end', 'egp_register_elementor_advanced_geo_section', 10, 2);
+    add_action('elementor/element/section/section_advanced/after_section_end',   'egp_register_elementor_advanced_geo_section', 10, 2);
+    add_action('elementor/element/column/section_advanced/after_section_end',    'egp_register_elementor_advanced_geo_section', 10, 2);
+    add_action('elementor/element/common/section_advanced/after_section_end',    'egp_register_elementor_advanced_geo_section', 10, 2);
+    add_action('elementor/element/form/section_advanced/after_section_end',      'egp_register_elementor_advanced_geo_section', 10, 2);
+}
