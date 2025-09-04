@@ -272,31 +272,52 @@ class EGP_Geo_Rules {
                 });
                 html += '</select>';
             } else if (targetType === 'section') {
-                // Two modes: All Sections (default) or Selected by CSS ID/Element ID
+                // Manual ID input
+                var idVal = (selectedValue || '').replace(/^template:/, '').replace(/^#/, '');
                 html = '<div class="egp-target-mode">';
-                html += '<label><input type="radio" name="egp_section_mode" value="all" ' + ((selectedValue === 'all' || !selectedValue) ? 'checked' : '') + '> <?php _e('All Sections', 'elementor-geo-popup'); ?></label><br>';
-                html += '<label><input type="radio" name="egp_section_mode" value="by_id" ' + ((selectedValue && selectedValue !== 'all') ? 'checked' : '') + '> <?php _e('Selected Section by CSS ID or Elementor ID', 'elementor-geo-popup'); ?></label>';
-                html += '<div style="margin-top:6px;"># <input type="text" id="egp_section_ref" placeholder="my-section-id or elementor data-id" value="' + (selectedValue && selectedValue !== 'all' ? selectedValue.replace(/^#/, '') : '') + '" style="min-width:280px;">';
-                html += '<p class="description" style="margin:4px 0 0 0;">' +
-                        '<?php echo esc_js(__('Tip: In Elementor > Advanced, set a CSS ID (without #). Or copy the element\'s data-id from the panel. This value becomes the Rule target identifier.', 'elementor-geo-popup')); ?>' +
-                        '</p></div>';
-                if (!egpProGranularEnabled) {
-                    html += '<span class="egp-pro-badge" style="display:inline-block;vertical-align:middle;background:#f0b849;color:#23282d;border-radius:3px;padding:2px 6px;margin-left:0;font-weight:600;font-size:11px;">PRO</span>';
-                    html += '<p class="description"><?php _e('Granular lists are Pro. Manual ID targeting works in all versions.', 'elementor-geo-popup'); ?></p>';
+                html += '<label><?php _e('Target by CSS ID or Elementor ID', 'elementor-geo-popup'); ?></label>';
+                html += '<div style="margin:4px 0 8px 0;"># <input type="text" id="egp_section_ref" placeholder="my-section-id or elementor data-id" value="' + idVal + '" style="min-width:280px;"></div>';
+                // Optional template selector if options provided
+                if (Array.isArray(options) && options.length){
+                    html += '<label><?php _e('Or select a Section/Container template', 'elementor-geo-popup'); ?></label>';
+                    html += '<select name="egp_section_template" id="egp_section_template" style="min-width:320px;">';
+                    html += '<option value="">— <?php _e('Select a template', 'elementor-geo-popup'); ?> —</option>';
+                    options.forEach(function(option){
+                        var val = 'template:' + option.id;
+                        html += '<option value="' + val + '" ' + (selectedValue === val ? 'selected' : '') + '>' + option.title + '</option>';
+                    });
+                    html += '</select> ';
+                } else {
+                    html += '<p class="description" style="margin:4px 0 0 0;">' +
+                            '<?php echo esc_js(__('No section templates found.', 'elementor-geo-popup')); ?> ' +
+                            '<a href="<?php echo admin_url('post-new.php?post_type=elementor_library'); ?>" target="_blank"><?php _e('Create new template', 'elementor-geo-popup'); ?></a></p>';
                 }
+                html += '<p class="description" style="margin:6px 0 0 0;">' +
+                        '<?php echo esc_js(__('Tip: In Elementor > Advanced, set a CSS ID (without #). Or pick a saved section template.', 'elementor-geo-popup')); ?>' +
+                        '</p>';
                 html += '</div>';
             } else if (targetType === 'widget') {
+                var idValW = (selectedValue || '').replace(/^template:/, '').replace(/^#/, '');
                 html = '<div class="egp-target-mode">';
-                html += '<label><input type="radio" name="egp_widget_mode" value="all" ' + ((selectedValue === 'all' || !selectedValue) ? 'checked' : '') + '> <?php _e('All Widgets', 'elementor-geo-popup'); ?></label><br>';
-                html += '<label><input type="radio" name="egp_widget_mode" value="by_id" ' + ((selectedValue && selectedValue !== 'all') ? 'checked' : '') + '> <?php _e('Selected Widget by CSS ID or Elementor ID', 'elementor-geo-popup'); ?></label>';
-                html += '<div style="margin-top:6px;"># <input type="text" id="egp_widget_ref" placeholder="my-widget-id or elementor data-id" value="' + (selectedValue && selectedValue !== 'all' ? selectedValue.replace(/^#/, '') : '') + '" style="min-width:280px;">';
-                html += '<p class="description" style="margin:4px 0 0 0;">' +
-                        '<?php echo esc_js(__('Tip: In Elementor > Advanced, set a CSS ID (without #). Or copy the element\'s data-id from the panel. This value becomes the Rule target identifier.', 'elementor-geo-popup')); ?>' +
-                        '</p></div>';
-                if (!egpProGranularEnabled) {
-                    html += '<span class="egp-pro-badge" style="display:inline-block;vertical-align:middle;background:#f0b849;color:#23282d;border-radius:3px;padding:2px 6px;margin-left:0;font-weight:600;font-size:11px;">PRO</span>';
-                    html += '<p class="description"><?php _e('Granular lists are Pro. Manual ID targeting works in all versions.', 'elementor-geo-popup'); ?></p>';
+                html += '<label><?php _e('Target by CSS ID or Elementor ID', 'elementor-geo-popup'); ?></label>';
+                html += '<div style="margin:4px 0 8px 0;"># <input type="text" id="egp_widget_ref" placeholder="my-widget-id or elementor data-id" value="' + idValW + '" style="min-width:280px;"></div>';
+                if (Array.isArray(options) && options.length){
+                    html += '<label><?php _e('Or select a Global Widget/Container template', 'elementor-geo-popup'); ?></label>';
+                    html += '<select name="egp_widget_template" id="egp_widget_template" style="min-width:320px;">';
+                    html += '<option value="">— <?php _e('Select a template', 'elementor-geo-popup'); ?> —</option>';
+                    options.forEach(function(option){
+                        var val = 'template:' + option.id;
+                        html += '<option value="' + val + '" ' + (selectedValue === val ? 'selected' : '') + '>' + option.title + '</option>';
+                    });
+                    html += '</select> ';
+                } else {
+                    html += '<p class="description" style="margin:4px 0 0 0;">' +
+                            '<?php echo esc_js(__('No widget templates found.', 'elementor-geo-popup')); ?> ' +
+                            '<a href="<?php echo admin_url('post-new.php?post_type=elementor_library'); ?>" target="_blank"><?php _e('Create new template', 'elementor-geo-popup'); ?></a></p>';
                 }
+                html += '<p class="description" style="margin:6px 0 0 0;">' +
+                        '<?php echo esc_js(__('Tip: Prefer Global Widgets for reuse. Otherwise, set a CSS ID.', 'elementor-geo-popup')); ?>' +
+                        '</p>';
                 html += '</div>';
             }
             
@@ -308,31 +329,18 @@ class EGP_Geo_Rules {
                 selectElement.addEventListener('change', function() { egpUpdateTargetId(this.value); });
             }
             // Section/Widget ID inputs
-            var secMode = targetSelection.querySelector('input[name="egp_section_mode"]');
-            var widMode = targetSelection.querySelector('input[name="egp_widget_mode"]');
             var secRef = targetSelection.querySelector('#egp_section_ref');
             var widRef = targetSelection.querySelector('#egp_widget_ref');
-            function wireMode(modeInputs, refInput){
-                if (!modeInputs) { return; }
-                var inputs = targetSelection.querySelectorAll('input[name="' + modeInputs.name + '"]');
-                inputs.forEach(function(inp){
-                    inp.addEventListener('change', function(){
-                        if (this.value === 'all') { egpUpdateTargetId('all'); }
-                        else if (refInput) { egpUpdateTargetId((refInput.value || '').replace(/^#/, '')); }
-                    });
+            function wireRef(refInput){
+                if (!refInput) { return; }
+                refInput.addEventListener('input', function(){
+                    var val = (this.value || '').replace(/^#/, '');
+                    egpUpdateTargetId(val);
                 });
-                if (refInput) {
-                    refInput.addEventListener('input', function(){
-                        var val = (this.value || '').replace(/^#/, '');
-                        egpUpdateTargetId(val);
-                    });
-                }
-                // Initialize hidden field
-                if (refInput && refInput.value) { egpUpdateTargetId((refInput.value || '').replace(/^#/, '')); }
-                else { egpUpdateTargetId('all'); }
+                if (refInput.value) { egpUpdateTargetId((refInput.value || '').replace(/^#/, '')); }
             }
-            if (secMode) { wireMode(secMode, secRef); }
-            if (widMode) { wireMode(widMode, widRef); }
+            wireRef(secRef);
+            wireRef(widRef);
         }
         
         function egpUpdateTargetId(value) {
@@ -1021,24 +1029,16 @@ class EGP_Geo_Rules {
         } elseif ($target_type === 'section') {
             // Allow granular fetching only if filter enables it
             if (apply_filters('egp_enable_element_granularity', $this->is_pro_user())) {
-                // Placeholder: developers can hook into this to provide real options
                 $options = apply_filters('egp_section_target_options', array());
             }
-            if (empty($options)) {
-                $options = array(
-                    array('id' => 'all', 'title' => __('All Sections', 'elementor-geo-popup'))
-                );
-            }
+            // No fallback “All Sections” – manual ID input covers non-list scenario
+            if (empty($options)) { $options = array(); }
         } elseif ($target_type === 'widget') {
             if (apply_filters('egp_enable_element_granularity', $this->is_pro_user())) {
-                // Placeholder: developers can hook into this to provide real options
                 $options = apply_filters('egp_widget_target_options', array());
             }
-            if (empty($options)) {
-                $options = array(
-                    array('id' => 'all', 'title' => __('All Widgets', 'elementor-geo-popup'))
-                );
-            }
+            // No fallback “All Widgets” – manual ID input covers non-list scenario
+            if (empty($options)) { $options = array(); }
         }
 
         wp_send_json_success($options);

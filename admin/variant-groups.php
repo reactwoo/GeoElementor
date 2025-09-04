@@ -239,6 +239,24 @@ class RW_Geo_Variant_Groups_Admin {
             $mapping_crud = new RW_Geo_Mapping_CRUD();
             $mappings = $mapping_crud->get_by_variant($variant->id);
             $country_count = count($mappings);
+            $has_section_ref = false;
+            $has_widget_ref = false;
+            $section_refs = array();
+            $widget_refs = array();
+            foreach ($mappings as $m) {
+                if (!empty($m->section_ref)) { 
+                    $has_section_ref = true; 
+                    $ref = ltrim(trim($m->section_ref), '#');
+                    if ($ref !== '' && !in_array($ref, $section_refs, true)) { $section_refs[] = $ref; }
+                }
+                if (!empty($m->widget_ref)) { 
+                    $has_widget_ref = true; 
+                    $ref = ltrim(trim($m->widget_ref), '#');
+                    if ($ref !== '' && !in_array($ref, $widget_refs, true)) { $widget_refs[] = $ref; }
+                }
+            }
+            $section_preview = implode(', ', array_slice($section_refs, 0, 3));
+            $widget_preview = implode(', ', array_slice($widget_refs, 0, 3));
             
             $types = array();
             if ($variant->type_mask & RW_GEO_TYPE_PAGE) $types[] = 'Page';
@@ -247,7 +265,16 @@ class RW_Geo_Variant_Groups_Admin {
             if ($variant->type_mask & RW_GEO_TYPE_WIDGET) $types[] = 'Widget';
             
             echo '<tr>';
-            echo '<td><strong>' . esc_html($variant->name) . '</strong></td>';
+            echo '<td><strong>' . esc_html($variant->name) . '</strong>';
+            if ($has_section_ref) {
+                $title = $section_preview ? esc_attr__('Refs: ', 'elementor-geo-popup') . esc_attr($section_preview) : esc_attr__('Section refs present', 'elementor-geo-popup');
+                echo ' <span class="egp-badge" title="' . $title . '" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;border-radius:3px;padding:2px 6px;font-size:10px;">Section Ref</span>';
+            }
+            if ($has_widget_ref) {
+                $title = $widget_preview ? esc_attr__('Refs: ', 'elementor-geo-popup') . esc_attr($widget_preview) : esc_attr__('Widget refs present', 'elementor-geo-popup');
+                echo ' <span class="egp-badge" title="' . $title . '" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:3px;padding:2px 6px;font-size:10px;">Widget Ref</span>';
+            }
+            echo '</td>';
             echo '<td><code>' . esc_html($variant->slug) . '</code></td>';
             echo '<td>' . implode(', ', $types) . '</td>';
             $badges = array();

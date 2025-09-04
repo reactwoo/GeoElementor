@@ -428,6 +428,37 @@ class EGP_Geo_Detect {
                     }
                 }
             }
+            // Merge in Group-based element refs (section_ref, widget_ref) for current route/country
+            if (class_exists('RW_Geo_Router')) {
+                $router = RW_Geo_Router::get_instance();
+                $variant = $router->get_active_variant_group_for_route();
+                if ($variant) {
+                    $mapping = $router->resolve_mapping($variant, $country);
+                    // Determine refs from mapping or variant defaults
+                    $section_ref = '';
+                    $widget_ref = '';
+                    if ($mapping) {
+                        $section_ref = isset($mapping->section_ref) ? (string) $mapping->section_ref : '';
+                        $widget_ref = isset($mapping->widget_ref) ? (string) $mapping->widget_ref : '';
+                    }
+                    if (!$section_ref && !empty($variant->default_section_ref)) { $section_ref = (string) $variant->default_section_ref; }
+                    if (!$widget_ref && !empty($variant->default_widget_ref)) { $widget_ref = (string) $variant->default_widget_ref; }
+                    $section_ref = ltrim(trim($section_ref), '#');
+                    $widget_ref = ltrim(trim($widget_ref), '#');
+                    if (!empty($section_ref)) {
+                        $key = (string) $section_ref;
+                        $arr = isset($element_rules[$key]) && is_array($element_rules[$key]) ? $element_rules[$key] : array();
+                        $arr[] = strtoupper($country);
+                        $element_rules[$key] = array_values(array_unique($arr));
+                    }
+                    if (!empty($widget_ref)) {
+                        $key = (string) $widget_ref;
+                        $arr = isset($element_rules[$key]) && is_array($element_rules[$key]) ? $element_rules[$key] : array();
+                        $arr[] = strtoupper($country);
+                        $element_rules[$key] = array_values(array_unique($arr));
+                    }
+                }
+            }
         } catch (\Throwable $e) {
             if (get_option('egp_debug_mode')) { error_log('EGP: Element rules build error: ' . $e->getMessage()); }
         }
@@ -482,12 +513,20 @@ class EGP_Geo_Detect {
                 try {
                     if (!country) { return; }
                     var cc = String(country).toUpperCase();
-                    Object.keys(egpElementRules || {}).forEach(function(eid){
+                    Object.keys(egpElementRules || {}).forEach(function(ref){
                         try {
-                            var allowed = Array.isArray(egpElementRules[eid]) && egpElementRules[eid].indexOf(cc) !== -1;
-                            var selector = '.elementor-element[data-id="' + eid + '"]';
-                            var nodes = document.querySelectorAll(selector);
-                            nodes.forEach(function(node){ if (!allowed) { node.style.display='none'; node.style.visibility='hidden'; } });
+                            var allowed = Array.isArray(egpElementRules[ref]) && egpElementRules[ref].indexOf(cc) !== -1;
+                            var selectors = [
+                                '.elementor-element[data-id="' + ref + '"]',
+                                '#' + CSS.escape(ref),
+                                '[id="' + ref.replace(/"/g,'\\"') + '"]'
+                            ];
+                            selectors.forEach(function(selector){
+                                try {
+                                    var nodes = document.querySelectorAll(selector);
+                                    nodes.forEach(function(node){ if (!allowed) { node.style.display='none'; node.style.visibility='hidden'; } });
+                                } catch(ee){}
+                            });
                         } catch(e){}
                     });
                 } catch(e){}
