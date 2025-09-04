@@ -161,10 +161,8 @@ class EGP_Geo_Rules {
                         <option value=""><?php _e('Select Target Type', 'elementor-geo-popup'); ?></option>
                         <option value="page" <?php selected($target_type, 'page'); ?>><?php _e('Page', 'elementor-geo-popup'); ?></option>
                         <option value="popup" <?php selected($target_type, 'popup'); ?>><?php _e('Popup', 'elementor-geo-popup'); ?></option>
-                        <?php if ($this->is_pro_user()): ?>
                         <option value="section" <?php selected($target_type, 'section'); ?>><?php _e('Section (Pro)', 'elementor-geo-popup'); ?></option>
                         <option value="widget" <?php selected($target_type, 'widget'); ?>><?php _e('Widget (Pro)', 'elementor-geo-popup'); ?></option>
-                        <?php endif; ?>
                     </select>
                     <p class="description"><?php _e('What type of content to target', 'elementor-geo-popup'); ?></p>
                 </td>
@@ -222,6 +220,7 @@ class EGP_Geo_Rules {
         </table>
         
         <script>
+        var egpProGranularEnabled = <?php echo apply_filters('egp_enable_element_granularity', $this->is_pro_user()) ? 'true' : 'false'; ?>;
         function egpUpdateTargetOptions() {
             var targetType = document.getElementById('egp_target_type').value;
             var targetSelection = document.getElementById('egp_target_selection');
@@ -280,7 +279,10 @@ class EGP_Geo_Rules {
                     html += '<option value="' + option.id + '" ' + (selectedValue == option.id ? 'selected' : '') + '>' + option.title + '</option>';
                 });
                 html += '</select>';
-                html += '<p class="description"><?php _e('Section targeting is a Pro feature. Basic mode supports choosing All Sections.', 'elementor-geo-popup'); ?></p>';
+                if (!egpProGranularEnabled) {
+                    html += '<span class="egp-pro-badge" style="display:inline-block;vertical-align:middle;background:#f0b849;color:#23282d;border-radius:3px;padding:2px 6px;margin-left:8px;font-weight:600;font-size:11px;">PRO</span>';
+                    html += '<p class="description"><?php _e('Granular section selection requires Pro. Use All Sections, or enable via filter.', 'elementor-geo-popup'); ?></p>';
+                }
             } else if (targetType === 'widget') {
                 html = '<select name="egp_target_id_select" id="egp_target_id_select">';
                 html += '<option value=""><?php _e('Select a widget', 'elementor-geo-popup'); ?></option>';
@@ -289,7 +291,10 @@ class EGP_Geo_Rules {
                     html += '<option value="' + option.id + '" ' + (selectedValue == option.id ? 'selected' : '') + '>' + option.title + '</option>';
                 });
                 html += '</select>';
-                html += '<p class="description"><?php _e('Widget targeting is a Pro feature. Basic mode supports choosing All Widgets.', 'elementor-geo-popup'); ?></p>';
+                if (!egpProGranularEnabled) {
+                    html += '<span class="egp-pro-badge" style="display:inline-block;vertical-align:middle;background:#f0b849;color:#23282d;border-radius:3px;padding:2px 6px;margin-left:8px;font-weight:600;font-size:11px;">PRO</span>';
+                    html += '<p class="description"><?php _e('Granular widget selection requires Pro. Use All Widgets, or enable via filter.', 'elementor-geo-popup'); ?></p>';
+                }
             }
             
             targetSelection.innerHTML = html;
@@ -994,15 +999,26 @@ class EGP_Geo_Rules {
                 error_log('[EGP Debug] ajax_get_target_options popups count: ' . count($options));
             }
         } elseif ($target_type === 'section') {
-            // Free tier: provide only "All Sections" option to avoid empty UI
-            $options = array(
-                array('id' => 'all', 'title' => __('All Sections', 'elementor-geo-popup'))
-            );
+            // Allow granular fetching only if filter enables it
+            if (apply_filters('egp_enable_element_granularity', $this->is_pro_user())) {
+                // Placeholder: developers can hook into this to provide real options
+                $options = apply_filters('egp_section_target_options', array());
+            }
+            if (empty($options)) {
+                $options = array(
+                    array('id' => 'all', 'title' => __('All Sections', 'elementor-geo-popup'))
+                );
+            }
         } elseif ($target_type === 'widget') {
-            // Free tier: provide only "All Widgets" option to avoid empty UI
-            $options = array(
-                array('id' => 'all', 'title' => __('All Widgets', 'elementor-geo-popup'))
-            );
+            if (apply_filters('egp_enable_element_granularity', $this->is_pro_user())) {
+                // Placeholder: developers can hook into this to provide real options
+                $options = apply_filters('egp_widget_target_options', array());
+            }
+            if (empty($options)) {
+                $options = array(
+                    array('id' => 'all', 'title' => __('All Widgets', 'elementor-geo-popup'))
+                );
+            }
         }
 
         wp_send_json_success($options);
