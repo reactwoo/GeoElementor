@@ -27,342 +27,129 @@
 
         addGeoControls: function () {
             var self = this;
-            function wrap(fn, type) { return function (panel, model) { try { if (window.console && console.log) console.log('[EGP] open_editor event:', type); } catch (e) { } fn.call(self, panel, model); }; }
-            // Add geo targeting section to widgets
-            elementor.hooks.addAction('panel/open_editor/widget', wrap(this.addGeoPanel, 'widget'));
-            // Also attach to sections/containers/columns (Elementor 3+ containers)
-            elementor.hooks.addAction('panel/open_editor/section', wrap(this.addGeoPanel, 'section'));
-            elementor.hooks.addAction('panel/open_editor/container', wrap(this.addGeoPanel, 'container'));
-            elementor.hooks.addAction('panel/open_editor/column', wrap(this.addGeoPanel, 'column'));
-            // Add geo targeting section to popups
-            elementor.hooks.addAction('panel/open_editor/popup', wrap(this.addGeoPanel, 'popup'));
-        },
-
-        addGeoPanel: function (panel, model) {
-            // Avoid duplicates if panel re-opens
-            try { panel.$el.find('#egp_geo_panel_root').remove(); } catch (e) { }
-            var $geoSection = $('<div class="elementor-panel-option" id="egp_geo_panel_root">');
-            $geoSection.html(`
-                <div class="elementor-panel-heading-title elementor-panel-heading-title">
-                    <i class="eicon-location-alt"></i> Geo Targeting
-                </div>
-                <div class="elementor-panel-field" id="egp_element_meta_row">
-                    <label class="elementor-panel-field-label">Element ID</label>
-                    <div class="elementor-panel-field-control">
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <code id="egp_element_id_code" style="padding:2px 6px;border:1px solid #e2e8f0;border-radius:3px;background:#f8fafc;">—</code>
-                            <button type="button" class="elementor-button elementor-button-default" id="egp_copy_element_id" style="padding:2px 6px;line-height:1.6;">Copy</button>
-                        </div>
-                        <p class="description">Use this value in Rules or Groups when targeting by Elementor element ID.</p>
-                    </div>
-                </div>
-                <div class="elementor-panel-field">
-                    <label class="elementor-panel-field-label">Enable Geo Targeting</label>
-                    <div class="elementor-panel-field-control">
-                        <label class="elementor-switch">
-                            <input type="checkbox" id="egp_enable_geo" class="egp-geo-toggle">
-                            <span class="elementor-switch-label"></span>
-                        </label>
-                    </div>
-                </div>
-                <div id="egp_geo_options" style="display: none;">
-                    <div class="elementor-panel-field">
-                        <label class="elementor-panel-field-label">Target Countries</label>
-                        <div class="elementor-panel-field-control">
-                            <select id="egp_countries" multiple="multiple" style="width: 100%; min-height: 80px;"></select>
-                            <p class="description">Hold Ctrl/Cmd to select multiple countries</p>
-                        </div>
-                    </div>
-                    <div class="elementor-panel-field">
-                        <label class="elementor-panel-field-label">Priority</label>
-                        <div class="elementor-panel-field-control">
-                            <input type="number" id="egp_priority" min="1" max="100" value="50" style="width: 100%;">
-                            <p class="description">Higher numbers take precedence (1-100)</p>
-                        </div>
-                    </div>
-                    <div class="elementor-panel-field">
-                        <label class="elementor-panel-field-label">Tracking ID</label>
-                        <div class="elementor-panel-field-control">
-                            <input type="text" id="egp_tracking_id" style="width: 100%;" placeholder="auto-generated">
-                            <p class="description">Used for analytics and tracking</p>
-                        </div>
-                    </div>
-                </div>
-            `);
-
-            // Insert into appropriate section based on element type
-            var $targetSection;
-            var elType = model && model.get ? (model.get('elType') || '') : '';
-            var tryAppend = function (retries) {
-                retries = retries || 0;
-                var $dest;
-                if (elType === 'popup') {
-                    $dest = panel.$el.find('.elementor-panel-section-popup_layout');
-                } else {
-                    // Prefer Advanced tab, but fall back to tabs content if not present
-                    $dest = panel.$el.find('.elementor-panel-tab-content[data-tab="advanced"]');
-                    if (!$dest.length) { $dest = panel.$el.find('.elementor-panel-tabs-content .elementor-panel-tab-content[data-tab="advanced"]'); }
-                    if (!$dest.length) { $dest = panel.$el.find('.elementor-panel-tabs-content'); }
-                }
-                if ($dest && $dest.length) {
-                    $dest.append($geoSection);
-                    try { if (window.console && console.log) console.log('[EGP] Geo panel appended into Advanced for', elType); } catch (e) { }
-                    return true;
-                }
-                if (retries < 40) { setTimeout(function () { tryAppend(retries + 1); }, 100); }
-                return false;
-            };
-            tryAppend(0);
-            // Observe for late-rendered Advanced tab and append once
-            try {
-                var root = panel.$el && panel.$el[0];
-                if (root) {
-                    var obs = new MutationObserver(function (muts) {
-                        muts.forEach(function (m) {
-                            if (!m.addedNodes || !m.addedNodes.length) return;
-                            var $dest = panel.$el.find('.elementor-panel-tab-content[data-tab="advanced"]');
-                            if ($dest.length && !panel.$el.find('#egp_geo_panel_root').length) {
-                                $dest.append($geoSection);
-                            }
-                        });
-                    });
-                    obs.observe(root, { childList: true, subtree: true });
-                    setTimeout(function () { try { obs.disconnect(); } catch (e) { } }, 6000);
-                }
-            } catch (e) { }
-
-            // Bind events (stable reference)
-            GeoElementorEditor.bindGeoEvents(panel, model);
-
-            // Initialize native country select (no Select2)
-            GeoElementorEditor.initializeCountrySelect(panel);
-
-            // Populate with existing rule by popup post ID, fallback to element ID
-            try {
-                var popupPostId = (elementor && elementor.config && elementor.config.document && elementor.config.document.id) ? elementor.config.document.id : '';
-                var elementId = model && model.get ? model.get('id') : '';
-                // Populate element id meta row
-                try {
-                    panel.$el.find('#egp_element_id_code').text(elementId || '—');
-                    panel.$el.find('#egp_copy_element_id').off('click.egp').on('click.egp', function () {
-                        try { navigator.clipboard.writeText(String(elementId || '')); } catch (e) { }
-                    });
-                } catch (e) { }
-                var paramsByPopup = { action: 'egp_get_rule_by_popup', popup_id: popupPostId, nonce: (window.egpEditor && egpEditor.nonce) || '' };
-                var paramsByElement = { action: 'egp_get_rule_by_element', element_id: elementId, nonce: (window.egpEditor && egpEditor.nonce) || '' };
-
-                var applyRule = function (data) {
-                    panel.$el.find('#egp_enable_geo').prop('checked', true);
-                    panel.$el.find('#egp_geo_options').show();
-                    if (Array.isArray(data.countries)) {
-                        panel.$el.find('#egp_countries').val(data.countries);
-                    }
-                    var summary = $('<div class=\"elementor-panel-field\"><p class=\"description\">Rule: ' + data.title + ' (Priority ' + (data.priority || 0) + ')</p></div>');
-                    $geoSection.append(summary);
-                    var ruleLinks = $('<div class=\"elementor-panel-field\"><a class=\"button button-small\" target=\"_blank\" href=\"' + (window.ajaxurl ? window.ajaxurl.replace('admin-ajax.php', 'post.php?post=' + data.id + '&action=edit') : '#') + '\">Edit Rule</a></div>');
-                    $geoSection.append(ruleLinks);
-                };
-
-                if (popupPostId) {
-                    $.post(egpEditor.ajaxUrl, paramsByPopup).done(function (resp) {
-                        if (resp && resp.success && resp.data) {
-                            applyRule(resp.data);
-                        } else if (elementId) {
-                            $.post(egpEditor.ajaxUrl, paramsByElement).done(function (resp2) {
-                                if (resp2 && resp2.success && resp2.data) {
-                                    applyRule(resp2.data);
-                                }
-                            });
-                        }
-                    });
-                } else if (elementId) {
-                    $.post(egpEditor.ajaxUrl, paramsByElement).done(function (resp3) {
-                        if (resp3 && resp3.success && resp3.data) {
-                            applyRule(resp3.data);
-                        }
-                    });
-                }
-            } catch (e) { }
-
-            // License gating for element types other than popup
-            try {
-                var isPro = !!(window.egpEditor && egpEditor.isPro);
-                var isElementTarget = (elType && elType !== 'popup');
-                if (!isPro && isElementTarget) {
-                    var $disable = $('<div class="elementor-panel-field"><p class="description" style="color:#8a6d3b;">Upgrade to Pro to target Sections, Containers, Columns, and Widgets.</p></div>');
-                    $geoSection.append($disable);
-                    panel.$el.find('#egp_enable_geo').prop('disabled', true);
-                }
-            } catch (e) { }
-        },
-
-        /**
-         * Initialize country selection without Select2
-         */
-        initializeCountrySelect: function (panel) {
-            var $countriesSelect = panel.$el.find('#egp_countries');
-            // Fetch countries from backend to ensure complete list (incl. Singapore)
-            try {
-                $.post(egpEditor.ajaxUrl, { action: 'egp_get_countries', nonce: egpEditor.nonce }).done(function (resp) {
-                    if (resp && resp.success && resp.data) {
-                        var optionsHtml = '';
-                        Object.keys(resp.data).sort().forEach(function (code) {
-                            var name = resp.data[code];
-                            optionsHtml += '<option value="' + code + '">' + name + '</option>';
-                        });
-                        $countriesSelect.html(optionsHtml);
-                    }
-                });
-            } catch (e) { }
-            // Style native select for usability
-            $countriesSelect.css({
-                'min-height': '120px',
-                'padding': '8px',
-                'border': '1px solid #ddd',
-                'border-radius': '4px',
-                'background-color': '#fff'
-            });
-            $countriesSelect.after('<p class="description" style="margin-top: 5px; color: #666;">Hold Ctrl/Cmd to select multiple countries.</p>');
-        },
-
-        bindGeoEvents: function (panel, model) {
-            var $geoToggle = panel.$el.find('#egp_enable_geo');
-            var $geoOptions = panel.$el.find('#egp_geo_options');
-
-            // Toggle geo options visibility
-            $geoToggle.on('change', function () {
-                if (this.checked) {
-                    $geoOptions.show();
-                    // Load existing geo settings if any
-                    GeoElementorEditor.loadExistingSettings(panel, model);
-                } else {
-                    $geoOptions.hide();
-                }
-            });
-
-            // Save geo settings when element is saved
-            panel.$el.on('change', 'input, select', function () {
-                GeoElementorEditor.saveGeoSettings(panel, model);
-            });
-
-            // Sync native countries multi-select -> hidden store as JSON
-            try {
-                var $native = panel.$el.find('#egp_countries_native');
-                var $store = panel.$el.find('input[name="egp_geo_countries_store"]');
-                if ($native.length && $store.length) {
-                    // Ensure adequate viewport and populate if empty
-                    $native.attr('size', 12).css({ 'min-height': '220px', 'width': '100%', 'max-width': '420px' });
-                    if ($native.children().length === 0) {
-                        var defaults = {
-                            'US': 'United States', 'GB': 'United Kingdom', 'CA': 'Canada', 'AU': 'Australia', 'DE': 'Germany', 'FR': 'France',
-                            'IT': 'Italy', 'ES': 'Spain', 'NL': 'Netherlands', 'BE': 'Belgium', 'SE': 'Sweden', 'NO': 'Norway', 'DK': 'Denmark', 'FI': 'Finland'
-                        };
-                        Object.keys(defaults).forEach(function (cc) { $native.append($('<option/>', { value: cc, text: defaults[cc] })); });
-                    }
-                    function syncStore() {
-                        var vals = [];
-                        $native.find('option:selected').each(function () { vals.push($(this).val()); });
-                        $store.val(JSON.stringify(vals));
-                    }
-                    $native.on('change', syncStore);
-                    syncStore();
-                }
-            } catch (e) { }
-        },
-
-        loadExistingSettings: function (panel, model) {
-            // Load existing geo settings from the model
-            var settings = model.get('settings');
-            if (settings && settings.egp_geo_enabled) {
-                panel.$el.find('#egp_countries').val(settings.egp_countries || []);
-                panel.$el.find('#egp_priority').val(settings.egp_priority || 50);
-                panel.$el.find('#egp_tracking_id').val(settings.egp_tracking_id || '');
+            // Log that PHP controls should be handling this now
+            if (window.console && console.log) {
+                console.log('[EGP] PHP controls registration handles geo targeting - JS panel injection removed');
             }
+            // No longer needed - PHP controls manager handles everything
         },
 
-        saveGeoSettings: function (panel, model) {
-            var settings = model.get('settings') || {};
+        // addGeoPanel function removed - PHP controls manager handles this now
 
-            settings.egp_geo_enabled = panel.$el.find('#egp_enable_geo').is(':checked');
-            settings.egp_countries = panel.$el.find('#egp_countries').val() || [];
-            settings.egp_priority = parseInt(panel.$el.find('#egp_priority').val()) || 50;
-            settings.egp_tracking_id = panel.$el.find('#egp_tracking_id').val() || '';
+        // initializeCountrySelect removed - PHP controls handle this now
 
-            // Auto-generate tracking ID if empty
-            if (!settings.egp_tracking_id && settings.egp_geo_enabled) {
-                settings.egp_tracking_id = 'geo_' + model.get('id') + '_' + Date.now();
-                panel.$el.find('#egp_tracking_id').val(settings.egp_tracking_id);
-            }
+        // bindGeoEvents removed - PHP controls handle this now
 
-            model.set('settings', settings);
+        // loadExistingSettings and saveGeoSettings removed - PHP controls handle this now
 
-            // Save geo settings to database for central administration
-            if (settings.egp_geo_enabled) {
-                this.saveGeoRuleToDatabase(model, settings);
-            } else {
-                // Remove geo rule if disabled
-                this.removeGeoRuleFromDatabase(model);
-            }
-        },
-
-        saveGeoRuleToDatabase: function (model, settings) {
-            var docType = (elementor && elementor.config && elementor.config.document && elementor.config.document.type) ? elementor.config.document.type : '';
-            var popupPostId = (elementor && elementor.config && elementor.config.document && elementor.config.document.id) ? elementor.config.document.id : '';
-            var elType = model && model.get ? (model.get('elType') || '') : '';
-            var isPopupDoc = (docType === 'popup' || elType === 'popup');
-            var targetType = isPopupDoc ? 'popup' : 'elementor';
-            var targetId = isPopupDoc && popupPostId ? String(popupPostId) : String(model.get('id'));
-
-            var ruleData = {
-                target_type: targetType,
-                target_id: targetId,
-                countries: settings.egp_countries,
-                priority: settings.egp_priority,
-                active: true,
-                source: 'elementor',
-                title: (model.get('settings') && model.get('settings').get('_title')) || 'Elementor Geo Rule',
-                element_type: elType || 'widget',
-                tracking_id: settings.egp_tracking_id
-            };
-
-            // Send to backend to save using unified endpoint
-            $.post(egpEditor.ajaxUrl, {
-                action: 'egp_save_elementor_geo_rule',
-                target_type: targetType,
-                target_id: targetId,
-                countries: settings.egp_countries,
-                priority: settings.egp_priority,
-                active: true,
-                source: 'elementor',
-                title: ruleData.title,
-                element_type: ruleData.element_type,
-                tracking_id: settings.egp_tracking_id,
-                nonce: egpEditor.nonce
-            }, function (response) {
-                if (response.success) {
-                    console.log('Geo rule saved successfully:', response.data);
-                } else {
-                    console.error('Failed to save geo rule:', response.data);
-                }
-            });
-        },
-
-        removeGeoRuleFromDatabase: function (model) {
-            $.post(egpEditor.ajaxUrl, {
-                action: 'egp_remove_elementor_geo_rule',
-                element_id: model.get('id'),
-                nonce: egpEditor.nonce
-            }, function (response) {
-                if (response.success) {
-                    console.log('Geo rule removed for element:', model.get('id'));
-                }
-            });
-        }
+        // saveGeoRuleToDatabase and removeGeoRuleFromDatabase removed - PHP controls handle this now
     };
 
     // Initialize when document is ready
     $(document).ready(function () {
         GeoElementorEditor.init();
+    });
+
+    // Handle Elementor controls synchronization
+    $(document).on('change', '#egp_countries_native', function () {
+        var selectedCountries = [];
+        $(this).find('option:selected').each(function () {
+            selectedCountries.push($(this).val());
+        });
+        // Update the hidden JSON store
+        var $store = $(this).closest('.elementor-control').find('input[name*="egp_geo_countries_store"]');
+        if ($store.length) {
+            $store.val(JSON.stringify(selectedCountries));
+        }
+        if (window.console && console.log) {
+            console.log('[EGP] Countries updated:', selectedCountries);
+        }
+    });
+
+    // Handle copy element ID button
+    $(document).on('click', '#egp-copy-element-id', function (e) {
+        e.preventDefault();
+        var elementId = $('#egp-element-id-display').text();
+        if (elementId && elementId !== '—') {
+            try {
+                navigator.clipboard.writeText(elementId);
+                // Show brief success feedback
+                var $btn = $(this);
+                var originalText = $btn.text();
+                $btn.text('Copied!');
+                setTimeout(function () {
+                    $btn.text(originalText);
+                }, 1000);
+            } catch (err) {
+                // Fallback for older browsers
+                var textArea = document.createElement('textarea');
+                textArea.value = elementId;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+            }
+        }
+    });
+
+    // Initialize country selector and element ID when controls are ready
+    function initializeGeoControls() {
+        // Initialize country selector with stored values
+        var $countrySelect = $('#egp_countries_native');
+        var $countryStore = $('input[name*="egp_geo_countries_store"]');
+
+        if ($countrySelect.length && $countryStore.length) {
+            try {
+                var storedCountries = JSON.parse($countryStore.val() || '[]');
+                if (storedCountries.length > 0) {
+                    $countrySelect.val(storedCountries);
+                }
+            } catch (e) {
+                if (window.console && console.log) {
+                    console.log('[EGP] Error parsing stored countries:', e);
+                }
+            }
+        }
+
+        // Initialize element ID display
+        var $display = $('#egp-element-id-display');
+        if ($display.length && $display.text() === '—') {
+            // Try to get element ID from Elementor
+            if (typeof elementor !== 'undefined') {
+                var panel = elementor.getPanelView().getCurrentPageView();
+                if (panel && panel.model) {
+                    var elementId = panel.model.get('id');
+                    if (elementId) {
+                        $display.text(elementId);
+                    }
+                }
+            }
+        }
+    }
+
+    // Update element ID display when Elementor loads
+    $(document).on('elementor:init', function () {
+        setTimeout(function () {
+            // Try to get the current element ID from Elementor
+            if (typeof elementor !== 'undefined' && elementor.channels && elementor.channels.editor) {
+                elementor.channels.editor.on('section:activated', function (sectionName, editor) {
+                    if (sectionName === 'section_advanced') {
+                        setTimeout(function () {
+                            initializeGeoControls();
+                        }, 200);
+                    }
+                });
+            }
+            // Also initialize on panel open
+            setTimeout(initializeGeoControls, 500);
+        }, 1000);
+    });
+
+    // Re-initialize when controls might be dynamically loaded
+    $(document).on('DOMNodeInserted', function (e) {
+        if ($(e.target).hasClass('elementor-control-egp_geo_tools')) {
+            setTimeout(initializeGeoControls, 100);
+        }
     });
 
 })(jQuery);

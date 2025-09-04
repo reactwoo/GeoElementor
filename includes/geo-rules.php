@@ -1731,11 +1731,31 @@ if (!function_exists('egp_register_elementor_advanced_geo_section_core')) {
         // Determine Pro gating (same heuristic as elsewhere)
         $is_pro = current_user_can('manage_woocommerce') || apply_filters('egp_is_pro_user', false);
 
+        // Add debug logging
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            $element_name = method_exists($element, 'get_name') ? $element->get_name() : 'unknown';
+            error_log('[EGP] Registering geo controls for element: ' . $element_name);
+        }
+
         $element->start_controls_section(
             'egp_geo_tools',
             array(
                 'label' => __('Geo Targeting', 'elementor-geo-popup'),
                 'tab'   => \Elementor\Controls_Manager::TAB_ADVANCED,
+            )
+        );
+
+        // Add element ID display for targeting reference
+        $element->add_control(
+            'egp_element_id_display',
+            array(
+                'type' => \Elementor\Controls_Manager::RAW_HTML,
+                'raw'  => '<div style="background:#f8f9fa;border:1px solid #dee2e6;padding:8px;border-radius:4px;margin-bottom:10px;">'
+                        . '<strong>' . esc_html__('Element ID:', 'elementor-geo-popup') . '</strong> '
+                        . '<code id="egp-element-id-display" style="background:#e9ecef;padding:2px 6px;border-radius:3px;">—</code> '
+                        . '<button type="button" id="egp-copy-element-id" class="elementor-button elementor-button-default" style="padding:2px 6px;font-size:11px;">' . esc_html__('Copy', 'elementor-geo-popup') . '</button>'
+                        . '<br><small style="color:#6c757d;">' . esc_html__('Use this ID in Rules or Groups when targeting by Elementor element ID.', 'elementor-geo-popup') . '</small></div>',
+                'content_classes' => 'egp-element-info',
             )
         );
 
@@ -1752,7 +1772,7 @@ if (!function_exists('egp_register_elementor_advanced_geo_section_core')) {
                 )
             );
 
-            // Native multi-select (no Select2). Store JSON in a hidden control.
+            // Store countries as JSON in hidden field
             $element->add_control(
                 'egp_geo_countries_store',
                 array(
@@ -1762,19 +1782,110 @@ if (!function_exists('egp_register_elementor_advanced_geo_section_core')) {
                 )
             );
 
-            $country_options = array(
-                'US' => 'United States','GB' => 'United Kingdom','CA' => 'Canada','AU' => 'Australia','DE' => 'Germany','FR' => 'France',
-                'IT' => 'Italy','ES' => 'Spain','NL' => 'Netherlands','BE' => 'Belgium','SE' => 'Sweden','NO' => 'Norway','DK' => 'Denmark','FI' => 'Finland'
+            // Priority control
+            $element->add_control(
+                'egp_geo_priority',
+                array(
+                    'label'       => __('Priority', 'elementor-geo-popup'),
+                    'type'        => \Elementor\Controls_Manager::NUMBER,
+                    'min'         => 1,
+                    'max'         => 100,
+                    'step'        => 1,
+                    'default'     => 50,
+                    'condition'   => array('egp_geo_enabled' => 'yes'),
+                    'description' => __('Higher numbers take precedence (1-100)', 'elementor-geo-popup'),
+                )
             );
+
+            // Tracking ID
+            $element->add_control(
+                'egp_geo_tracking_id',
+                array(
+                    'label'       => __('Tracking ID', 'elementor-geo-popup'),
+                    'type'        => \Elementor\Controls_Manager::TEXT,
+                    'condition'   => array('egp_geo_enabled' => 'yes'),
+                    'description' => __('Used for analytics and tracking', 'elementor-geo-popup'),
+                    'placeholder' => __('Auto-generated if empty', 'elementor-geo-popup'),
+                )
+            );
+
+            // Country selector using full country list
+            $countries = array(
+                'AF' => 'Afghanistan', 'AL' => 'Albania', 'DZ' => 'Algeria', 'AS' => 'American Samoa',
+                'AD' => 'Andorra', 'AO' => 'Angola', 'AI' => 'Anguilla', 'AQ' => 'Antarctica',
+                'AG' => 'Antigua and Barbuda', 'AR' => 'Argentina', 'AM' => 'Armenia', 'AW' => 'Aruba',
+                'AU' => 'Australia', 'AT' => 'Austria', 'AZ' => 'Azerbaijan', 'BS' => 'Bahamas',
+                'BH' => 'Bahrain', 'BD' => 'Bangladesh', 'BB' => 'Barbados', 'BY' => 'Belarus',
+                'BE' => 'Belgium', 'BZ' => 'Belize', 'BJ' => 'Benin', 'BM' => 'Bermuda',
+                'BT' => 'Bhutan', 'BO' => 'Bolivia', 'BA' => 'Bosnia and Herzegovina', 'BW' => 'Botswana',
+                'BR' => 'Brazil', 'BN' => 'Brunei', 'BG' => 'Bulgaria', 'BF' => 'Burkina Faso',
+                'BI' => 'Burundi', 'KH' => 'Cambodia', 'CM' => 'Cameroon', 'CA' => 'Canada',
+                'CV' => 'Cape Verde', 'KY' => 'Cayman Islands', 'CF' => 'Central African Republic',
+                'TD' => 'Chad', 'CL' => 'Chile', 'CN' => 'China', 'CO' => 'Colombia',
+                'KM' => 'Comoros', 'CG' => 'Congo', 'CD' => 'Congo, Democratic Republic',
+                'CK' => 'Cook Islands', 'CR' => 'Costa Rica', 'CI' => 'Côte d\'Ivoire', 'HR' => 'Croatia',
+                'CU' => 'Cuba', 'CW' => 'Curaçao', 'CY' => 'Cyprus', 'CZ' => 'Czech Republic',
+                'DK' => 'Denmark', 'DJ' => 'Djibouti', 'DM' => 'Dominica', 'DO' => 'Dominican Republic',
+                'EC' => 'Ecuador', 'EG' => 'Egypt', 'SV' => 'El Salvador', 'GQ' => 'Equatorial Guinea',
+                'ER' => 'Eritrea', 'EE' => 'Estonia', 'ET' => 'Ethiopia', 'FK' => 'Falkland Islands',
+                'FO' => 'Faroe Islands', 'FJ' => 'Fiji', 'FI' => 'Finland', 'FR' => 'France',
+                'GA' => 'Gabon', 'GM' => 'Gambia', 'GE' => 'Georgia', 'DE' => 'Germany',
+                'GH' => 'Ghana', 'GI' => 'Gibraltar', 'GR' => 'Greece', 'GL' => 'Greenland',
+                'GD' => 'Grenada', 'GU' => 'Guam', 'GT' => 'Guatemala', 'GG' => 'Guernsey',
+                'GN' => 'Guinea', 'GW' => 'Guinea-Bissau', 'GY' => 'Guyana', 'HT' => 'Haiti',
+                'HN' => 'Honduras', 'HK' => 'Hong Kong', 'HU' => 'Hungary', 'IS' => 'Iceland',
+                'IN' => 'India', 'ID' => 'Indonesia', 'IR' => 'Iran', 'IQ' => 'Iraq',
+                'IE' => 'Ireland', 'IM' => 'Isle of Man', 'IL' => 'Israel', 'IT' => 'Italy',
+                'JM' => 'Jamaica', 'JP' => 'Japan', 'JE' => 'Jersey', 'JO' => 'Jordan',
+                'KZ' => 'Kazakhstan', 'KE' => 'Kenya', 'KI' => 'Kiribati', 'KW' => 'Kuwait',
+                'KG' => 'Kyrgyzstan', 'LA' => 'Laos', 'LV' => 'Latvia', 'LB' => 'Lebanon',
+                'LS' => 'Lesotho', 'LR' => 'Liberia', 'LY' => 'Libya', 'LI' => 'Liechtenstein',
+                'LT' => 'Lithuania', 'LU' => 'Luxembourg', 'MO' => 'Macau', 'MK' => 'Macedonia',
+                'MG' => 'Madagascar', 'MW' => 'Malawi', 'MY' => 'Malaysia', 'MV' => 'Maldives',
+                'ML' => 'Mali', 'MT' => 'Malta', 'MH' => 'Marshall Islands', 'MR' => 'Mauritania',
+                'MU' => 'Mauritius', 'MX' => 'Mexico', 'FM' => 'Micronesia', 'MD' => 'Moldova',
+                'MC' => 'Monaco', 'MN' => 'Mongolia', 'ME' => 'Montenegro', 'MS' => 'Montserrat',
+                'MA' => 'Morocco', 'MZ' => 'Mozambique', 'MM' => 'Myanmar', 'NA' => 'Namibia',
+                'NR' => 'Nauru', 'NP' => 'Nepal', 'NL' => 'Netherlands', 'NC' => 'New Caledonia',
+                'NZ' => 'New Zealand', 'NI' => 'Nicaragua', 'NE' => 'Niger', 'NG' => 'Nigeria',
+                'NU' => 'Niue', 'NF' => 'Norfolk Island', 'KP' => 'North Korea', 'MP' => 'Northern Mariana Islands',
+                'NO' => 'Norway', 'OM' => 'Oman', 'PK' => 'Pakistan', 'PW' => 'Palau',
+                'PS' => 'Palestine', 'PA' => 'Panama', 'PG' => 'Papua New Guinea', 'PY' => 'Paraguay',
+                'PE' => 'Peru', 'PH' => 'Philippines', 'PN' => 'Pitcairn', 'PL' => 'Poland',
+                'PT' => 'Portugal', 'PR' => 'Puerto Rico', 'QA' => 'Qatar', 'RO' => 'Romania',
+                'RU' => 'Russia', 'RW' => 'Rwanda', 'WS' => 'Samoa', 'SM' => 'San Marino',
+                'ST' => 'São Tomé and Príncipe', 'SA' => 'Saudi Arabia', 'SN' => 'Senegal',
+                'RS' => 'Serbia', 'SC' => 'Seychelles', 'SL' => 'Sierra Leone', 'SG' => 'Singapore',
+                'SX' => 'Sint Maarten', 'SK' => 'Slovakia', 'SI' => 'Slovenia', 'SB' => 'Solomon Islands',
+                'SO' => 'Somalia', 'ZA' => 'South Africa', 'KR' => 'South Korea', 'SS' => 'South Sudan',
+                'ES' => 'Spain', 'LK' => 'Sri Lanka', 'SD' => 'Sudan', 'SR' => 'Suriname',
+                'SZ' => 'Swaziland', 'SE' => 'Sweden', 'CH' => 'Switzerland', 'SY' => 'Syria',
+                'TW' => 'Taiwan', 'TJ' => 'Tajikistan', 'TZ' => 'Tanzania', 'TH' => 'Thailand',
+                'TL' => 'Timor-Leste', 'TG' => 'Togo', 'TK' => 'Tokelau', 'TO' => 'Tonga',
+                'TT' => 'Trinidad and Tobago', 'TN' => 'Tunisia', 'TR' => 'Turkey', 'TM' => 'Turkmenistan',
+                'TC' => 'Turks and Caicos Islands', 'TV' => 'Tuvalu', 'UG' => 'Uganda', 'UA' => 'Ukraine',
+                'AE' => 'United Arab Emirates', 'GB' => 'United Kingdom', 'US' => 'United States',
+                'UY' => 'Uruguay', 'UZ' => 'Uzbekistan', 'VU' => 'Vanuatu', 'VA' => 'Vatican City',
+                'VE' => 'Venezuela', 'VN' => 'Vietnam', 'VG' => 'Virgin Islands, British',
+                'VI' => 'Virgin Islands, U.S.', 'WF' => 'Wallis and Futuna', 'EH' => 'Western Sahara',
+                'YE' => 'Yemen', 'ZM' => 'Zambia', 'ZW' => 'Zimbabwe'
+            );
+
+            // Sort countries alphabetically
+            asort($countries);
+
             $options_html = '';
-            foreach ($country_options as $cc => $nn) { $options_html .= '<option value="'.esc_attr($cc).'">'.esc_html($nn).'</option>'; }
+            foreach ($countries as $cc => $nn) {
+                $options_html .= '<option value="' . esc_attr($cc) . '">' . esc_html($nn) . '</option>';
+            }
+
             $element->add_control(
                 'egp_geo_countries_native',
                 array(
                     'type' => \Elementor\Controls_Manager::RAW_HTML,
-                    'raw'  => '<label style="display:block;margin-bottom:4px;">'.esc_html__('Target Countries','elementor-geo-popup').'</label>'
-                           . '<select id="egp_countries_native" multiple="multiple" size="14" style="width:100%;max-width:420px;min-height:240px;">'.$options_html.'</select>'
-                           . '<p class="description">'.esc_html__('Hold Ctrl/Cmd to multi-select. Stored as JSON (no external library).','elementor-geo-popup').'</p>',
+                    'raw'  => '<label style="display:block;margin-bottom:8px;font-weight:600;">' . esc_html__('Target Countries', 'elementor-geo-popup') . '</label>'
+                           . '<select id="egp_countries_native" name="egp_countries_native[]" multiple="multiple" size="12" style="width:100%;max-width:420px;min-height:200px;border:1px solid #ddd;border-radius:4px;padding:8px;font-size:13px;">' . $options_html . '</select>'
+                           . '<p class="description" style="margin-top:8px;color:#666;font-size:12px;">' . esc_html__('Hold Ctrl/Cmd to select multiple countries. Countries are stored as JSON.', 'elementor-geo-popup') . '</p>',
                     'content_classes' => 'egp-native-countries',
                     'condition'   => array('egp_geo_enabled' => 'yes'),
                 )
@@ -1785,7 +1896,8 @@ if (!function_exists('egp_register_elementor_advanced_geo_section_core')) {
                 'egp_geo_upgrade',
                 array(
                     'type' => \Elementor\Controls_Manager::RAW_HTML,
-                    'raw'  => '<div style="background:#fff3cd;border:1px solid #ffeaa7;color:#856404;padding:10px;border-radius:4px;">'
+                    'raw'  => '<div style="background:#fff3cd;border:1px solid #ffeaa7;color:#856404;padding:12px;border-radius:4px;margin-top:10px;">'
+                            . '<strong>' . esc_html__('Pro Feature', 'elementor-geo-popup') . '</strong><br>'
                             . esc_html__('Upgrade to Pro to target Sections, Containers, Columns, Widgets, and Forms by country.', 'elementor-geo-popup')
                             . '</div>',
                     'content_classes' => 'egp-upgrade-box',
@@ -1799,19 +1911,85 @@ if (!function_exists('egp_register_elementor_advanced_geo_section_core')) {
     // Generic hook covering all element types; attach once after section_advanced ends
     function egp_register_elementor_advanced_geo_section_all($element, $section_id, $args) {
         try {
-            if ($section_id !== 'section_advanced') { return; }
+            // Comprehensive debug logging
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                $element_name = method_exists($element, 'get_name') ? $element->get_name() : 'unknown';
+                $element_type = method_exists($element, 'get_type') ? $element->get_type() : 'unknown';
+                error_log('[EGP] Hook fired - Element: ' . $element_name . ', Type: ' . $element_type . ', Section: ' . $section_id);
+            }
+
             // Avoid duplicate registration
             $controls = $element->get_controls();
-            if (is_array($controls) && isset($controls['egp_geo_tools'])) { return; }
+            if (is_array($controls) && isset($controls['egp_geo_tools'])) {
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('[EGP] Skipping duplicate registration for element');
+                }
+                return;
+            }
+
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[EGP] Registering geo controls for element: ' . (method_exists($element, 'get_name') ? $element->get_name() : 'unknown'));
+            }
+
             egp_register_elementor_advanced_geo_section_core($element);
-        } catch (\Throwable $e) { if (defined('WP_DEBUG') && WP_DEBUG) { error_log('[EGP] Advanced section attach error: '.$e->getMessage()); } }
+
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[EGP] Successfully registered geo controls');
+            }
+        } catch (\Throwable $e) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[EGP] Advanced section attach error: ' . $e->getMessage());
+                error_log('[EGP] Error trace: ' . $e->getTraceAsString());
+            }
+        }
     }
 
-    add_action('elementor/element/after_section_end', 'egp_register_elementor_advanced_geo_section_all', 20, 3);
-    // Explicit per-type hooks per Elementor docs to guarantee coverage for containers and all widgets
-    add_action('elementor/element/common/section_advanced/after_section_end', function($element, $args){ egp_register_elementor_advanced_geo_section_core($element); }, 20, 2);
-    add_action('elementor/element/container/section_advanced/after_section_end', function($element, $args){ egp_register_elementor_advanced_geo_section_core($element); }, 20, 2);
-    add_action('elementor/element/section/section_advanced/after_section_end',   function($element, $args){ egp_register_elementor_advanced_geo_section_core($element); }, 20, 2);
-    add_action('elementor/element/column/section_advanced/after_section_end',    function($element, $args){ egp_register_elementor_advanced_geo_section_core($element); }, 20, 2);
-    add_action('elementor/element/form/section_advanced/after_section_end',      function($element, $args){ egp_register_elementor_advanced_geo_section_core($element); }, 20, 2);
+    // Use Elementor's proper hook system - register controls for all element types
+    // This is the recommended approach that works across all Elementor versions
+
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('[EGP] Registering Elementor hooks for geo controls');
+    }
+
+    // Hook into all element types using the common element class - this covers most elements
+    add_action('elementor/element/common/section_advanced/after_section_end', function($element, $args) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[EGP] Common hook fired for element: ' . (method_exists($element, 'get_name') ? $element->get_name() : 'unknown'));
+        }
+        egp_register_elementor_advanced_geo_section_core($element);
+    }, 20, 2);
+
+    // Also ensure it works for specific element types if needed
+    add_action('elementor/element/section/section_advanced/after_section_end', function($element, $args) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[EGP] Section hook fired');
+        }
+        egp_register_elementor_advanced_geo_section_core($element);
+    }, 20, 2);
+
+    add_action('elementor/element/container/section_advanced/after_section_end', function($element, $args) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[EGP] Container hook fired');
+        }
+        egp_register_elementor_advanced_geo_section_core($element);
+    }, 20, 2);
+
+    add_action('elementor/element/column/section_advanced/after_section_end', function($element, $args) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[EGP] Column hook fired');
+        }
+        egp_register_elementor_advanced_geo_section_core($element);
+    }, 20, 2);
+
+    // For widgets and forms, use the common hook which covers all widgets
+    add_action('elementor/element/widget/section_advanced/after_section_end', function($element, $args) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[EGP] Widget hook fired');
+        }
+        egp_register_elementor_advanced_geo_section_core($element);
+    }, 20, 2);
+
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('[EGP] Elementor hooks registration completed');
+    }
 }
