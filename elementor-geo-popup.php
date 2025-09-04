@@ -351,14 +351,7 @@ class ElementorGeoPopup {
             }
         });
 
-        // Try alternative hook approach - use the general element hook
-        add_action('elementor/element/after_section_end', function($element, $section_id, $args) {
-            error_log('[EGP] General element hook fired - section: ' . $section_id . ', element: ' . (method_exists($element, 'get_name') ? $element->get_name() : 'unknown'));
-            if ($section_id === 'section_advanced') {
-                error_log('[EGP] Found section_advanced in general hook');
-                $this->add_geo_targeting_controls($element);
-            }
-        }, 20, 3);
+        // Removed general element hook to prevent infinite loops
     }
 
     /**
@@ -372,6 +365,13 @@ class ElementorGeoPopup {
         $element_name = method_exists($element, 'get_name') ? $element->get_name() : 'unknown';
         $element_type = method_exists($element, 'get_type') ? $element->get_type() : 'unknown';
         error_log('[EGP] Adding geo controls to element: ' . $element_name . ' (type: ' . $element_type . ')');
+
+        // Check if geo controls already exist to prevent duplicates
+        $controls = $element->get_controls();
+        if (is_array($controls) && isset($controls['egp_geo_tools'])) {
+            error_log('[EGP] Geo controls already exist for element: ' . $element_name . ' - skipping duplicate');
+            return;
+        }
 
         // Add inline script for immediate console feedback
         add_action('admin_footer', function() use ($element_name, $element_type) {
@@ -549,6 +549,11 @@ class ElementorGeoPopup {
         $element->end_controls_section();
 
         error_log('[EGP] Geo controls added successfully to element: ' . $element_name);
+
+        // Add success message to console
+        add_action('admin_footer', function() use ($element_name) {
+            echo '<script>console.log("[EGP] ✅ Geo Targeting panel added to ' . esc_js($element_name) . '");</script>';
+        });
     }
 
     /**
