@@ -362,6 +362,8 @@ class EGP_Geo_Detect {
         $country = strtoupper($country);
         // Build rules from popup page settings
         $rules = array();
+        // Element-level rules map (Elementor sections/widgets/forms)
+        $element_rules = array();
         $query = new WP_Query(array(
             'post_type' => 'elementor_library',
             'post_status' => 'publish',
@@ -399,10 +401,42 @@ class EGP_Geo_Detect {
         }
         wp_reset_postdata();
 
+        // Build element rules map: elementId => [allowed countries]
+        try {
+            $element_rule_posts = get_posts(array(
+                'post_type' => 'geo_rule',
+                'post_status' => 'publish',
+                'meta_query' => array(
+                    'relation' => 'AND',
+                    array('key' => 'egp_active', 'value' => '1', 'compare' => '='),
+                    array('key' => 'egp_target_type', 'value' => array('elementor','section','widget'), 'compare' => 'IN')
+                ),
+                'posts_per_page' => 500,
+                'fields' => 'ids',
+                'no_found_rows' => true,
+                'cache_results' => false,
+                'update_post_meta_cache' => false,
+                'update_post_term_cache' => false,
+            ));
+            if (!empty($element_rule_posts)) {
+                foreach ($element_rule_posts as $rid) {
+                    $eid = get_post_meta($rid, 'egp_target_id', true);
+                    $ctrs = get_post_meta($rid, 'egp_countries', true);
+                    if (!empty($eid) && is_array($ctrs)) {
+                        $norm = array_map('strtoupper', array_map('sanitize_text_field', $ctrs));
+                        $element_rules[(string)$eid] = array_values(array_unique($norm));
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            if (get_option('egp_debug_mode')) { error_log('EGP: Element rules build error: ' . $e->getMessage()); }
+        }
+
         if (get_option('egp_debug_mode')) {
-            error_log('EGP: Built ' . count($rules) . ' geo rules for head guard');
+            error_log('EGP: Built ' . count($rules) . ' popup rules and ' . count($element_rules) . ' element rules for guard');
         }
         $json_rules = wp_json_encode($rules);
+        $json_element_rules = wp_json_encode($element_rules);
         $applyPreferred = (bool) get_option('egp_apply_preferred_to_untargeted', false);
         $preferred = get_option('egp_preferred_countries', array('US','CA','GB'));
         if (!is_array($preferred)) { $preferred = array(); }
@@ -436,6 +470,7 @@ class EGP_Geo_Detect {
             var debug = <?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>;
             // Mirror rules map in JS to know allowed vs disallowed for optional enhancements
             var egpRules = <?php echo $json_rules ? $json_rules : '{}'; ?>;
+            var egpElementRules = <?php echo $json_element_rules ? $json_element_rules : '{}'; ?>;
             function isAllowed(id){
                 try { id = parseInt(id,10); } catch(e){}
                 var r = egpRules && egpRules[id];
@@ -443,6 +478,21 @@ class EGP_Geo_Detect {
                 var t = String(<?php echo json_encode(strtoupper($country)); ?>);
                 return Array.isArray(r.countries) && r.countries.indexOf(t) !== -1;
             }
+            function hideDisallowedElementsForCountry(country){
+                try {
+                    if (!country) { return; }
+                    var cc = String(country).toUpperCase();
+                    Object.keys(egpElementRules || {}).forEach(function(eid){
+                        try {
+                            var allowed = Array.isArray(egpElementRules[eid]) && egpElementRules[eid].indexOf(cc) !== -1;
+                            var selector = '.elementor-element[data-id="' + eid + '"]';
+                            var nodes = document.querySelectorAll(selector);
+                            nodes.forEach(function(node){ if (!allowed) { node.style.display='none'; node.style.visibility='hidden'; } });
+                        } catch(e){}
+                    });
+                } catch(e){}
+            }
+            try { window.egpApplyGuard = function(country){ hideDisallowedElementsForCountry(country); }; } catch(e){}
             function getPopupIdFromNode(node){
                 try {
                     var el = node instanceof Element ? node : null;
@@ -800,6 +850,8 @@ class EGP_Geo_Detect {
                 closeDisallowedIfOpen();
                 observePopups();
                 unhidePopups();
+                // Enforce element-level rules
+                try { hideDisallowedElementsForCountry(<?php echo json_encode($country); ?>); } catch(e){}
                 if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] guards active (pro+docs patched)'); } catch(e){} }
             }
 

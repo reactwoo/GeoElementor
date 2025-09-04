@@ -22,13 +22,14 @@ class EGP_Admin_Menu {
 
 		// Top-level: Geo Elementor. Register here unless the Dashboard module is providing it
 		if (!class_exists('Geo_Elementor_Plugin')) {
+			$icon_url = defined('EGP_PLUGIN_URL') ? EGP_PLUGIN_URL . 'assets/img/GeoElementor-icon.svg' : '';
 			add_menu_page(
 				__('Geo Elementor', 'elementor-geo-popup'),
 				__('Geo Elementor', 'elementor-geo-popup'),
 				$capability,
 				'geo-elementor',
 				array($this, 'render_dashboard'),
-				'dashicons-location-alt',
+				$icon_url ?: 'dashicons-location-alt',
 				58
 			);
 		}
@@ -74,7 +75,11 @@ class EGP_Admin_Menu {
 	}
 
 	public function render_rules() {
-		echo '<div class="wrap"><h1>' . esc_html__('Geo Rules', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="Rules target a specific Page or Popup with selected countries. If an element is managed by a Group, avoid creating a duplicate Rule for the same element to prevent conflicts."></span></h1>';
+		echo '<div class="wrap egp-settings">';
+		echo '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">';
+		echo '<img src="' . esc_url( EGP_PLUGIN_URL . 'assets/img/GeoElementor.svg' ) . '" alt="Geo Elementor" style="height:28px;width:auto;vertical-align:middle;" />';
+		echo '<h1 style="margin:0;line-height:1;">' . esc_html__('Geo Rules', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="Rules target a specific Page or Popup with selected countries. If an element is managed by a Group, avoid creating a duplicate Rule for the same element to prevent conflicts."></span></h1>';
+		echo '</div>';
 		
 		// Add custom CSS for status indicators
 		echo '<style>

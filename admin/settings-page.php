@@ -237,7 +237,10 @@ class EGP_Admin_Settings {
         
         ?>
         <div class="wrap egp-settings">
-            <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+                <img src="<?php echo esc_url( EGP_PLUGIN_URL . 'assets/img/GeoElementor.svg' ); ?>" alt="Geo Elementor" style="height:28px;width:auto;vertical-align:middle;" />
+                <h1 style="margin:0;line-height:1;"><?php echo esc_html(get_admin_page_title()); ?></h1>
+            </div>
             
             <?php if (isset($_GET['settings-updated'])) : ?>
                 <div class="notice notice-success is-dismissible">
