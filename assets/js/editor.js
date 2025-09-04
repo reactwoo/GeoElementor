@@ -240,6 +240,21 @@
             panel.$el.on('change', 'input, select', function () {
                 GeoElementorEditor.saveGeoSettings(panel, model);
             });
+
+            // Sync native countries multi-select -> hidden store as JSON
+            try {
+                var $native = panel.$el.find('#egp_countries_native');
+                var $store = panel.$el.find('input[name="egp_geo_countries_store"]');
+                if ($native.length && $store.length) {
+                    function syncStore() {
+                        var vals = [];
+                        $native.find('option:selected').each(function () { vals.push($(this).val()); });
+                        $store.val(JSON.stringify(vals));
+                    }
+                    $native.on('change', syncStore);
+                    syncStore();
+                }
+            } catch (e) { }
         },
 
         loadExistingSettings: function (panel, model) {

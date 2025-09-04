@@ -1751,16 +1751,31 @@ if (!function_exists('egp_register_elementor_advanced_geo_section')) {
                 )
             );
 
-            // Do NOT use Select2: use JSON array of ISO2 codes (same as Rules/Groups)
+            // Native multi-select (no Select2). Store JSON in a hidden control.
             $element->add_control(
-                'egp_geo_countries_json',
+                'egp_geo_countries_store',
                 array(
-                    'label'       => __('Target Countries (JSON)', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::TEXTAREA,
-                    'placeholder' => '["US","GB","CA"]',
+                    'type'        => \Elementor\Controls_Manager::HIDDEN,
                     'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'description' => __('Enter an array of ISO2 codes, e.g. ["US","GB","CA"].', 'elementor-geo-popup'),
-                    'rows'        => 3,
+                    'default'     => '[]',
+                )
+            );
+
+            $country_options = array(
+                'US' => 'United States','GB' => 'United Kingdom','CA' => 'Canada','AU' => 'Australia','DE' => 'Germany','FR' => 'France',
+                'IT' => 'Italy','ES' => 'Spain','NL' => 'Netherlands','BE' => 'Belgium','SE' => 'Sweden','NO' => 'Norway','DK' => 'Denmark','FI' => 'Finland'
+            );
+            $options_html = '';
+            foreach ($country_options as $cc => $nn) { $options_html .= '<option value="'.esc_attr($cc).'">'.esc_html($nn).'</option>'; }
+            $element->add_control(
+                'egp_geo_countries_native',
+                array(
+                    'type' => \Elementor\Controls_Manager::RAW_HTML,
+                    'raw'  => '<label style="display:block;margin-bottom:4px;">'.esc_html__('Target Countries','elementor-geo-popup').'</label>'
+                           . '<select id="egp_countries_native" multiple="multiple" size="6" style="width:100%;max-width:420px;">'.$options_html.'</select>'
+                           . '<p class="description">'.esc_html__('Hold Ctrl/Cmd to multi-select. Stored as JSON (no external library).','elementor-geo-popup').'</p>',
+                    'content_classes' => 'egp-native-countries',
+                    'condition'   => array('egp_geo_enabled' => 'yes'),
                 )
             );
         } else {
