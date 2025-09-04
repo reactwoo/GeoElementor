@@ -74,6 +74,11 @@ class ElementorGeoPopup {
      * Initialize plugin
      */
     public function init() {
+        error_log('[EGP] Plugin init() called');
+        add_action('admin_footer', function() {
+            echo '<script>console.log("[EGP] Plugin init() called");</script>';
+        });
+
         // Always load admin settings, dashboard, menu, and licensing so settings are visible even if Elementor isn't active
         if (is_admin()) {
             require_once EGP_PLUGIN_DIR . 'includes/centralized-license-manager.php';
@@ -98,21 +103,34 @@ class ElementorGeoPopup {
 
         // Check if Elementor is active
         if (!did_action('elementor/loaded')) {
+            error_log('[EGP] Elementor not loaded yet - showing missing notice');
             add_action('admin_notices', array($this, 'elementor_missing_notice'));
             return;
         }
-        
+
         // Check if Elementor Pro is active
         if (!class_exists('ElementorPro\Plugin')) {
+            error_log('[EGP] Elementor Pro not found - showing missing notice');
             add_action('admin_notices', array($this, 'elementor_pro_missing_notice'));
             return;
         }
+
+        error_log('[EGP] Elementor and Pro found - proceeding with full initialization');
         
         // Load plugin components
         $this->load_dependencies();
 
         // Register Elementor hooks when Elementor is ready
         add_action('elementor/init', array($this, 'register_elementor_hooks'));
+
+        // Also try to register immediately if Elementor is already loaded
+        if (did_action('elementor/loaded')) {
+            error_log('[EGP] Elementor already loaded, registering hooks immediately');
+            add_action('admin_footer', function() {
+                echo '<script>console.log("[EGP] Elementor already loaded - registering hooks immediately");</script>';
+            });
+            $this->register_elementor_hooks();
+        }
 
         $this->init_components();
     }
@@ -240,16 +258,22 @@ class ElementorGeoPopup {
      * Register Elementor hooks when Elementor is initialized
      */
     public function register_elementor_hooks() {
-        // Debug logging
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('[EGP] Registering Elementor hooks on elementor/init');
-        }
+        // Debug logging - always log this
+        error_log('[EGP] register_elementor_hooks() called - Elementor loaded: ' . (did_action('elementor/loaded') ? 'YES' : 'NO'));
+        error_log('[EGP] Elementor Plugin class exists: ' . (class_exists('\Elementor\Plugin') ? 'YES' : 'NO'));
+
+        // Add inline script to console for immediate feedback
+        add_action('admin_footer', function() {
+            echo '<script>console.log("[EGP] PHP: register_elementor_hooks() executed");</script>';
+        });
 
         // Only register if Elementor is available and loaded
         if (did_action('elementor/loaded') && class_exists('\Elementor\Plugin')) {
+            error_log('[EGP] Calling register_elementor_geo_controls()');
             $this->register_elementor_geo_controls();
         } else {
             // Fallback: register on a later hook if Elementor isn't fully loaded yet
+            error_log('[EGP] Setting up fallback hook on elementor/init');
             add_action('elementor/init', array($this, 'register_elementor_geo_controls'), 20);
         }
     }
@@ -259,51 +283,82 @@ class ElementorGeoPopup {
      */
     private function register_elementor_geo_controls() {
         // Use Elementor's proper hook system - register controls for all element types
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('[EGP] Registering Elementor controls for geo targeting');
-        }
+        error_log('[EGP] register_elementor_geo_controls() called');
+        add_action('admin_footer', function() {
+            echo '<script>console.log("[EGP] register_elementor_geo_controls() called");</script>';
+        });
 
         // Hook into all element types using the common element class - this covers most elements
         add_action('elementor/element/common/section_advanced/after_section_end', function($element, $args) {
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('[EGP] Common hook fired for element: ' . (method_exists($element, 'get_name') ? $element->get_name() : 'unknown'));
-            }
+            error_log('[EGP] Common hook fired for element: ' . (method_exists($element, 'get_name') ? $element->get_name() : 'unknown'));
+            error_log('[EGP] Element type: ' . (method_exists($element, 'get_type') ? $element->get_type() : 'unknown'));
             $this->add_geo_targeting_controls($element);
         }, 20, 2);
 
         // Also ensure it works for specific element types if needed
         add_action('elementor/element/section/section_advanced/after_section_end', function($element, $args) {
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('[EGP] Section hook fired');
-            }
+            error_log('[EGP] Section hook fired');
             $this->add_geo_targeting_controls($element);
         }, 20, 2);
 
         add_action('elementor/element/container/section_advanced/after_section_end', function($element, $args) {
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('[EGP] Container hook fired');
-            }
+            error_log('[EGP] Container hook fired');
             $this->add_geo_targeting_controls($element);
         }, 20, 2);
 
         add_action('elementor/element/column/section_advanced/after_section_end', function($element, $args) {
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('[EGP] Column hook fired');
-            }
+            error_log('[EGP] Column hook fired');
             $this->add_geo_targeting_controls($element);
         }, 20, 2);
 
         // For widgets and forms, use the common hook which covers all widgets
         add_action('elementor/element/widget/section_advanced/after_section_end', function($element, $args) {
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('[EGP] Widget hook fired');
-            }
+            error_log('[EGP] Widget hook fired');
             $this->add_geo_targeting_controls($element);
         }, 20, 2);
 
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('[EGP] Elementor controls registration completed');
+        error_log('[EGP] Elementor controls registration completed');
+
+        // Test if our hooks are actually registered by checking WordPress action registry
+        global $wp_filter;
+        $test_hooks = array(
+            'elementor/element/common/section_advanced/after_section_end',
+            'elementor/element/section/section_advanced/after_section_end',
+            'elementor/element/container/section_advanced/after_section_end'
+        );
+
+        foreach ($test_hooks as $hook) {
+            $has_hook = isset($wp_filter[$hook]) && !empty($wp_filter[$hook]);
+            error_log('[EGP] Hook registered check - ' . $hook . ': ' . ($has_hook ? 'YES' : 'NO'));
         }
+
+        // Add a test hook to verify Elementor is working
+        add_action('elementor/editor/after_enqueue_scripts', function() {
+            error_log('[EGP] Elementor editor scripts enqueued - editor is loading');
+        });
+
+        // Add test hook for when elements are initialized
+        add_action('elementor/frontend/element_ready/global', function($element) {
+            error_log('[EGP] Elementor frontend element ready - Elementor is working');
+        });
+
+        // Test basic Elementor hooks
+        add_action('elementor/element/after_add_attributes', function($element) {
+            static $logged = false;
+            if (!$logged) {
+                error_log('[EGP] Basic Elementor hook fired - Elementor is working');
+                $logged = true;
+            }
+        });
+
+        // Try alternative hook approach - use the general element hook
+        add_action('elementor/element/after_section_end', function($element, $section_id, $args) {
+            error_log('[EGP] General element hook fired - section: ' . $section_id . ', element: ' . (method_exists($element, 'get_name') ? $element->get_name() : 'unknown'));
+            if ($section_id === 'section_advanced') {
+                error_log('[EGP] Found section_advanced in general hook');
+                $this->add_geo_targeting_controls($element);
+            }
+        }, 20, 3);
     }
 
     /**
@@ -314,10 +369,14 @@ class ElementorGeoPopup {
         $is_pro = current_user_can('manage_woocommerce') || apply_filters('egp_is_pro_user', false);
 
         // Add debug logging
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            $element_name = method_exists($element, 'get_name') ? $element->get_name() : 'unknown';
-            error_log('[EGP] Adding geo controls to element: ' . $element_name);
-        }
+        $element_name = method_exists($element, 'get_name') ? $element->get_name() : 'unknown';
+        $element_type = method_exists($element, 'get_type') ? $element->get_type() : 'unknown';
+        error_log('[EGP] Adding geo controls to element: ' . $element_name . ' (type: ' . $element_type . ')');
+
+        // Add inline script for immediate console feedback
+        add_action('admin_footer', function() use ($element_name, $element_type) {
+            echo '<script>console.log("[EGP] Adding geo controls to element: ' . esc_js($element_name) . ' (type: ' . esc_js($element_type) . ')");</script>';
+        });
 
         $element->start_controls_section(
             'egp_geo_tools',
@@ -489,9 +548,7 @@ class ElementorGeoPopup {
 
         $element->end_controls_section();
 
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('[EGP] Geo controls added successfully to element');
-        }
+        error_log('[EGP] Geo controls added successfully to element: ' . $element_name);
     }
 
     /**
