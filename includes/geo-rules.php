@@ -1751,16 +1751,16 @@ if (!function_exists('egp_register_elementor_advanced_geo_section')) {
                 )
             );
 
-            // Do NOT use Select2: accept comma-separated ISO2 codes in a simple input
+            // Do NOT use Select2: use JSON array of ISO2 codes (same as Rules/Groups)
             $element->add_control(
-                'egp_geo_countries_csv',
+                'egp_geo_countries_json',
                 array(
-                    'label'       => __('Target Countries (CSV)', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::TEXT,
-                    'placeholder' => 'US, GB, CA',
+                    'label'       => __('Target Countries (JSON)', 'elementor-geo-popup'),
+                    'type'        => \Elementor\Controls_Manager::TEXTAREA,
+                    'placeholder' => '["US","GB","CA"]',
                     'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'description' => __('Enter ISO2 codes separated by commas (e.g., US, GB, CA).', 'elementor-geo-popup'),
-                    'label_block' => true,
+                    'description' => __('Enter an array of ISO2 codes, e.g. ["US","GB","CA"].', 'elementor-geo-popup'),
+                    'rows'        => 3,
                 )
             );
         } else {
@@ -1780,10 +1780,13 @@ if (!function_exists('egp_register_elementor_advanced_geo_section')) {
         $element->end_controls_section();
     }
 
-    // Attach after Elementor's Advanced section so ours appears below
-    add_action('elementor/element/container/section_advanced/after_section_end', 'egp_register_elementor_advanced_geo_section', 10, 2);
-    add_action('elementor/element/section/section_advanced/after_section_end',   'egp_register_elementor_advanced_geo_section', 10, 2);
-    add_action('elementor/element/column/section_advanced/after_section_end',    'egp_register_elementor_advanced_geo_section', 10, 2);
-    add_action('elementor/element/common/section_advanced/after_section_end',    'egp_register_elementor_advanced_geo_section', 10, 2);
-    add_action('elementor/element/form/section_advanced/after_section_end',      'egp_register_elementor_advanced_geo_section', 10, 2);
+    // Attach hooks when Elementor is initialized to guarantee availability
+    function egp_attach_elementor_geo_controls_hooks() {
+        add_action('elementor/element/container/section_advanced/after_section_end', 'egp_register_elementor_advanced_geo_section', 10, 2);
+        add_action('elementor/element/section/section_advanced/after_section_end',   'egp_register_elementor_advanced_geo_section', 10, 2);
+        add_action('elementor/element/column/section_advanced/after_section_end',    'egp_register_elementor_advanced_geo_section', 10, 2);
+        add_action('elementor/element/common/section_advanced/after_section_end',    'egp_register_elementor_advanced_geo_section', 10, 2);
+        add_action('elementor/element/form/section_advanced/after_section_end',      'egp_register_elementor_advanced_geo_section', 10, 2);
+    }
+    add_action('elementor/init', 'egp_attach_elementor_geo_controls_hooks');
 }
