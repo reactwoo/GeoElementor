@@ -1725,8 +1725,9 @@ EGP_Geo_Rules::get_instance();
  * Elementor Advanced Tab: Register a Geo Targeting section for containers, sections, columns, all widgets, and forms
  * This complements the JS editor panel injection and is robust across Elementor versions (incl. Containers).
  */
-if (!function_exists('egp_register_elementor_advanced_geo_section')) {
-    function egp_register_elementor_advanced_geo_section($element, $args) {
+if (!function_exists('egp_register_elementor_advanced_geo_section_core')) {
+    // Core registrar used by the generic hook for any element type when section_advanced ends
+    function egp_register_elementor_advanced_geo_section_core($element) {
         // Determine Pro gating (same heuristic as elsewhere)
         $is_pro = current_user_can('manage_woocommerce') || apply_filters('egp_is_pro_user', false);
 
@@ -1795,14 +1796,16 @@ if (!function_exists('egp_register_elementor_advanced_geo_section')) {
         $element->end_controls_section();
     }
 
-    // Attach hooks when Elementor is initialized to guarantee availability
-    function egp_attach_elementor_geo_controls_hooks() {
-        if (defined('WP_DEBUG') && WP_DEBUG) { error_log('[EGP] Attaching Elementor Advanced Geo section hooks'); }
-        add_action('elementor/element/container/section_advanced/after_section_end', 'egp_register_elementor_advanced_geo_section', 10, 2);
-        add_action('elementor/element/section/section_advanced/after_section_end',   'egp_register_elementor_advanced_geo_section', 10, 2);
-        add_action('elementor/element/column/section_advanced/after_section_end',    'egp_register_elementor_advanced_geo_section', 10, 2);
-        add_action('elementor/element/common/section_advanced/after_section_end',    'egp_register_elementor_advanced_geo_section', 10, 2);
-        add_action('elementor/element/form/section_advanced/after_section_end',      'egp_register_elementor_advanced_geo_section', 10, 2);
+    // Generic hook covering all element types; attach once after section_advanced ends
+    function egp_register_elementor_advanced_geo_section_all($element, $section_id, $args) {
+        try {
+            if ($section_id !== 'section_advanced') { return; }
+            // Avoid duplicate registration
+            $controls = $element->get_controls();
+            if (is_array($controls) && isset($controls['egp_geo_tools'])) { return; }
+            egp_register_elementor_advanced_geo_section_core($element);
+        } catch (\Throwable $e) { if (defined('WP_DEBUG') && WP_DEBUG) { error_log('[EGP] Advanced section attach error: '.$e->getMessage()); } }
     }
-    add_action('elementor/init', 'egp_attach_elementor_geo_controls_hooks');
+
+    add_action('elementor/element/after_section_end', 'egp_register_elementor_advanced_geo_section_all', 20, 3);
 }

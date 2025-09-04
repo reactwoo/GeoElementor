@@ -9,6 +9,7 @@
     var GeoElementorEditor = {
         init: function () {
             this.bindEvents();
+            try { if (window.console && console.log) console.log('[EGP] Editor integration loaded'); } catch (e) { }
         },
 
         bindEvents: function () {
@@ -25,14 +26,16 @@
         },
 
         addGeoControls: function () {
+            var self = this;
+            function wrap(fn, type) { return function (panel, model) { try { if (window.console && console.log) console.log('[EGP] open_editor event:', type); } catch (e) { } fn.call(self, panel, model); }; }
             // Add geo targeting section to widgets
-            elementor.hooks.addAction('panel/open_editor/widget', this.addGeoPanel);
+            elementor.hooks.addAction('panel/open_editor/widget', wrap(this.addGeoPanel, 'widget'));
             // Also attach to sections/containers/columns (Elementor 3+ containers)
-            elementor.hooks.addAction('panel/open_editor/section', this.addGeoPanel);
-            elementor.hooks.addAction('panel/open_editor/container', this.addGeoPanel);
-            elementor.hooks.addAction('panel/open_editor/column', this.addGeoPanel);
+            elementor.hooks.addAction('panel/open_editor/section', wrap(this.addGeoPanel, 'section'));
+            elementor.hooks.addAction('panel/open_editor/container', wrap(this.addGeoPanel, 'container'));
+            elementor.hooks.addAction('panel/open_editor/column', wrap(this.addGeoPanel, 'column'));
             // Add geo targeting section to popups
-            elementor.hooks.addAction('panel/open_editor/popup', this.addGeoPanel);
+            elementor.hooks.addAction('panel/open_editor/popup', wrap(this.addGeoPanel, 'popup'));
         },
 
         addGeoPanel: function (panel, model) {
@@ -103,6 +106,7 @@
                 }
                 if ($dest && $dest.length) {
                     $dest.append($geoSection);
+                    try { if (window.console && console.log) console.log('[EGP] Geo panel appended into Advanced for', elType); } catch (e) { }
                     return true;
                 }
                 if (retries < 40) { setTimeout(function () { tryAppend(retries + 1); }, 100); }
