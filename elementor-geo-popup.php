@@ -467,6 +467,15 @@ class ElementorGeoPopup {
 
         error_log('[EGP] Adding geo controls to widget: ' . $widget->get_name());
 
+        // Inject our section at the START of the Advanced tab (Elementor injection API)
+        if (method_exists($widget, 'start_injection')) {
+            $widget->start_injection(array(
+                'type' => 'section',
+                'at'   => 'start',
+                'of'   => 'section_advanced',
+            ));
+        }
+
         // Add the controls section at the TOP of Advanced tab
         $widget->start_controls_section(
             'egp_geo_tools',
@@ -642,6 +651,11 @@ class ElementorGeoPopup {
 
         error_log('[EGP] Successfully added geo controls to widget: ' . $widget->get_name());
 
+        // Close injection block if opened
+        if (method_exists($widget, 'end_injection')) {
+            $widget->end_injection();
+        }
+
         // Add console success message
         add_action('admin_footer', function() use ($widget) {
             $name = $widget->get_name();
@@ -661,6 +675,15 @@ class ElementorGeoPopup {
         }
 
         error_log('[EGP] Adding geo controls to container');
+
+        // Inject our section at the START of the Advanced tab for containers
+        if (method_exists($container, 'start_injection')) {
+            $container->start_injection(array(
+                'type' => 'section',
+                'at'   => 'start',
+                'of'   => 'section_advanced',
+            ));
+        }
 
         // Add the controls section at the TOP of Advanced tab
         $container->start_controls_section(
@@ -836,6 +859,11 @@ class ElementorGeoPopup {
         $container->end_controls_section();
 
         error_log('[EGP] Successfully added geo controls to container');
+
+        // Close injection block if opened
+        if (method_exists($container, 'end_injection')) {
+            $container->end_injection();
+        }
 
         // Add console success message
         add_action('admin_footer', function() {
