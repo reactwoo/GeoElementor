@@ -407,6 +407,7 @@ class RW_Geo_Variant_Groups_Admin {
         ));
         foreach ($tpls as $p) { echo '<option value="template:' . $p->ID . '">' . esc_html($p->post_title) . '</option>'; }
         echo '</select> ';
+        echo '<a href="#" class="button button-small" id="egp_default_section_edit_tpl">' . __('Edit in Elementor', 'elementor-geo-popup') . '</a> ';
         echo '<a href="' . esc_url(admin_url('edit.php?post_type=elementor_library&tabs_group=library&rw_open_new=1')) . '" target="_blank" class="button button-small">' . __('Create new template', 'elementor-geo-popup') . '</a>';
         echo '</div>';
         echo '</div>';
@@ -434,6 +435,7 @@ class RW_Geo_Variant_Groups_Admin {
         ));
         foreach ($wtpls as $p) { echo '<option value="template:' . $p->ID . '">' . esc_html($p->post_title) . '</option>'; }
         echo '</select> ';
+        echo '<a href="#" class="button button-small" id="egp_default_widget_edit_tpl">' . __('Edit in Elementor', 'elementor-geo-popup') . '</a> ';
         echo '<a href="' . esc_url(admin_url('edit.php?post_type=elementor_library&tabs_group=library&rw_open_new=1')) . '" target="_blank" class="button button-small">' . __('Create new template', 'elementor-geo-popup') . '</a>';
         echo '</div>';
         echo '</div>';
