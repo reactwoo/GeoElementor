@@ -341,6 +341,21 @@ class EGP_Geo_Rules {
             // Section/Widget ID inputs
             var secRef = targetSelection.querySelector('#egp_section_ref');
             var widRef = targetSelection.querySelector('#egp_widget_ref');
+            // Edit in Elementor buttons (for template selections)
+            var secTpl = targetSelection.querySelector('#egp_section_template');
+            var widTpl = targetSelection.querySelector('#egp_widget_template');
+            var secEditBtn = targetSelection.querySelector('#egp_section_edit_tpl');
+            var widEditBtn = targetSelection.querySelector('#egp_widget_edit_tpl');
+            function openTpl(selectEl){
+                if (!selectEl) return;
+                var v = (selectEl.value || '');
+                if (v.indexOf('template:') === 0) {
+                    var id = parseInt(v.replace('template:','').replace(/\D+/g,''), 10);
+                    if (id > 0) { window.open('<?php echo admin_url('post.php'); ?>?post=' + id + '&action=elementor', '_blank'); }
+                }
+            }
+            if (secEditBtn && secTpl) { secEditBtn.addEventListener('click', function(e){ e.preventDefault(); openTpl(secTpl); }); }
+            if (widEditBtn && widTpl) { widEditBtn.addEventListener('click', function(e){ e.preventDefault(); openTpl(widTpl); }); }
             function wireRef(refInput){
                 if (!refInput) { return; }
                 refInput.addEventListener('input', function(){
