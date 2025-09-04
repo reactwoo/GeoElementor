@@ -1027,18 +1027,50 @@ class EGP_Geo_Rules {
                 error_log('[EGP Debug] ajax_get_target_options popups count: ' . count($options));
             }
         } elseif ($target_type === 'section') {
-            // Allow granular fetching only if filter enables it
-            if (apply_filters('egp_enable_element_granularity', $this->is_pro_user())) {
-                $options = apply_filters('egp_section_target_options', array());
-            }
-            // No fallback “All Sections” – manual ID input covers non-list scenario
-            if (empty($options)) { $options = array(); }
+            // Default provider: saved section/container templates in Elementor
+            $options = array();
+            $types = apply_filters('egp_section_template_types', array('section','container'));
+            $args = array(
+                'post_type' => 'elementor_library',
+                'post_status' => array('publish','draft','private'),
+                'posts_per_page' => -1,
+                'orderby' => 'title',
+                'order' => 'ASC',
+                'no_found_rows' => true,
+                'meta_query' => array(
+                    array(
+                        'key' => '_elementor_template_type',
+                        'value' => $types,
+                        'compare' => 'IN'
+                    )
+                )
+            );
+            $tpls = get_posts($args);
+            foreach ($tpls as $p) { $options[] = array('id' => $p->ID, 'title' => get_the_title($p->ID)); }
+            // Allow override/merge via filters
+            $options = apply_filters('egp_section_target_options', $options);
         } elseif ($target_type === 'widget') {
-            if (apply_filters('egp_enable_element_granularity', $this->is_pro_user())) {
-                $options = apply_filters('egp_widget_target_options', array());
-            }
-            // No fallback “All Widgets” – manual ID input covers non-list scenario
-            if (empty($options)) { $options = array(); }
+            // Default provider: saved global widgets in Elementor
+            $options = array();
+            $types = apply_filters('egp_widget_template_types', array('widget','global_widget'));
+            $args = array(
+                'post_type' => 'elementor_library',
+                'post_status' => array('publish','draft','private'),
+                'posts_per_page' => -1,
+                'orderby' => 'title',
+                'order' => 'ASC',
+                'no_found_rows' => true,
+                'meta_query' => array(
+                    array(
+                        'key' => '_elementor_template_type',
+                        'value' => $types,
+                        'compare' => 'IN'
+                    )
+                )
+            );
+            $tpls = get_posts($args);
+            foreach ($tpls as $p) { $options[] = array('id' => $p->ID, 'title' => get_the_title($p->ID)); }
+            $options = apply_filters('egp_widget_target_options', $options);
         }
 
         wp_send_json_success($options);
