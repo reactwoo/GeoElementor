@@ -90,25 +90,24 @@
             // Insert into appropriate section based on element type
             var $targetSection;
             var elType = model && model.get ? (model.get('elType') || '') : '';
-            if (elType === 'popup') {
-                // For popups, add to popup layout section
-                $targetSection = panel.$el.find('.elementor-panel-section-popup_layout');
-            } else {
-                // For widgets, add to Advanced tab
-                $targetSection = panel.$el.find('.elementor-panel-tab-content[data-tab="advanced"]');
-                if (!$targetSection.length) {
-                    // Containers/Sections sometimes render tabs later; fall back to the tab container
-                    $targetSection = panel.$el.find('.elementor-panel-tabs-content .elementor-panel-tab-content[data-tab="advanced"]');
+            var tryAppend = function (retries) {
+                retries = retries || 0;
+                var $dest;
+                if (elType === 'popup') {
+                    $dest = panel.$el.find('.elementor-panel-section-popup_layout');
+                } else {
+                    $dest = panel.$el.find('.elementor-panel-tab-content[data-tab="advanced"]');
+                    if (!$dest.length) { $dest = panel.$el.find('.elementor-panel-tabs-content .elementor-panel-tab-content[data-tab="advanced"]'); }
+                    if (!$dest.length) { $dest = panel.$el.find('.elementor-panel-tabs-content'); }
                 }
-                if (!$targetSection.length) {
-                    // As last resort, append to tabs content and rely on CSS stacking
-                    $targetSection = panel.$el.find('.elementor-panel-tabs-content');
+                if ($dest && $dest.length) {
+                    $dest.append($geoSection);
+                    return true;
                 }
-            }
-
-            if ($targetSection.length) {
-                $targetSection.append($geoSection);
-            }
+                if (retries < 20) { setTimeout(function () { tryAppend(retries + 1); }, 100); }
+                return false;
+            };
+            tryAppend(0);
             try { if (!$targetSection.length && window.console && console.warn) { console.warn('[EGP] Advanced tab not found for', elType); } } catch (e) { }
 
             // Bind events (stable reference)

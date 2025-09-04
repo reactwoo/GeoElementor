@@ -1,3 +1,12 @@
+/* Align header logo nicely with notices and headings */
+#egp-admin-logo {
+    display: block;
+    margin: 0;
+}
+
+.wrap.egp-settings>div:first-child {
+    align-items: center;
+}
 /**
  * Elementor Geo Popup - Admin Styles
  * 

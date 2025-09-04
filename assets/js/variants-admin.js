@@ -525,12 +525,19 @@
             try {
                 var $secSel = $('#default_section_tpl');
                 var $widSel = $('#default_widget_tpl');
-                $('#egp_default_section_edit_tpl').off('click.rwgeo').on('click.rwgeo', function (e) {
+                var $secBtn = $('#egp_default_section_edit_tpl');
+                var $widBtn = $('#egp_default_widget_edit_tpl');
+                function toggleBtn($btn, $sel) { try { var v = ($sel.val() || ''); var enabled = v.indexOf('template:') === 0; $btn.prop('disabled', !enabled).css('opacity', enabled ? 1 : 0.6); } catch (e) { } }
+                toggleBtn($secBtn, $secSel); toggleBtn($widBtn, $widSel);
+                $secSel.on('change', function () { toggleBtn($secBtn, $secSel); });
+                $widSel.on('change', function () { toggleBtn($widBtn, $widSel); });
+
+                $secBtn.off('click.rwgeo').on('click.rwgeo', function (e) {
                     e.preventDefault();
                     var v = ($secSel.val() || '');
                     if (v.indexOf('template:') === 0) { var id = parseInt(v.replace('template:', '').replace(/\D+/g, ''), 10); if (id > 0) { window.open(ajaxurl.replace('admin-ajax.php', 'post.php?post=' + id + '&action=elementor'), '_blank'); } }
                 });
-                $('#egp_default_widget_edit_tpl').off('click.rwgeo').on('click.rwgeo', function (e) {
+                $widBtn.off('click.rwgeo').on('click.rwgeo', function (e) {
                     e.preventDefault();
                     var v = ($widSel.val() || '');
                     if (v.indexOf('template:') === 0) { var id = parseInt(v.replace('template:', '').replace(/\D+/g, ''), 10); if (id > 0) { window.open(ajaxurl.replace('admin-ajax.php', 'post.php?post=' + id + '&action=elementor'), '_blank'); } }
