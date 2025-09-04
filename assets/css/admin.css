@@ -7,6 +7,21 @@
 .wrap.egp-settings>div:first-child {
     align-items: center;
 }
+/* Ensure third‑party notices align nicely in our header row */
+.egp-header .notice {
+    margin: 0;
+    padding: 8px 12px;
+    align-self: center;
+}
+
+.egp-header h1 {
+    margin: 0;
+    line-height: 1;
+}
+
+.egp-header .button {
+    align-self: center;
+}
 /**
  * Elementor Geo Popup - Admin Styles
  * 
