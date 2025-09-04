@@ -127,6 +127,19 @@
         }
     }
 
+    // Auto-generate Element ID when field is empty
+    function autoGenerateElementId() {
+        var $elementIdField = $('input[name*="egp_element_id"]');
+        if ($elementIdField.length && (!$elementIdField.val() || $elementIdField.val().trim() === '')) {
+            // Generate a unique ID based on current timestamp and random number
+            var timestamp = Date.now();
+            var random = Math.floor(Math.random() * 1000);
+            var elementId = 'geo_' + timestamp + '_' + random;
+            $elementIdField.val(elementId);
+            console.log('[EGP] Auto-generated Element ID:', elementId);
+        }
+    }
+
     // Update element ID display when Elementor loads
     $(document).on('elementor:init', function () {
         setTimeout(function () {
@@ -136,19 +149,27 @@
                     if (sectionName === 'section_advanced') {
                         setTimeout(function () {
                             initializeGeoControls();
+                            // Auto-generate Element ID after controls are initialized
+                            setTimeout(autoGenerateElementId, 300);
                         }, 200);
                     }
                 });
             }
             // Also initialize on panel open
-            setTimeout(initializeGeoControls, 500);
+            setTimeout(function () {
+                initializeGeoControls();
+                setTimeout(autoGenerateElementId, 300);
+            }, 500);
         }, 1000);
     });
 
     // Re-initialize when controls might be dynamically loaded
     $(document).on('DOMNodeInserted', function (e) {
         if ($(e.target).hasClass('elementor-control-egp_geo_tools')) {
-            setTimeout(initializeGeoControls, 100);
+            setTimeout(function () {
+                initializeGeoControls();
+                setTimeout(autoGenerateElementId, 200);
+            }, 100);
         }
     });
 

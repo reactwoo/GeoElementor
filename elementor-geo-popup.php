@@ -479,14 +479,15 @@ class ElementorGeoPopup {
             )
         );
 
-        // Add element ID control (editable)
+        // Add element ID control with auto-generated value
         $widget->add_control(
             'egp_element_id',
             array(
                 'label'       => __('Element ID', 'elementor-geo-popup'),
                 'type'        => \Elementor\Controls_Manager::TEXT,
-                'description' => __('Unique ID for this element. Used in Rules/Groups for targeting. Auto-generated if empty.', 'elementor-geo-popup'),
-                'placeholder' => __('Auto-generate if empty', 'elementor-geo-popup'),
+                'description' => __('Unique ID for this element. Used in Rules/Groups for targeting. Leave empty to auto-generate.', 'elementor-geo-popup'),
+                'placeholder' => __('Leave empty to auto-generate', 'elementor-geo-popup'),
+                'default'     => '',
             )
         );
 
@@ -591,7 +592,7 @@ class ElementorGeoPopup {
                     'type' => \Elementor\Controls_Manager::RAW_HTML,
                     'raw'  => '<label style="display:block;margin-bottom:8px;font-weight:600;">' . esc_html__('Target Countries', 'elementor-geo-popup') . '</label>'
                            . '<select id="egp_countries_native" name="egp_countries_native[]" multiple="multiple" size="12" style="width:100%;max-width:420px;min-height:200px;border:1px solid #ddd;border-radius:4px;padding:8px;font-size:13px;">' . $options_html . '</select>'
-                           . '<p class="description" style="margin-top:8px;color:#666;font-size:12px;">' . esc_html__('Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup') . '</p>',
+                           . '<p class="description" style="margin-top:8px;color:#666;font-size:12px;">' . esc_html__('Hold Ctrl (Windows) or Cmd (Mac) to select multiple countries.', 'elementor-geo-popup') . '</p>',
                     'content_classes' => 'egp-native-countries',
                     'condition'   => array('egp_geo_enabled' => 'yes'),
                 )
@@ -673,14 +674,15 @@ class ElementorGeoPopup {
             )
         );
 
-        // Add element ID control (editable)
+        // Add element ID control with auto-generated value
         $container->add_control(
             'egp_element_id',
             array(
                 'label'       => __('Element ID', 'elementor-geo-popup'),
                 'type'        => \Elementor\Controls_Manager::TEXT,
-                'description' => __('Unique ID for this container. Used in Rules/Groups for targeting. Auto-generated if empty.', 'elementor-geo-popup'),
-                'placeholder' => __('Auto-generate if empty', 'elementor-geo-popup'),
+                'description' => __('Unique ID for this container. Used in Rules/Groups for targeting. Leave empty to auto-generate.', 'elementor-geo-popup'),
+                'placeholder' => __('Leave empty to auto-generate', 'elementor-geo-popup'),
+                'default'     => '',
             )
         );
 
@@ -785,7 +787,7 @@ class ElementorGeoPopup {
                     'type' => \Elementor\Controls_Manager::RAW_HTML,
                     'raw'  => '<label style="display:block;margin-bottom:8px;font-weight:600;">' . esc_html__('Target Countries', 'elementor-geo-popup') . '</label>'
                            . '<select id="egp_countries_native" name="egp_countries_native[]" multiple="multiple" size="12" style="width:100%;max-width:420px;min-height:200px;border:1px solid #ddd;border-radius:4px;padding:8px;font-size:13px;">' . $options_html . '</select>'
-                           . '<p class="description" style="margin-top:8px;color:#666;font-size:12px;">' . esc_html__('Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup') . '</p>',
+                           . '<p class="description" style="margin-top:8px;color:#666;font-size:12px;">' . esc_html__('Hold Ctrl (Windows) or Cmd (Mac) to select multiple countries.', 'elementor-geo-popup') . '</p>',
                     'content_classes' => 'egp-native-countries',
                     'condition'   => array('egp_geo_enabled' => 'yes'),
                 )
