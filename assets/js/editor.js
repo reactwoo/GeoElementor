@@ -23,7 +23,10 @@
         addGeoControls: function () {
             // Add geo targeting section to widgets
             elementor.hooks.addAction('panel/open_editor/widget', this.addGeoPanel);
-
+            // Also attach to sections/containers/columns (Elementor 3+ containers)
+            elementor.hooks.addAction('panel/open_editor/section', this.addGeoPanel);
+            elementor.hooks.addAction('panel/open_editor/container', this.addGeoPanel);
+            elementor.hooks.addAction('panel/open_editor/column', this.addGeoPanel);
             // Add geo targeting section to popups
             elementor.hooks.addAction('panel/open_editor/popup', this.addGeoPanel);
         },
@@ -70,7 +73,8 @@
 
             // Insert into appropriate section based on element type
             var $targetSection;
-            if (model.get('elType') === 'popup') {
+            var elType = model && model.get ? (model.get('elType') || '') : '';
+            if (elType === 'popup') {
                 // For popups, add to popup layout section
                 $targetSection = panel.$el.find('.elementor-panel-section-popup_layout');
             } else {
@@ -217,7 +221,8 @@
         saveGeoRuleToDatabase: function (model, settings) {
             var docType = (elementor && elementor.config && elementor.config.document && elementor.config.document.type) ? elementor.config.document.type : '';
             var popupPostId = (elementor && elementor.config && elementor.config.document && elementor.config.document.id) ? elementor.config.document.id : '';
-            var isPopupDoc = (docType === 'popup' || model.get('elType') === 'popup');
+            var elType = model && model.get ? (model.get('elType') || '') : '';
+            var isPopupDoc = (docType === 'popup' || elType === 'popup');
             var targetType = isPopupDoc ? 'popup' : 'elementor';
             var targetId = isPopupDoc && popupPostId ? String(popupPostId) : String(model.get('id'));
 
@@ -229,7 +234,7 @@
                 active: true,
                 source: 'elementor',
                 title: (model.get('settings') && model.get('settings').get('_title')) || 'Elementor Geo Rule',
-                element_type: model.get('elType') || 'widget',
+                element_type: elType || 'widget',
                 tracking_id: settings.egp_tracking_id
             };
 

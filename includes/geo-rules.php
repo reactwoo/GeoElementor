@@ -274,50 +274,58 @@ class EGP_Geo_Rules {
             } else if (targetType === 'section') {
                 // Manual ID input
                 var idVal = (selectedValue || '').replace(/^template:/, '').replace(/^#/, '');
-                html = '<div class="egp-target-mode">';
-                html += '<label><?php _e('Target by CSS ID or Elementor ID', 'elementor-geo-popup'); ?></label>';
-                html += '<div style="margin:4px 0 8px 0;"># <input type="text" id="egp_section_ref" placeholder="my-section-id or elementor data-id" value="' + idVal + '" style="min-width:280px;"></div>';
+                html = '<div class="egp-target-mode" style="display:grid;grid-template-columns:1fr;gap:8px;max-width:720px;">';
+                html += '<div>'; 
+                html += '<label style="display:block;font-weight:600;margin-bottom:4px;"><?php _e('Target by CSS ID or Elementor ID', 'elementor-geo-popup'); ?></label>';
+                html += '<input type="text" id="egp_section_ref" placeholder="my-section-id or elementor data-id" value="' + idVal + '" style="width:100%;max-width:420px;">';
+                html += '<div class="description" style="margin-top:4px;"><?php echo esc_js(__('Set in Advanced > CSS ID (no #), or use element data-id.', 'elementor-geo-popup')); ?></div>';
+                html += '</div>';
                 // Optional template selector if options provided
+                html += '<div>';
                 if (Array.isArray(options) && options.length){
-                    html += '<label><?php _e('Or select a Section/Container template', 'elementor-geo-popup'); ?></label>';
-                    html += '<select name="egp_section_template" id="egp_section_template" style="min-width:320px;">';
+                    html += '<label style="display:block;font-weight:600;margin-bottom:4px;"><?php _e('Or select a Section/Container template', 'elementor-geo-popup'); ?></label>';
+                    html += '<select name="egp_section_template" id="egp_section_template" style="width:100%;max-width:420px;">';
                     html += '<option value="">— <?php _e('Select a template', 'elementor-geo-popup'); ?> —</option>';
                     options.forEach(function(option){
                         var val = 'template:' + option.id;
                         html += '<option value="' + val + '" ' + (selectedValue === val ? 'selected' : '') + '>' + option.title + '</option>';
                     });
-                    html += '</select> ';
+                    html += '</select>';
+                    html += '<div class="description" style="margin-top:4px;"><a href="<?php echo esc_url( apply_filters('egp_new_template_url', admin_url('admin.php?page=elementor#new_template')) ); ?>" target="_blank"><?php _e('Create new template in Elementor', 'elementor-geo-popup'); ?></a></div>';
                 } else {
-                    html += '<p class="description" style="margin:4px 0 0 0;">' +
-                            '<?php echo esc_js(__('No section templates found.', 'elementor-geo-popup')); ?> ' +
-                            '<a href="<?php echo admin_url('post-new.php?post_type=elementor_library'); ?>" target="_blank"><?php _e('Create new template', 'elementor-geo-popup'); ?></a></p>';
+                    html += '<label style="display:block;font-weight:600;margin-bottom:4px;"><?php _e('Section/Container template', 'elementor-geo-popup'); ?></label>';
+                    html += '<div class="description"><?php echo esc_js(__('No templates found.', 'elementor-geo-popup')); ?> ' +
+                            '<a href="<?php echo esc_url( apply_filters('egp_new_template_url', admin_url('admin.php?page=elementor#new_template')) ); ?>" target="_blank"><?php _e('Create new template in Elementor', 'elementor-geo-popup'); ?></a></div>';
                 }
-                html += '<p class="description" style="margin:6px 0 0 0;">' +
-                        '<?php echo esc_js(__('Tip: In Elementor > Advanced, set a CSS ID (without #). Or pick a saved section template.', 'elementor-geo-popup')); ?>' +
-                        '</p>';
+                html += '</div>';
                 html += '</div>';
             } else if (targetType === 'widget') {
                 var idValW = (selectedValue || '').replace(/^template:/, '').replace(/^#/, '');
-                html = '<div class="egp-target-mode">';
-                html += '<label><?php _e('Target by CSS ID or Elementor ID', 'elementor-geo-popup'); ?></label>';
-                html += '<div style="margin:4px 0 8px 0;"># <input type="text" id="egp_widget_ref" placeholder="my-widget-id or elementor data-id" value="' + idValW + '" style="min-width:280px;"></div>';
+                html = '<div class="egp-target-mode" style="display:grid;grid-template-columns:1fr;gap:8px;max-width:720px;">';
+                html += '<div>';
+                html += '<label style="display:block;font-weight:600;margin-bottom:4px;"><?php _e('Target by CSS ID or Elementor ID', 'elementor-geo-popup'); ?></label>';
+                html += '<input type="text" id="egp_widget_ref" placeholder="my-widget-id or elementor data-id" value="' + idValW + '" style="width:100%;max-width:420px;">';
+                html += '<div class="description" style="margin-top:4px;"><?php echo esc_js(__('Use Advanced > CSS ID (no #) or element data-id.', 'elementor-geo-popup')); ?></div>';
+                html += '</div>';
                 if (Array.isArray(options) && options.length){
-                    html += '<label><?php _e('Or select a Global Widget/Container template', 'elementor-geo-popup'); ?></label>';
-                    html += '<select name="egp_widget_template" id="egp_widget_template" style="min-width:320px;">';
+                    html += '<div>';
+                    html += '<label style="display:block;font-weight:600;margin-bottom:4px;"><?php _e('Or select a Global Widget/Container template', 'elementor-geo-popup'); ?></label>';
+                    html += '<select name="egp_widget_template" id="egp_widget_template" style="width:100%;max-width:420px;">';
                     html += '<option value="">— <?php _e('Select a template', 'elementor-geo-popup'); ?> —</option>';
                     options.forEach(function(option){
                         var val = 'template:' + option.id;
                         html += '<option value="' + val + '" ' + (selectedValue === val ? 'selected' : '') + '>' + option.title + '</option>';
                     });
-                    html += '</select> ';
+                    html += '</select>';
+                    html += '<div class="description" style="margin-top:4px;"><a href="<?php echo esc_url( apply_filters('egp_new_template_url', admin_url('admin.php?page=elementor#new_template')) ); ?>" target="_blank"><?php _e('Create new template in Elementor', 'elementor-geo-popup'); ?></a></div>';
+                    html += '</div>';
                 } else {
-                    html += '<p class="description" style="margin:4px 0 0 0;">' +
-                            '<?php echo esc_js(__('No widget templates found.', 'elementor-geo-popup')); ?> ' +
-                            '<a href="<?php echo admin_url('post-new.php?post_type=elementor_library'); ?>" target="_blank"><?php _e('Create new template', 'elementor-geo-popup'); ?></a></p>';
+                    html += '<div>';
+                    html += '<label style="display:block;font-weight:600;margin-bottom:4px;"><?php _e('Global Widget/Container template', 'elementor-geo-popup'); ?></label>';
+                    html += '<div class="description"><?php echo esc_js(__('No templates found.', 'elementor-geo-popup')); ?> ' +
+                            '<a href="<?php echo esc_url( apply_filters('egp_new_template_url', admin_url('admin.php?page=elementor#new_template')) ); ?>" target="_blank"><?php _e('Create new template in Elementor', 'elementor-geo-popup'); ?></a></div>';
+                    html += '</div>';
                 }
-                html += '<p class="description" style="margin:6px 0 0 0;">' +
-                        '<?php echo esc_js(__('Tip: Prefer Global Widgets for reuse. Otherwise, set a CSS ID.', 'elementor-geo-popup')); ?>' +
-                        '</p>';
                 html += '</div>';
             }
             
