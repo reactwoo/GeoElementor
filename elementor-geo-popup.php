@@ -304,6 +304,21 @@ class ElementorGeoPopup {
             }
         });
 
+        // Add support for containers (Elementor 3.0+)
+        add_action('elementor/elements/elements_registered', function($elements_manager) {
+            error_log('[EGP] Elements registered hook fired');
+
+            // Get container element if it exists
+            if (method_exists($elements_manager, 'get_element_types')) {
+                $element_types = $elements_manager->get_element_types();
+                if (isset($element_types['container'])) {
+                    $container = $element_types['container'];
+                    error_log('[EGP] Found container element, adding geo controls');
+                    $this->add_geo_controls_to_container($container);
+                }
+            }
+        });
+
         // Also try the section hooks as backup
         add_action('elementor/element/after_section_end', function($element, $section_id, $args) {
             if ($section_id === 'section_advanced') {
@@ -452,26 +467,26 @@ class ElementorGeoPopup {
 
         error_log('[EGP] Adding geo controls to widget: ' . $widget->get_name());
 
-        // Add the controls section
+        // Add the controls section at the TOP of Advanced tab
         $widget->start_controls_section(
             'egp_geo_tools',
             array(
                 'label' => __('Geo Targeting', 'elementor-geo-popup'),
                 'tab'   => \Elementor\Controls_Manager::TAB_ADVANCED,
+            ),
+            array(
+                'priority' => 1, // High priority to show at top
             )
         );
 
-        // Add element ID display
+        // Add element ID control (editable)
         $widget->add_control(
-            'egp_element_id_display',
+            'egp_element_id',
             array(
-                'type' => \Elementor\Controls_Manager::RAW_HTML,
-                'raw'  => '<div style="background:#f8f9fa;border:1px solid #dee2e6;padding:8px;border-radius:4px;margin-bottom:10px;">'
-                        . '<strong>' . esc_html__('Element ID:', 'elementor-geo-popup') . '</strong> '
-                        . '<code id="egp-element-id-display" style="background:#e9ecef;padding:2px 6px;border-radius:3px;">—</code> '
-                        . '<button type="button" id="egp-copy-element-id" class="elementor-button elementor-button-default" style="padding:2px 6px;font-size:11px;">' . esc_html__('Copy', 'elementor-geo-popup') . '</button>'
-                        . '<br><small style="color:#6c757d;">' . esc_html__('Use this ID in Rules or Groups when targeting by Elementor element ID.', 'elementor-geo-popup') . '</small></div>',
-                'content_classes' => 'egp-element-info',
+                'label'       => __('Element ID', 'elementor-geo-popup'),
+                'type'        => \Elementor\Controls_Manager::TEXT,
+                'description' => __('Unique ID for this element. Used in Rules/Groups for targeting. Auto-generated if empty.', 'elementor-geo-popup'),
+                'placeholder' => __('Auto-generate if empty', 'elementor-geo-popup'),
             )
         );
 
@@ -500,33 +515,71 @@ class ElementorGeoPopup {
                 )
             );
 
-            $widget->add_control(
-                'egp_geo_priority',
-                array(
-                    'label'       => __('Priority', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::NUMBER,
-                    'min'         => 1,
-                    'max'         => 100,
-                    'step'        => 1,
-                    'default'     => 50,
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'description' => __('Higher numbers take precedence (1-100)', 'elementor-geo-popup'),
-                )
+            // Full country selector
+            $countries = array(
+                'AF' => 'Afghanistan', 'AL' => 'Albania', 'DZ' => 'Algeria', 'AS' => 'American Samoa',
+                'AD' => 'Andorra', 'AO' => 'Angola', 'AI' => 'Anguilla', 'AQ' => 'Antarctica',
+                'AG' => 'Antigua and Barbuda', 'AR' => 'Argentina', 'AM' => 'Armenia', 'AW' => 'Aruba',
+                'AU' => 'Australia', 'AT' => 'Austria', 'AZ' => 'Azerbaijan', 'BS' => 'Bahamas',
+                'BH' => 'Bahrain', 'BD' => 'Bangladesh', 'BB' => 'Barbados', 'BY' => 'Belarus',
+                'BE' => 'Belgium', 'BZ' => 'Belize', 'BJ' => 'Benin', 'BM' => 'Bermuda',
+                'BT' => 'Bhutan', 'BO' => 'Bolivia', 'BA' => 'Bosnia and Herzegovina', 'BW' => 'Botswana',
+                'BR' => 'Brazil', 'BN' => 'Brunei', 'BG' => 'Bulgaria', 'BF' => 'Burkina Faso',
+                'BI' => 'Burundi', 'KH' => 'Cambodia', 'CM' => 'Cameroon', 'CA' => 'Canada',
+                'CV' => 'Cape Verde', 'KY' => 'Cayman Islands', 'CF' => 'Central African Republic',
+                'TD' => 'Chad', 'CL' => 'Chile', 'CN' => 'China', 'CO' => 'Colombia',
+                'KM' => 'Comoros', 'CG' => 'Congo', 'CD' => 'Congo, Democratic Republic',
+                'CK' => 'Cook Islands', 'CR' => 'Costa Rica', 'CI' => 'Côte d\'Ivoire', 'HR' => 'Croatia',
+                'CU' => 'Cuba', 'CW' => 'Curaçao', 'CY' => 'Cyprus', 'CZ' => 'Czech Republic',
+                'DK' => 'Denmark', 'DJ' => 'Djibouti', 'DM' => 'Dominica', 'DO' => 'Dominican Republic',
+                'EC' => 'Ecuador', 'EG' => 'Egypt', 'SV' => 'El Salvador', 'GQ' => 'Equatorial Guinea',
+                'ER' => 'Eritrea', 'EE' => 'Estonia', 'ET' => 'Ethiopia', 'FK' => 'Falkland Islands',
+                'FO' => 'Faroe Islands', 'FJ' => 'Fiji', 'FI' => 'Finland', 'FR' => 'France',
+                'GA' => 'Gabon', 'GM' => 'Gambia', 'GE' => 'Georgia', 'DE' => 'Germany',
+                'GH' => 'Ghana', 'GI' => 'Gibraltar', 'GR' => 'Greece', 'GL' => 'Greenland',
+                'GD' => 'Grenada', 'GU' => 'Guam', 'GT' => 'Guatemala', 'GG' => 'Guernsey',
+                'GN' => 'Guinea', 'GW' => 'Guinea-Bissau', 'GY' => 'Guyana', 'HT' => 'Haiti',
+                'HN' => 'Honduras', 'HK' => 'Hong Kong', 'HU' => 'Hungary', 'IS' => 'Iceland',
+                'IN' => 'India', 'ID' => 'Indonesia', 'IR' => 'Iran', 'IQ' => 'Iraq',
+                'IE' => 'Ireland', 'IM' => 'Isle of Man', 'IL' => 'Israel', 'IT' => 'Italy',
+                'JM' => 'Jamaica', 'JP' => 'Japan', 'JE' => 'Jersey', 'JO' => 'Jordan',
+                'KZ' => 'Kazakhstan', 'KE' => 'Kenya', 'KI' => 'Kiribati', 'KW' => 'Kuwait',
+                'KG' => 'Kyrgyzstan', 'LA' => 'Laos', 'LV' => 'Latvia', 'LB' => 'Lebanon',
+                'LS' => 'Lesotho', 'LR' => 'Liberia', 'LY' => 'Libya', 'LI' => 'Liechtenstein',
+                'LT' => 'Lithuania', 'LU' => 'Luxembourg', 'MO' => 'Macau', 'MK' => 'Macedonia',
+                'MG' => 'Madagascar', 'MW' => 'Malawi', 'MY' => 'Malaysia', 'MV' => 'Maldives',
+                'ML' => 'Mali', 'MT' => 'Malta', 'MH' => 'Marshall Islands', 'MR' => 'Mauritania',
+                'MU' => 'Mauritius', 'MX' => 'Mexico', 'FM' => 'Micronesia', 'MD' => 'Moldova',
+                'MC' => 'Monaco', 'MN' => 'Mongolia', 'ME' => 'Montenegro', 'MS' => 'Montserrat',
+                'MA' => 'Morocco', 'MZ' => 'Mozambique', 'MM' => 'Myanmar', 'NA' => 'Namibia',
+                'NR' => 'Nauru', 'NP' => 'Nepal', 'NL' => 'Netherlands', 'NC' => 'New Caledonia',
+                'NZ' => 'New Zealand', 'NI' => 'Nicaragua', 'NE' => 'Niger', 'NG' => 'Nigeria',
+                'NU' => 'Niue', 'NF' => 'Norfolk Island', 'KP' => 'North Korea', 'MP' => 'Northern Mariana Islands',
+                'NO' => 'Norway', 'OM' => 'Oman', 'PK' => 'Pakistan', 'PW' => 'Palau',
+                'PS' => 'Palestine', 'PA' => 'Panama', 'PG' => 'Papua New Guinea', 'PY' => 'Paraguay',
+                'PE' => 'Peru', 'PH' => 'Philippines', 'PN' => 'Pitcairn', 'PL' => 'Poland',
+                'PT' => 'Portugal', 'PR' => 'Puerto Rico', 'QA' => 'Qatar', 'RO' => 'Romania',
+                'RU' => 'Russia', 'RW' => 'Rwanda', 'WS' => 'Samoa', 'SM' => 'San Marino',
+                'ST' => 'São Tomé and Príncipe', 'SA' => 'Saudi Arabia', 'SN' => 'Senegal',
+                'RS' => 'Serbia', 'SC' => 'Seychelles', 'SL' => 'Sierra Leone', 'SG' => 'Singapore',
+                'SX' => 'Sint Maarten', 'SK' => 'Slovakia', 'SI' => 'Slovenia', 'SB' => 'Solomon Islands',
+                'SO' => 'Somalia', 'ZA' => 'South Africa', 'KR' => 'South Korea', 'SS' => 'South Sudan',
+                'ES' => 'Spain', 'LK' => 'Sri Lanka', 'SD' => 'Sudan', 'SR' => 'Suriname',
+                'SZ' => 'Swaziland', 'SE' => 'Sweden', 'CH' => 'Switzerland', 'SY' => 'Syria',
+                'TW' => 'Taiwan', 'TJ' => 'Tajikistan', 'TZ' => 'Tanzania', 'TH' => 'Thailand',
+                'TL' => 'Timor-Leste', 'TG' => 'Togo', 'TK' => 'Tokelau', 'TO' => 'Tonga',
+                'TT' => 'Trinidad and Tobago', 'TN' => 'Tunisia', 'TR' => 'Turkey', 'TM' => 'Turkmenistan',
+                'TC' => 'Turks and Caicos Islands', 'TV' => 'Tuvalu', 'UG' => 'Uganda', 'UA' => 'Ukraine',
+                'AE' => 'United Arab Emirates', 'GB' => 'United Kingdom', 'US' => 'United States',
+                'UY' => 'Uruguay', 'UZ' => 'Uzbekistan', 'VU' => 'Vanuatu', 'VA' => 'Vatican City',
+                'VE' => 'Venezuela', 'VN' => 'Vietnam', 'VG' => 'Virgin Islands, British',
+                'VI' => 'Virgin Islands, U.S.', 'WF' => 'Wallis and Futuna', 'EH' => 'Western Sahara',
+                'YE' => 'Yemen', 'ZM' => 'Zambia', 'ZW' => 'Zimbabwe'
             );
 
-            $widget->add_control(
-                'egp_geo_tracking_id',
-                array(
-                    'label'       => __('Tracking ID', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::TEXT,
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'description' => __('Used for analytics and tracking', 'elementor-geo-popup'),
-                    'placeholder' => __('Auto-generated if empty', 'elementor-geo-popup'),
-                )
-            );
+            // Sort countries alphabetically
+            asort($countries);
 
-            // Country selector
-            $countries = array('US' => 'United States', 'GB' => 'United Kingdom', 'CA' => 'Canada');
             $options_html = '';
             foreach ($countries as $cc => $nn) {
                 $options_html .= '<option value="' . esc_attr($cc) . '">' . esc_html($nn) . '</option>';
@@ -537,10 +590,37 @@ class ElementorGeoPopup {
                 array(
                     'type' => \Elementor\Controls_Manager::RAW_HTML,
                     'raw'  => '<label style="display:block;margin-bottom:8px;font-weight:600;">' . esc_html__('Target Countries', 'elementor-geo-popup') . '</label>'
-                           . '<select id="egp_countries_native" name="egp_countries_native[]" multiple="multiple" size="8" style="width:100%;max-width:420px;min-height:150px;border:1px solid #ddd;border-radius:4px;padding:8px;font-size:13px;">' . $options_html . '</select>'
+                           . '<select id="egp_countries_native" name="egp_countries_native[]" multiple="multiple" size="12" style="width:100%;max-width:420px;min-height:200px;border:1px solid #ddd;border-radius:4px;padding:8px;font-size:13px;">' . $options_html . '</select>'
                            . '<p class="description" style="margin-top:8px;color:#666;font-size:12px;">' . esc_html__('Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup') . '</p>',
                     'content_classes' => 'egp-native-countries',
                     'condition'   => array('egp_geo_enabled' => 'yes'),
+                )
+            );
+
+            // Move Priority below Target Countries
+            $widget->add_control(
+                'egp_geo_priority',
+                array(
+                    'label'       => __('Priority', 'elementor-geo-popup'),
+                    'type'        => \Elementor\Controls_Manager::NUMBER,
+                    'min'         => 1,
+                    'max'         => 100,
+                    'step'        => 1,
+                    'default'     => 50,
+                    'condition'   => array('egp_geo_enabled' => 'yes'),
+                    'description' => __('Higher numbers take precedence over lower priority geo rules (1-100).', 'elementor-geo-popup'),
+                )
+            );
+
+            // Move Tracking ID below Priority
+            $widget->add_control(
+                'egp_geo_tracking_id',
+                array(
+                    'label'       => __('Tracking ID', 'elementor-geo-popup'),
+                    'type'        => \Elementor\Controls_Manager::TEXT,
+                    'condition'   => array('egp_geo_enabled' => 'yes'),
+                    'description' => __('Used for analytics and tracking', 'elementor-geo-popup'),
+                    'placeholder' => __('Auto-generated if empty', 'elementor-geo-popup'),
                 )
             );
         } else {
@@ -565,6 +645,199 @@ class ElementorGeoPopup {
         add_action('admin_footer', function() use ($widget) {
             $name = $widget->get_name();
             echo '<script>console.log("[EGP] ✅ Geo Targeting panel added to widget: ' . esc_js($name) . '");</script>';
+        });
+    }
+
+    /**
+     * Add Geo Targeting controls to a container using Elementor's API
+     */
+    private function add_geo_controls_to_container($container) {
+        // Check if container already has our controls
+        $controls = $container->get_controls();
+        if (isset($controls['egp_geo_tools'])) {
+            error_log('[EGP] Container already has geo controls');
+            return;
+        }
+
+        error_log('[EGP] Adding geo controls to container');
+
+        // Add the controls section at the TOP of Advanced tab
+        $container->start_controls_section(
+            'egp_geo_tools',
+            array(
+                'label' => __('Geo Targeting', 'elementor-geo-popup'),
+                'tab'   => \Elementor\Controls_Manager::TAB_ADVANCED,
+            ),
+            array(
+                'priority' => 1, // High priority to show at top
+            )
+        );
+
+        // Add element ID control (editable)
+        $container->add_control(
+            'egp_element_id',
+            array(
+                'label'       => __('Element ID', 'elementor-geo-popup'),
+                'type'        => \Elementor\Controls_Manager::TEXT,
+                'description' => __('Unique ID for this container. Used in Rules/Groups for targeting. Auto-generated if empty.', 'elementor-geo-popup'),
+                'placeholder' => __('Auto-generate if empty', 'elementor-geo-popup'),
+            )
+        );
+
+        // Add Pro controls if user has Pro
+        $is_pro = current_user_can('manage_woocommerce') || apply_filters('egp_is_pro_user', false);
+
+        if ($is_pro) {
+            $container->add_control(
+                'egp_geo_enabled',
+                array(
+                    'label'        => __('Enable Geo Targeting', 'elementor-geo-popup'),
+                    'type'         => \Elementor\Controls_Manager::SWITCHER,
+                    'label_on'     => __('On', 'elementor-geo-popup'),
+                    'label_off'    => __('Off', 'elementor-geo-popup'),
+                    'return_value' => 'yes',
+                    'default'      => '',
+                )
+            );
+
+            $container->add_control(
+                'egp_geo_countries_store',
+                array(
+                    'type'        => \Elementor\Controls_Manager::HIDDEN,
+                    'condition'   => array('egp_geo_enabled' => 'yes'),
+                    'default'     => '[]',
+                )
+            );
+
+            // Full country selector
+            $countries = array(
+                'AF' => 'Afghanistan', 'AL' => 'Albania', 'DZ' => 'Algeria', 'AS' => 'American Samoa',
+                'AD' => 'Andorra', 'AO' => 'Angola', 'AI' => 'Anguilla', 'AQ' => 'Antarctica',
+                'AG' => 'Antigua and Barbuda', 'AR' => 'Argentina', 'AM' => 'Armenia', 'AW' => 'Aruba',
+                'AU' => 'Australia', 'AT' => 'Austria', 'AZ' => 'Azerbaijan', 'BS' => 'Bahamas',
+                'BH' => 'Bahrain', 'BD' => 'Bangladesh', 'BB' => 'Barbados', 'BY' => 'Belarus',
+                'BE' => 'Belgium', 'BZ' => 'Belize', 'BJ' => 'Benin', 'BM' => 'Bermuda',
+                'BT' => 'Bhutan', 'BO' => 'Bolivia', 'BA' => 'Bosnia and Herzegovina', 'BW' => 'Botswana',
+                'BR' => 'Brazil', 'BN' => 'Brunei', 'BG' => 'Bulgaria', 'BF' => 'Burkina Faso',
+                'BI' => 'Burundi', 'KH' => 'Cambodia', 'CM' => 'Cameroon', 'CA' => 'Canada',
+                'CV' => 'Cape Verde', 'KY' => 'Cayman Islands', 'CF' => 'Central African Republic',
+                'TD' => 'Chad', 'CL' => 'Chile', 'CN' => 'China', 'CO' => 'Colombia',
+                'KM' => 'Comoros', 'CG' => 'Congo', 'CD' => 'Congo, Democratic Republic',
+                'CK' => 'Cook Islands', 'CR' => 'Costa Rica', 'CI' => 'Côte d\'Ivoire', 'HR' => 'Croatia',
+                'CU' => 'Cuba', 'CW' => 'Curaçao', 'CY' => 'Cyprus', 'CZ' => 'Czech Republic',
+                'DK' => 'Denmark', 'DJ' => 'Djibouti', 'DM' => 'Dominica', 'DO' => 'Dominican Republic',
+                'EC' => 'Ecuador', 'EG' => 'Egypt', 'SV' => 'El Salvador', 'GQ' => 'Equatorial Guinea',
+                'ER' => 'Eritrea', 'EE' => 'Estonia', 'ET' => 'Ethiopia', 'FK' => 'Falkland Islands',
+                'FO' => 'Faroe Islands', 'FJ' => 'Fiji', 'FI' => 'Finland', 'FR' => 'France',
+                'GA' => 'Gabon', 'GM' => 'Gambia', 'GE' => 'Georgia', 'DE' => 'Germany',
+                'GH' => 'Ghana', 'GI' => 'Gibraltar', 'GR' => 'Greece', 'GL' => 'Greenland',
+                'GD' => 'Grenada', 'GU' => 'Guam', 'GT' => 'Guatemala', 'GG' => 'Guernsey',
+                'GN' => 'Guinea', 'GW' => 'Guinea-Bissau', 'GY' => 'Guyana', 'HT' => 'Haiti',
+                'HN' => 'Honduras', 'HK' => 'Hong Kong', 'HU' => 'Hungary', 'IS' => 'Iceland',
+                'IN' => 'India', 'ID' => 'Indonesia', 'IR' => 'Iran', 'IQ' => 'Iraq',
+                'IE' => 'Ireland', 'IM' => 'Isle of Man', 'IL' => 'Israel', 'IT' => 'Italy',
+                'JM' => 'Jamaica', 'JP' => 'Japan', 'JE' => 'Jersey', 'JO' => 'Jordan',
+                'KZ' => 'Kazakhstan', 'KE' => 'Kenya', 'KI' => 'Kiribati', 'KW' => 'Kuwait',
+                'KG' => 'Kyrgyzstan', 'LA' => 'Laos', 'LV' => 'Latvia', 'LB' => 'Lebanon',
+                'LS' => 'Lesotho', 'LR' => 'Liberia', 'LY' => 'Libya', 'LI' => 'Liechtenstein',
+                'LT' => 'Lithuania', 'LU' => 'Luxembourg', 'MO' => 'Macau', 'MK' => 'Macedonia',
+                'MG' => 'Madagascar', 'MW' => 'Malawi', 'MY' => 'Malaysia', 'MV' => 'Maldives',
+                'ML' => 'Mali', 'MT' => 'Malta', 'MH' => 'Marshall Islands', 'MR' => 'Mauritania',
+                'MU' => 'Mauritius', 'MX' => 'Mexico', 'FM' => 'Micronesia', 'MD' => 'Moldova',
+                'MC' => 'Monaco', 'MN' => 'Mongolia', 'ME' => 'Montenegro', 'MS' => 'Montserrat',
+                'MA' => 'Morocco', 'MZ' => 'Mozambique', 'MM' => 'Myanmar', 'NA' => 'Namibia',
+                'NR' => 'Nauru', 'NP' => 'Nepal', 'NL' => 'Netherlands', 'NC' => 'New Caledonia',
+                'NZ' => 'New Zealand', 'NI' => 'Nicaragua', 'NE' => 'Niger', 'NG' => 'Nigeria',
+                'NU' => 'Niue', 'NF' => 'Norfolk Island', 'KP' => 'North Korea', 'MP' => 'Northern Mariana Islands',
+                'NO' => 'Norway', 'OM' => 'Oman', 'PK' => 'Pakistan', 'PW' => 'Palau',
+                'PS' => 'Palestine', 'PA' => 'Panama', 'PG' => 'Papua New Guinea', 'PY' => 'Paraguay',
+                'PE' => 'Peru', 'PH' => 'Philippines', 'PN' => 'Pitcairn', 'PL' => 'Poland',
+                'PT' => 'Portugal', 'PR' => 'Puerto Rico', 'QA' => 'Qatar', 'RO' => 'Romania',
+                'RU' => 'Russia', 'RW' => 'Rwanda', 'WS' => 'Samoa', 'SM' => 'San Marino',
+                'ST' => 'São Tomé and Príncipe', 'SA' => 'Saudi Arabia', 'SN' => 'Senegal',
+                'RS' => 'Serbia', 'SC' => 'Seychelles', 'SL' => 'Sierra Leone', 'SG' => 'Singapore',
+                'SX' => 'Sint Maarten', 'SK' => 'Slovakia', 'SI' => 'Slovenia', 'SB' => 'Solomon Islands',
+                'SO' => 'Somalia', 'ZA' => 'South Africa', 'KR' => 'South Korea', 'SS' => 'South Sudan',
+                'ES' => 'Spain', 'LK' => 'Sri Lanka', 'SD' => 'Sudan', 'SR' => 'Suriname',
+                'SZ' => 'Swaziland', 'SE' => 'Sweden', 'CH' => 'Switzerland', 'SY' => 'Syria',
+                'TW' => 'Taiwan', 'TJ' => 'Tajikistan', 'TZ' => 'Tanzania', 'TH' => 'Thailand',
+                'TL' => 'Timor-Leste', 'TG' => 'Togo', 'TK' => 'Tokelau', 'TO' => 'Tonga',
+                'TT' => 'Trinidad and Tobago', 'TN' => 'Tunisia', 'TR' => 'Turkey', 'TM' => 'Turkmenistan',
+                'TC' => 'Turks and Caicos Islands', 'TV' => 'Tuvalu', 'UG' => 'Uganda', 'UA' => 'Ukraine',
+                'AE' => 'United Arab Emirates', 'GB' => 'United Kingdom', 'US' => 'United States',
+                'UY' => 'Uruguay', 'UZ' => 'Uzbekistan', 'VU' => 'Vanuatu', 'VA' => 'Vatican City',
+                'VE' => 'Venezuela', 'VN' => 'Vietnam', 'VG' => 'Virgin Islands, British',
+                'VI' => 'Virgin Islands, U.S.', 'WF' => 'Wallis and Futuna', 'EH' => 'Western Sahara',
+                'YE' => 'Yemen', 'ZM' => 'Zambia', 'ZW' => 'Zimbabwe'
+            );
+
+            // Sort countries alphabetically
+            asort($countries);
+
+            $options_html = '';
+            foreach ($countries as $cc => $nn) {
+                $options_html .= '<option value="' . esc_attr($cc) . '">' . esc_html($nn) . '</option>';
+            }
+
+            $container->add_control(
+                'egp_geo_countries_native',
+                array(
+                    'type' => \Elementor\Controls_Manager::RAW_HTML,
+                    'raw'  => '<label style="display:block;margin-bottom:8px;font-weight:600;">' . esc_html__('Target Countries', 'elementor-geo-popup') . '</label>'
+                           . '<select id="egp_countries_native" name="egp_countries_native[]" multiple="multiple" size="12" style="width:100%;max-width:420px;min-height:200px;border:1px solid #ddd;border-radius:4px;padding:8px;font-size:13px;">' . $options_html . '</select>'
+                           . '<p class="description" style="margin-top:8px;color:#666;font-size:12px;">' . esc_html__('Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup') . '</p>',
+                    'content_classes' => 'egp-native-countries',
+                    'condition'   => array('egp_geo_enabled' => 'yes'),
+                )
+            );
+
+            // Priority with tooltip
+            $container->add_control(
+                'egp_geo_priority',
+                array(
+                    'label'       => __('Priority', 'elementor-geo-popup'),
+                    'type'        => \Elementor\Controls_Manager::NUMBER,
+                    'min'         => 1,
+                    'max'         => 100,
+                    'step'        => 1,
+                    'default'     => 50,
+                    'condition'   => array('egp_geo_enabled' => 'yes'),
+                    'description' => __('Higher numbers take precedence over lower priority geo rules (1-100).', 'elementor-geo-popup'),
+                )
+            );
+
+            // Tracking ID
+            $container->add_control(
+                'egp_geo_tracking_id',
+                array(
+                    'label'       => __('Tracking ID', 'elementor-geo-popup'),
+                    'type'        => \Elementor\Controls_Manager::TEXT,
+                    'condition'   => array('egp_geo_enabled' => 'yes'),
+                    'description' => __('Used for analytics and tracking', 'elementor-geo-popup'),
+                    'placeholder' => __('Auto-generated if empty', 'elementor-geo-popup'),
+                )
+            );
+        } else {
+            $container->add_control(
+                'egp_geo_upgrade',
+                array(
+                    'type' => \Elementor\Controls_Manager::RAW_HTML,
+                    'raw'  => '<div style="background:#fff3cd;border:1px solid #ffeaa7;color:#856404;padding:12px;border-radius:4px;margin-top:10px;">'
+                            . '<strong>' . esc_html__('Pro Feature', 'elementor-geo-popup') . '</strong><br>'
+                            . esc_html__('Upgrade to Pro to target this container by country.', 'elementor-geo-popup')
+                            . '</div>',
+                    'content_classes' => 'egp-upgrade-box',
+                )
+            );
+        }
+
+        $container->end_controls_section();
+
+        error_log('[EGP] Successfully added geo controls to container');
+
+        // Add console success message
+        add_action('admin_footer', function() {
+            echo '<script>console.log("[EGP] ✅ Geo Targeting panel added to container");</script>';
         });
     }
 
