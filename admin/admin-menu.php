@@ -11,6 +11,7 @@ if (!defined('ABSPATH')) {
 class EGP_Admin_Menu {
 	public function __construct() {
 		add_action('admin_menu', array($this, 'register_menus'), 9);
+		add_action('admin_enqueue_scripts', array($this, 'enqueue_menu_icon_css'));
 	}
 
 	public function register_menus() {
@@ -67,6 +68,16 @@ class EGP_Admin_Menu {
 			'geo-elementor-license',
 			array($this, 'render_license')
 		);
+	}
+
+	/**
+	 * Ensure custom admin menu icon matches core dimensions (20x20)
+	 */
+	public function enqueue_menu_icon_css($hook = '') {
+		$css = '#toplevel_page_geo-elementor .wp-menu-image img{width:20px;height:20px;object-fit:contain;display:inline-block;margin:0;padding:0;}';
+		wp_register_style('egp-admin-menu-icon-fix', false);
+		wp_enqueue_style('egp-admin-menu-icon-fix');
+		wp_add_inline_style('egp-admin-menu-icon-fix', $css);
 	}
 
 	public function render_dashboard() {
