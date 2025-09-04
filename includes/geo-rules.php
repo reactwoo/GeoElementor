@@ -1808,4 +1808,10 @@ if (!function_exists('egp_register_elementor_advanced_geo_section_core')) {
     }
 
     add_action('elementor/element/after_section_end', 'egp_register_elementor_advanced_geo_section_all', 20, 3);
+    // Explicit per-type hooks per Elementor docs to guarantee coverage for containers and all widgets
+    add_action('elementor/element/common/section_advanced/after_section_end', function($element, $args){ egp_register_elementor_advanced_geo_section_core($element); }, 20, 2);
+    add_action('elementor/element/container/section_advanced/after_section_end', function($element, $args){ egp_register_elementor_advanced_geo_section_core($element); }, 20, 2);
+    add_action('elementor/element/section/section_advanced/after_section_end',   function($element, $args){ egp_register_elementor_advanced_geo_section_core($element); }, 20, 2);
+    add_action('elementor/element/column/section_advanced/after_section_end',    function($element, $args){ egp_register_elementor_advanced_geo_section_core($element); }, 20, 2);
+    add_action('elementor/element/form/section_advanced/after_section_end',      function($element, $args){ egp_register_elementor_advanced_geo_section_core($element); }, 20, 2);
 }
