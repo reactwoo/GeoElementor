@@ -578,8 +578,8 @@ class RW_Geo_Variant_Groups_Admin {
             echo '</tr>';
         }
 
-        // Section (if enabled) - by CSS ID or Elementor data-id
-        if ($variant && ($variant->type_mask & RW_GEO_TYPE_SECTION)) {
+        // Section reference (shown/hidden by JS based on type mask)
+        {
             $section_ref = $mapping ? ($mapping->section_ref ?? '') : '';
             echo '<tr class="section-ref-row">';
             echo '<th scope="row"><label>' . __('Section ID', 'elementor-geo-popup') . '</label></th>';
@@ -590,8 +590,8 @@ class RW_Geo_Variant_Groups_Admin {
             echo '</tr>';
         }
 
-        // Widget (if enabled) - by CSS ID or Elementor data-id
-        if ($variant && ($variant->type_mask & RW_GEO_TYPE_WIDGET)) {
+        // Widget reference (shown/hidden by JS based on type mask)
+        {
             $widget_ref = $mapping ? ($mapping->widget_ref ?? '') : '';
             echo '<tr class="widget-ref-row">';
             echo '<th scope="row"><label>' . __('Widget ID', 'elementor-geo-popup') . '</label></th>';

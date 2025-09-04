@@ -88,7 +88,7 @@ class EGP_Admin_Menu {
 	public function render_rules() {
 		echo '<div class="wrap egp-settings">';
 		echo '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">';
-		echo '<img id="egp-admin-logo" src="' . esc_url( EGP_PLUGIN_URL . 'assets/img/GeoElementor.svg' ) . '" alt="Geo Elementor" style="height:24px;width:auto;vertical-align:middle;" />';
+		echo '<img id="egp-admin-logo" src="' . esc_url( EGP_PLUGIN_URL . 'assets/img/GeoElementor.svg' ) . '" alt="Geo Elementor" style="height:40px;width:auto;vertical-align:middle;" />';
 		echo '<h1 style="margin:0;line-height:1;">' . esc_html__('Geo Rules', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="Rules target a specific Page or Popup with selected countries. If an element is managed by a Group, avoid creating a duplicate Rule for the same element to prevent conflicts."></span></h1>';
 		echo '</div>';
 		
