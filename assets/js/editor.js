@@ -246,6 +246,15 @@
                 var $native = panel.$el.find('#egp_countries_native');
                 var $store = panel.$el.find('input[name="egp_geo_countries_store"]');
                 if ($native.length && $store.length) {
+                    // Ensure adequate viewport and populate if empty
+                    $native.attr('size', 12).css({ 'min-height': '220px', 'width': '100%', 'max-width': '420px' });
+                    if ($native.children().length === 0) {
+                        var defaults = {
+                            'US': 'United States', 'GB': 'United Kingdom', 'CA': 'Canada', 'AU': 'Australia', 'DE': 'Germany', 'FR': 'France',
+                            'IT': 'Italy', 'ES': 'Spain', 'NL': 'Netherlands', 'BE': 'Belgium', 'SE': 'Sweden', 'NO': 'Norway', 'DK': 'Denmark', 'FI': 'Finland'
+                        };
+                        Object.keys(defaults).forEach(function (cc) { $native.append($('<option/>', { value: cc, text: defaults[cc] })); });
+                    }
                     function syncStore() {
                         var vals = [];
                         $native.find('option:selected').each(function () { vals.push($(this).val()); });

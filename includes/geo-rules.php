@@ -1797,11 +1797,17 @@ if (!function_exists('egp_register_elementor_advanced_geo_section')) {
 
     // Attach hooks when Elementor is initialized to guarantee availability
     function egp_attach_elementor_geo_controls_hooks() {
+        if (defined('WP_DEBUG') && WP_DEBUG) { error_log('[EGP] Attaching Elementor Advanced Geo section hooks'); }
         add_action('elementor/element/container/section_advanced/after_section_end', 'egp_register_elementor_advanced_geo_section', 10, 2);
+        add_action('elementor/element/container/section_advanced/before_section_end', 'egp_register_elementor_advanced_geo_section', 10, 2);
         add_action('elementor/element/section/section_advanced/after_section_end',   'egp_register_elementor_advanced_geo_section', 10, 2);
+        add_action('elementor/element/section/section_advanced/before_section_end',  'egp_register_elementor_advanced_geo_section', 10, 2);
         add_action('elementor/element/column/section_advanced/after_section_end',    'egp_register_elementor_advanced_geo_section', 10, 2);
+        add_action('elementor/element/column/section_advanced/before_section_end',   'egp_register_elementor_advanced_geo_section', 10, 2);
         add_action('elementor/element/common/section_advanced/after_section_end',    'egp_register_elementor_advanced_geo_section', 10, 2);
+        add_action('elementor/element/common/section_advanced/before_section_end',   'egp_register_elementor_advanced_geo_section', 10, 2);
         add_action('elementor/element/form/section_advanced/after_section_end',      'egp_register_elementor_advanced_geo_section', 10, 2);
+        add_action('elementor/element/form/section_advanced/before_section_end',     'egp_register_elementor_advanced_geo_section', 10, 2);
     }
     add_action('elementor/init', 'egp_attach_elementor_geo_controls_hooks');
 }
