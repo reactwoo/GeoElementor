@@ -74,7 +74,7 @@ class EGP_Admin_Menu {
 	 * Ensure custom admin menu icon matches core dimensions (20x20)
 	 */
 	public function enqueue_menu_icon_css($hook = '') {
-		$css = '#toplevel_page_geo-elementor .wp-menu-image img{width:20px;height:20px;object-fit:contain;display:inline-block;margin:0;padding:0;}';
+		$css = '#toplevel_page_geo-elementor .wp-menu-image img{width:18px;height:18px;object-fit:contain;display:block;margin:1px auto 0;padding:0;vertical-align:middle;}';
 		wp_register_style('egp-admin-menu-icon-fix', false);
 		wp_enqueue_style('egp-admin-menu-icon-fix');
 		wp_add_inline_style('egp-admin-menu-icon-fix', $css);
