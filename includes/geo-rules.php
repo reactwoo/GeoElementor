@@ -1499,7 +1499,7 @@ class EGP_Geo_Rules {
             'egp-editor',
             EGP_PLUGIN_URL . 'assets/js/editor.js',
             array('jquery', 'elementor-editor'),
-            EGP_VERSION,
+            (function_exists('filemtime') ? @filemtime(EGP_PLUGIN_DIR . 'assets/js/editor.js') : EGP_VERSION),
             true
         );
         

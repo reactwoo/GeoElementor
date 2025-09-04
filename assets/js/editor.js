@@ -96,6 +96,7 @@
                 if (elType === 'popup') {
                     $dest = panel.$el.find('.elementor-panel-section-popup_layout');
                 } else {
+                    // Prefer Advanced tab, but fall back to tabs content if not present
                     $dest = panel.$el.find('.elementor-panel-tab-content[data-tab="advanced"]');
                     if (!$dest.length) { $dest = panel.$el.find('.elementor-panel-tabs-content .elementor-panel-tab-content[data-tab="advanced"]'); }
                     if (!$dest.length) { $dest = panel.$el.find('.elementor-panel-tabs-content'); }
@@ -104,11 +105,27 @@
                     $dest.append($geoSection);
                     return true;
                 }
-                if (retries < 20) { setTimeout(function () { tryAppend(retries + 1); }, 100); }
+                if (retries < 40) { setTimeout(function () { tryAppend(retries + 1); }, 100); }
                 return false;
             };
             tryAppend(0);
-            try { if (!$targetSection.length && window.console && console.warn) { console.warn('[EGP] Advanced tab not found for', elType); } } catch (e) { }
+            // Observe for late-rendered Advanced tab and append once
+            try {
+                var root = panel.$el && panel.$el[0];
+                if (root) {
+                    var obs = new MutationObserver(function (muts) {
+                        muts.forEach(function (m) {
+                            if (!m.addedNodes || !m.addedNodes.length) return;
+                            var $dest = panel.$el.find('.elementor-panel-tab-content[data-tab="advanced"]');
+                            if ($dest.length && !panel.$el.find('#egp_geo_panel_root').length) {
+                                $dest.append($geoSection);
+                            }
+                        });
+                    });
+                    obs.observe(root, { childList: true, subtree: true });
+                    setTimeout(function () { try { obs.disconnect(); } catch (e) { } }, 6000);
+                }
+            } catch (e) { }
 
             // Bind events (stable reference)
             GeoElementorEditor.bindGeoEvents(panel, model);
@@ -160,6 +177,17 @@
                             applyRule(resp3.data);
                         }
                     });
+                }
+            } catch (e) { }
+
+            // License gating for element types other than popup
+            try {
+                var isPro = !!(window.egpEditor && egpEditor.isPro);
+                var isElementTarget = (elType && elType !== 'popup');
+                if (!isPro && isElementTarget) {
+                    var $disable = $('<div class="elementor-panel-field"><p class="description" style="color:#8a6d3b;">Upgrade to Pro to target Sections, Containers, Columns, and Widgets.</p></div>');
+                    $geoSection.append($disable);
+                    panel.$el.find('#egp_enable_geo').prop('disabled', true);
                 }
             } catch (e) { }
         },
