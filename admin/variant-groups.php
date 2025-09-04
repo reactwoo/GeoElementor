@@ -93,7 +93,7 @@ class RW_Geo_Variant_Groups_Admin {
             'rw-geo-variants-admin',
             EGP_PLUGIN_URL . 'assets/js/variants-admin.js',
             array('jquery', 'jquery-ui-sortable'),
-            EGP_VERSION,
+            (function_exists('filemtime') ? @filemtime(dirname(__DIR__) . '/assets/js/variants-admin.js') : EGP_VERSION),
             true
         );
 

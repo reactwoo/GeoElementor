@@ -536,7 +536,7 @@
                     if (v.indexOf('template:') === 0) { var id = parseInt(v.replace('template:', '').replace(/\D+/g, ''), 10); if (id > 0) { window.open(ajaxurl.replace('admin-ajax.php', 'post.php?post=' + id + '&action=elementor'), '_blank'); } }
                 });
             } catch (e) { }
-        }
+        },
 
         /**
          * Show admin notice
