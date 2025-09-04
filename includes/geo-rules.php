@@ -1772,7 +1772,7 @@ if (!function_exists('egp_register_elementor_advanced_geo_section')) {
                 array(
                     'type' => \Elementor\Controls_Manager::RAW_HTML,
                     'raw'  => '<label style="display:block;margin-bottom:4px;">'.esc_html__('Target Countries','elementor-geo-popup').'</label>'
-                           . '<select id="egp_countries_native" multiple="multiple" size="6" style="width:100%;max-width:420px;">'.$options_html.'</select>'
+                           . '<select id="egp_countries_native" multiple="multiple" size="14" style="width:100%;max-width:420px;min-height:240px;">'.$options_html.'</select>'
                            . '<p class="description">'.esc_html__('Hold Ctrl/Cmd to multi-select. Stored as JSON (no external library).','elementor-geo-popup').'</p>',
                     'content_classes' => 'egp-native-countries',
                     'condition'   => array('egp_geo_enabled' => 'yes'),
@@ -1799,15 +1799,10 @@ if (!function_exists('egp_register_elementor_advanced_geo_section')) {
     function egp_attach_elementor_geo_controls_hooks() {
         if (defined('WP_DEBUG') && WP_DEBUG) { error_log('[EGP] Attaching Elementor Advanced Geo section hooks'); }
         add_action('elementor/element/container/section_advanced/after_section_end', 'egp_register_elementor_advanced_geo_section', 10, 2);
-        add_action('elementor/element/container/section_advanced/before_section_end', 'egp_register_elementor_advanced_geo_section', 10, 2);
         add_action('elementor/element/section/section_advanced/after_section_end',   'egp_register_elementor_advanced_geo_section', 10, 2);
-        add_action('elementor/element/section/section_advanced/before_section_end',  'egp_register_elementor_advanced_geo_section', 10, 2);
         add_action('elementor/element/column/section_advanced/after_section_end',    'egp_register_elementor_advanced_geo_section', 10, 2);
-        add_action('elementor/element/column/section_advanced/before_section_end',   'egp_register_elementor_advanced_geo_section', 10, 2);
         add_action('elementor/element/common/section_advanced/after_section_end',    'egp_register_elementor_advanced_geo_section', 10, 2);
-        add_action('elementor/element/common/section_advanced/before_section_end',   'egp_register_elementor_advanced_geo_section', 10, 2);
         add_action('elementor/element/form/section_advanced/after_section_end',      'egp_register_elementor_advanced_geo_section', 10, 2);
-        add_action('elementor/element/form/section_advanced/before_section_end',     'egp_register_elementor_advanced_geo_section', 10, 2);
     }
     add_action('elementor/init', 'egp_attach_elementor_geo_controls_hooks');
 }
