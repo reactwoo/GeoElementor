@@ -13,11 +13,15 @@
 
         bindEvents: function () {
             // Wait for Elementor to be ready
-            if (typeof elementor !== 'undefined') {
-                this.addGeoControls();
-            } else {
-                $(document).on('elementor/init', this.addGeoControls.bind(this));
+            var self = this;
+            function ready() {
+                if (typeof elementor !== 'undefined' && elementor.hooks && elementor.channels && elementor.channels.editor) {
+                    self.addGeoControls();
+                    return;
+                }
+                setTimeout(ready, 100);
             }
+            ready();
         },
 
         addGeoControls: function () {
@@ -32,7 +36,9 @@
         },
 
         addGeoPanel: function (panel, model) {
-            var $geoSection = $('<div class="elementor-panel-option">');
+            // Avoid duplicates if panel re-opens
+            try { panel.$el.find('#egp_geo_panel_root').remove(); } catch (e) { }
+            var $geoSection = $('<div class="elementor-panel-option" id="egp_geo_panel_root">');
             $geoSection.html(`
                 <div class="elementor-panel-heading-title elementor-panel-heading-title">
                     <i class="eicon-location-alt"></i> Geo Targeting
@@ -90,11 +96,20 @@
             } else {
                 // For widgets, add to Advanced tab
                 $targetSection = panel.$el.find('.elementor-panel-tab-content[data-tab="advanced"]');
+                if (!$targetSection.length) {
+                    // Containers/Sections sometimes render tabs later; fall back to the tab container
+                    $targetSection = panel.$el.find('.elementor-panel-tabs-content .elementor-panel-tab-content[data-tab="advanced"]');
+                }
+                if (!$targetSection.length) {
+                    // As last resort, append to tabs content and rely on CSS stacking
+                    $targetSection = panel.$el.find('.elementor-panel-tabs-content');
+                }
             }
 
             if ($targetSection.length) {
                 $targetSection.append($geoSection);
             }
+            try { if (!$targetSection.length && window.console && console.warn) { console.warn('[EGP] Advanced tab not found for', elType); } } catch (e) { }
 
             // Bind events (stable reference)
             GeoElementorEditor.bindGeoEvents(panel, model);
