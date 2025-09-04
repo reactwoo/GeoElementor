@@ -290,12 +290,13 @@ class EGP_Geo_Rules {
                         var val = 'template:' + option.id;
                         html += '<option value="' + val + '" ' + (selectedValue === val ? 'selected' : '') + '>' + option.title + '</option>';
                     });
-                    html += '</select>';
-                    html += '<div class="description" style="margin-top:4px;"><a href="<?php echo esc_url( apply_filters('egp_new_template_url', admin_url('admin.php?page=elementor#new_template')) ); ?>" target="_blank"><?php _e('Create new template in Elementor', 'elementor-geo-popup'); ?></a></div>';
+                    html += '</select> ';
+                    html += '<a href="#" class="button button-small" id="egp_section_edit_tpl" style="vertical-align:middle;"><?php _e('Edit in Elementor', 'elementor-geo-popup'); ?></a>';
+                    html += '<div class="description" style="margin-top:4px;"><a href="<?php echo esc_url( admin_url('edit.php?post_type=elementor_library&tabs_group=library&rw_open_new=1') ); ?>" target="_blank"><?php _e('Create new template in Elementor', 'elementor-geo-popup'); ?></a></div>';
                 } else {
                     html += '<label style="display:block;font-weight:600;margin-bottom:4px;"><?php _e('Section/Container template', 'elementor-geo-popup'); ?></label>';
                     html += '<div class="description"><?php echo esc_js(__('No templates found.', 'elementor-geo-popup')); ?> ' +
-                            '<a href="<?php echo esc_url( apply_filters('egp_new_template_url', admin_url('admin.php?page=elementor#new_template')) ); ?>" target="_blank"><?php _e('Create new template in Elementor', 'elementor-geo-popup'); ?></a></div>';
+                            '<a href="<?php echo esc_url( admin_url('edit.php?post_type=elementor_library&tabs_group=library&rw_open_new=1') ); ?>" target="_blank"><?php _e('Create new template in Elementor', 'elementor-geo-popup'); ?></a></div>';
                 }
                 html += '</div>';
                 html += '</div>';
@@ -316,14 +317,15 @@ class EGP_Geo_Rules {
                         var val = 'template:' + option.id;
                         html += '<option value="' + val + '" ' + (selectedValue === val ? 'selected' : '') + '>' + option.title + '</option>';
                     });
-                    html += '</select>';
-                    html += '<div class="description" style="margin-top:4px;"><a href="<?php echo esc_url( apply_filters('egp_new_template_url', admin_url('admin.php?page=elementor#new_template')) ); ?>" target="_blank"><?php _e('Create new template in Elementor', 'elementor-geo-popup'); ?></a></div>';
+                    html += '</select> ';
+                    html += '<a href="#" class="button button-small" id="egp_widget_edit_tpl" style="vertical-align:middle;"><?php _e('Edit in Elementor', 'elementor-geo-popup'); ?></a>';
+                    html += '<div class="description" style="margin-top:4px;"><a href="<?php echo esc_url( admin_url('edit.php?post_type=elementor_library&tabs_group=library&rw_open_new=1') ); ?>" target="_blank"><?php _e('Create new template in Elementor', 'elementor-geo-popup'); ?></a></div>';
                     html += '</div>';
                 } else {
                     html += '<div>';
                     html += '<label style="display:block;font-weight:600;margin-bottom:4px;"><?php _e('Global Widget/Container template', 'elementor-geo-popup'); ?></label>';
                     html += '<div class="description"><?php echo esc_js(__('No templates found.', 'elementor-geo-popup')); ?> ' +
-                            '<a href="<?php echo esc_url( apply_filters('egp_new_template_url', admin_url('admin.php?page=elementor#new_template')) ); ?>" target="_blank"><?php _e('Create new template in Elementor', 'elementor-geo-popup'); ?></a></div>';
+                            '<a href="<?php echo esc_url( admin_url('edit.php?post_type=elementor_library&tabs_group=library&rw_open_new=1') ); ?>" target="_blank"><?php _e('Create new template in Elementor', 'elementor-geo-popup'); ?></a></div>';
                     html += '</div>';
                 }
                 html += '</div>';

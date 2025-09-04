@@ -384,6 +384,61 @@ class RW_Geo_Variant_Groups_Admin {
         echo '</select>';
         echo '</td>';
         echo '</tr>';
+
+        // Default Section/Widget refs (shown when types enabled)
+        echo '<tr class="egp-default-section-row">';
+        echo '<th scope="row"><label for="default_section_ref">' . __('Default Section ID/Template', 'elementor-geo-popup') . '</label></th>';
+        echo '<td>';
+        $def_section = $variant->default_section_ref ?? '';
+        echo '<div style="display:grid;grid-template-columns:1fr;gap:6px;max-width:560px;">';
+        echo '<div><label style="display:block;font-weight:600;margin-bottom:2px;">' . __('CSS ID or Elementor ID', 'elementor-geo-popup') . '</label>';
+        echo '<input type="text" id="default_section_ref" name="default_section_ref" value="' . esc_attr($def_section) . '" placeholder="#hero-us or element ID" style="width:100%;max-width:360px;" />';
+        echo '<div class="description" style="margin-top:4px;">' . __('Set Advanced > CSS ID (no #) or use element data-id.', 'elementor-geo-popup') . '</div></div>';
+        echo '<div><label style="display:block;font-weight:600;margin-bottom:2px;">' . __('Or select a Section/Container template', 'elementor-geo-popup') . '</label>';
+        echo '<select id="default_section_tpl" style="width:100%;max-width:360px;">';
+        echo '<option value="">— ' . __('Select a template', 'elementor-geo-popup') . ' —</option>';
+        $tpls = get_posts(array(
+            'post_type' => 'elementor_library',
+            'post_status' => array('publish','draft','private'),
+            'posts_per_page' => -1,
+            'orderby' => 'title',
+            'order' => 'ASC',
+            'meta_query' => array(array('key' => '_elementor_template_type','value' => array('section','container'),'compare' => 'IN'))
+        ));
+        foreach ($tpls as $p) { echo '<option value="template:' . $p->ID . '">' . esc_html($p->post_title) . '</option>'; }
+        echo '</select> ';
+        echo '<a href="' . esc_url(admin_url('edit.php?post_type=elementor_library&tabs_group=library&rw_open_new=1')) . '" target="_blank" class="button button-small">' . __('Create new template', 'elementor-geo-popup') . '</a>';
+        echo '</div>';
+        echo '</div>';
+        echo '</td>';
+        echo '</tr>';
+
+        echo '<tr class="egp-default-widget-row">';
+        echo '<th scope="row"><label for="default_widget_ref">' . __('Default Widget ID/Template', 'elementor-geo-popup') . '</label></th>';
+        echo '<td>';
+        $def_widget = $variant->default_widget_ref ?? '';
+        echo '<div style="display:grid;grid-template-columns:1fr;gap:6px;max-width:560px;">';
+        echo '<div><label style="display:block;font-weight:600;margin-bottom:2px;">' . __('CSS ID or Elementor ID', 'elementor-geo-popup') . '</label>';
+        echo '<input type="text" id="default_widget_ref" name="default_widget_ref" value="' . esc_attr($def_widget) . '" placeholder="#cta or element ID" style="width:100%;max-width:360px;" />';
+        echo '<div class="description" style="margin-top:4px;">' . __('Set Advanced > CSS ID (no #) or use element data-id.', 'elementor-geo-popup') . '</div></div>';
+        echo '<div><label style="display:block;font-weight:600;margin-bottom:2px;">' . __('Or select a Global Widget/Container template', 'elementor-geo-popup') . '</label>';
+        echo '<select id="default_widget_tpl" style="width:100%;max-width:360px;">';
+        echo '<option value="">— ' . __('Select a template', 'elementor-geo-popup') . ' —</option>';
+        $wtpls = get_posts(array(
+            'post_type' => 'elementor_library',
+            'post_status' => array('publish','draft','private'),
+            'posts_per_page' => -1,
+            'orderby' => 'title',
+            'order' => 'ASC',
+            'meta_query' => array(array('key' => '_elementor_template_type','value' => array('widget','global_widget'),'compare' => 'IN'))
+        ));
+        foreach ($wtpls as $p) { echo '<option value="template:' . $p->ID . '">' . esc_html($p->post_title) . '</option>'; }
+        echo '</select> ';
+        echo '<a href="' . esc_url(admin_url('edit.php?post_type=elementor_library&tabs_group=library&rw_open_new=1')) . '" target="_blank" class="button button-small">' . __('Create new template', 'elementor-geo-popup') . '</a>';
+        echo '</div>';
+        echo '</div>';
+        echo '</td>';
+        echo '</tr>';
         
         // Options
         echo '<tr>';

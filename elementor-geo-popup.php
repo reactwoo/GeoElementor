@@ -92,6 +92,8 @@ class ElementorGeoPopup {
             new EGP_Admin_Dashboard();
             new EGP_Admin_Menu();
             new EGP_Licensing();
+            // Enable Elementor new template modal deep-link
+            self::bootstrap_elementor_new_template_modal();
         }
 
         // Check if Elementor is active
@@ -173,6 +175,27 @@ class ElementorGeoPopup {
         new EGP_Widget_Registration();
         new EGP_Global_Settings();
         // Geo Rules system is auto-initialized
+    }
+
+    /**
+     * Admin helper: open Elementor "Add New" modal on Templates screen when flagged
+     */
+    public static function bootstrap_elementor_new_template_modal() {
+        add_action('admin_head-edit.php', function () {
+            $is_el_lib = isset($_GET['post_type']) && $_GET['post_type'] === 'elementor_library';
+            $should_open = isset($_GET['rw_open_new']) && $_GET['rw_open_new'] === '1';
+            if (!$is_el_lib || !$should_open) { return; }
+            ?>
+            <script>
+            jQuery(function($){
+                var $btn = $('.wrap .page-title-action').first();
+                if ($btn.length) { $btn.trigger('click'); return; }
+                var $alt = $('.elementor-add-new-template, .page-title-action:contains("Add New")').first();
+                if ($alt.length) { $alt.trigger('click'); }
+            });
+            </script>
+            <?php
+        });
     }
     
     /**

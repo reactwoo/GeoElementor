@@ -37,6 +37,16 @@
                 <div class="elementor-panel-heading-title elementor-panel-heading-title">
                     <i class="eicon-location-alt"></i> Geo Targeting
                 </div>
+                <div class="elementor-panel-field" id="egp_element_meta_row">
+                    <label class="elementor-panel-field-label">Element ID</label>
+                    <div class="elementor-panel-field-control">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <code id="egp_element_id_code" style="padding:2px 6px;border:1px solid #e2e8f0;border-radius:3px;background:#f8fafc;">—</code>
+                            <button type="button" class="elementor-button elementor-button-default" id="egp_copy_element_id" style="padding:2px 6px;line-height:1.6;">Copy</button>
+                        </div>
+                        <p class="description">Use this value in Rules or Groups when targeting by Elementor element ID.</p>
+                    </div>
+                </div>
                 <div class="elementor-panel-field">
                     <label class="elementor-panel-field-label">Enable Geo Targeting</label>
                     <div class="elementor-panel-field-control">
@@ -96,6 +106,13 @@
             try {
                 var popupPostId = (elementor && elementor.config && elementor.config.document && elementor.config.document.id) ? elementor.config.document.id : '';
                 var elementId = model && model.get ? model.get('id') : '';
+                // Populate element id meta row
+                try {
+                    panel.$el.find('#egp_element_id_code').text(elementId || '—');
+                    panel.$el.find('#egp_copy_element_id').off('click.egp').on('click.egp', function () {
+                        try { navigator.clipboard.writeText(String(elementId || '')); } catch (e) { }
+                    });
+                } catch (e) { }
                 var paramsByPopup = { action: 'egp_get_rule_by_popup', popup_id: popupPostId, nonce: (window.egpEditor && egpEditor.nonce) || '' };
                 var paramsByElement = { action: 'egp_get_rule_by_element', element_id: elementId, nonce: (window.egpEditor && egpEditor.nonce) || '' };
 

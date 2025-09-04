@@ -111,6 +111,18 @@
             var widgetChecked = $('input[name="type_mask[]"][value="' + this.getTypeMaskValue('widget') + '"]').is(':checked');
             $('.mapping-row .section-ref-row').toggle(!!sectionChecked);
             $('.mapping-row .widget-ref-row').toggle(!!widgetChecked);
+
+            // Also toggle default fields at the top of the group edit form
+            try {
+                var $tbl = $('table.form-table');
+                // Default Page row label has "Default Page"
+                $tbl.find('label:contains("Default Page")').closest('tr').toggle(!!pageChecked);
+                // Default Popup row label has "Default Popup"
+                $tbl.find('label:contains("Default Popup")').closest('tr').toggle(!!popupChecked);
+                // Default Section/Widget rows
+                $tbl.find('.egp-default-section-row').toggle(!!sectionChecked);
+                $tbl.find('.egp-default-widget-row').toggle(!!widgetChecked);
+            } catch (e) { }
         },
 
         /**
