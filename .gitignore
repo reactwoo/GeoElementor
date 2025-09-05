@@ -1,0 +1,24 @@
+# Development and docs
+/dev/
+/Dashboard/
+*.code-workspace
+.vscode/
+.idea/
+.DS_Store
+*.log
+*.map
+*.zip
+*.tar.gz
+
+# Node artifacts (if any)
+node_modules/
+
+# OS junk
+Thumbs.db
+
+# Shell/batch helpers not needed in release
+*.sh
+*.bat
+
+# Composer PHAR (we commit vendor already)
+composer.phar
