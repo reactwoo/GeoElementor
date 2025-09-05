@@ -43,6 +43,11 @@ class ElementorGeoPopup {
      * Instance of this class
      */
     private static $instance = null;
+    /**
+     * Whether geolocation is properly configured (license + database present)
+     * Used to keep plugin inactive until setup is complete
+     */
+    private $geo_ready = false;
     
     /**
      * Get single instance of this class
@@ -117,6 +122,9 @@ class ElementorGeoPopup {
 
         error_log('[EGP] Elementor and Pro found - proceeding with full initialization');
         
+        // Determine readiness before loading geo-dependent components
+        $this->geo_ready = $this->is_geo_ready();
+
         // Load plugin components
         $this->load_dependencies();
 
@@ -146,8 +154,11 @@ class ElementorGeoPopup {
         }
         
         // Core functionality - Load in proper order
-        require_once EGP_PLUGIN_DIR . 'includes/geo-detect.php';
-        require_once EGP_PLUGIN_DIR . 'includes/popup-hooks.php';
+        // Only load frontend geo features if configured to prevent WSODs
+        if ($this->geo_ready) {
+            require_once EGP_PLUGIN_DIR . 'includes/geo-detect.php';
+            require_once EGP_PLUGIN_DIR . 'includes/popup-hooks.php';
+        }
         require_once EGP_PLUGIN_DIR . 'includes/widget-registration.php';
         require_once EGP_PLUGIN_DIR . 'includes/global-settings.php';
         require_once EGP_PLUGIN_DIR . 'includes/dashboard-api.php';
@@ -161,6 +172,16 @@ class ElementorGeoPopup {
         // Initialize admin components (Editor integration only; settings and licensing were initialized earlier)
         if (is_admin()) {
             new EGP_Popup_Editor();
+            // If not configured, prompt admin with a gentle notice and setup link
+            if (!$this->geo_ready) {
+                add_action('admin_notices', function(){
+                    if (!current_user_can('manage_options')) { return; }
+                    $url = esc_url(admin_url('admin.php?page=elementor-geo-popup#maxmind'));
+                    echo '<div class="notice notice-warning"><p>'
+                       . esc_html__('Geo Elementor is inactive until you add your MaxMind license key.', 'elementor-geo-popup')
+                       . ' <a href="' . $url . '">' . esc_html__('Add your key in Settings', 'elementor-geo-popup') . '</a>.</p></div>';
+                });
+            }
             // Reduce editor console noise: prevent cross-origin Google Fonts requests in Elementor editor
             add_action('elementor/editor/before_enqueue_scripts', function () {
                 // Dequeue Elementor's Google fonts style if registered
@@ -319,36 +340,7 @@ class ElementorGeoPopup {
             }
         });
 
-        // Also try the section hooks as backup
-        add_action('elementor/element/after_section_end', function($element, $section_id, $args) {
-            if ($section_id === 'section_advanced') {
-                $name = method_exists($element, 'get_name') ? $element->get_name() : 'unknown';
-                error_log('[EGP] GENERAL HOOK: section_advanced ended for element: ' . $name);
-                $this->add_geo_targeting_controls($element);
-            }
-        }, 20, 3);
-
-        // Also ensure it works for specific element types if needed
-        add_action('elementor/element/section/section_advanced/after_section_end', function($element, $args) {
-            error_log('[EGP] Section hook fired');
-            $this->add_geo_targeting_controls($element);
-        }, 20, 2);
-
-        add_action('elementor/element/container/section_advanced/after_section_end', function($element, $args) {
-            error_log('[EGP] Container hook fired');
-            $this->add_geo_targeting_controls($element);
-        }, 20, 2);
-
-        add_action('elementor/element/column/section_advanced/after_section_end', function($element, $args) {
-            error_log('[EGP] Column hook fired');
-            $this->add_geo_targeting_controls($element);
-        }, 20, 2);
-
-        // For widgets and forms, use the common hook which covers all widgets
-        add_action('elementor/element/widget/section_advanced/after_section_end', function($element, $args) {
-            error_log('[EGP] Widget hook fired');
-            $this->add_geo_targeting_controls($element);
-        }, 20, 2);
+        // Remove broad after_section_end hooks for production to avoid duplication or re-entrancy
 
         error_log('[EGP] Elementor controls registration completed');
 
@@ -487,6 +479,24 @@ class ElementorGeoPopup {
                 'priority' => 1, // High priority to show at top
             )
         );
+
+        // If not configured, show setup callout and return
+        if (!$this->geo_ready) {
+            $settings_url = admin_url('admin.php?page=elementor-geo-popup#maxmind');
+            $widget->add_control(
+                'egp_geo_setup_notice',
+                array(
+                    'type' => \Elementor\Controls_Manager::RAW_HTML,
+                    'raw'  => '<div style="background:#fff8e5;border:1px solid #ffe08a;padding:10px;border-radius:4px;">'
+                           . esc_html__('Geo Targeting is inactive until you add your MaxMind license key.', 'elementor-geo-popup')
+                           . ' <a href="' . esc_url($settings_url) . '" target="_blank">' . esc_html__('Open Settings', 'elementor-geo-popup') . '</a>'
+                           . '</div>',
+                )
+            );
+            $widget->end_controls_section();
+            if (method_exists($widget, 'end_injection')) { $widget->end_injection(); }
+            return;
+        }
 
         // Add element ID control with auto-generated value
         $widget->add_control(
@@ -696,6 +706,24 @@ class ElementorGeoPopup {
                 'priority' => 1, // High priority to show at top
             )
         );
+
+        // If not configured, show setup callout and return
+        if (!$this->geo_ready) {
+            $settings_url = admin_url('admin.php?page=elementor-geo-popup#maxmind');
+            $container->add_control(
+                'egp_geo_setup_notice',
+                array(
+                    'type' => \Elementor\Controls_Manager::RAW_HTML,
+                    'raw'  => '<div style="background:#fff8e5;border:1px solid #ffe08a;padding:10px;border-radius:4px;">'
+                           . esc_html__('Geo Targeting is inactive until you add your MaxMind license key.', 'elementor-geo-popup')
+                           . ' <a href="' . esc_url($settings_url) . '" target="_blank">' . esc_html__('Open Settings', 'elementor-geo-popup') . '</a>'
+                           . '</div>',
+                )
+            );
+            $container->end_controls_section();
+            if (method_exists($container, 'end_injection')) { $container->end_injection(); }
+            return;
+        }
 
         // Add element ID control with auto-generated value
         $container->add_control(
@@ -1136,6 +1164,24 @@ class ElementorGeoPopup {
                 add_option('egp_' . $key, $value);
             }
         }
+    }
+
+    /**
+     * Determine whether geolocation is configured well enough to enable features
+     */
+    private function is_geo_ready() {
+        $ready = false;
+        try {
+            $key  = get_option('egp_maxmind_license_key');
+            $path = get_option('egp_database_path');
+            if (!empty($key) && !empty($path) && file_exists($path) && is_readable($path)) {
+                $ready = true;
+            }
+        } catch (\Throwable $e) {
+            $ready = false;
+        }
+        /** Allow integrations to override readiness (e.g., alternate providers) */
+        return (bool) apply_filters('egp_geo_ready', $ready);
     }
     
     /**

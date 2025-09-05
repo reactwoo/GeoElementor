@@ -254,7 +254,7 @@ class EGP_Admin_Settings {
                     <h2><?php _e('General', 'elementor-geo-popup'); ?></h2>
                     <?php do_settings_sections('egp_settings_general'); ?>
                 </div>
-                <div class="egp-section-card">
+                <div class="egp-section-card" id="maxmind">
                     <h2><?php _e('MaxMind Integration', 'elementor-geo-popup'); ?></h2>
                     <?php do_settings_sections('egp_settings_maxmind'); ?>
                 </div>
