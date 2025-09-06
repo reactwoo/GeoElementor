@@ -212,9 +212,13 @@ class ElementorGeoPopup {
             }
         }, 999);
         
-        // Initialize core components
-        EGP_Geo_Detect::get_instance();
-        new EGP_Popup_Hooks();
+        // Initialize core components (guard if geo not ready)
+        if ($this->geo_ready && class_exists('EGP_Geo_Detect')) {
+            EGP_Geo_Detect::get_instance();
+        }
+        if ($this->geo_ready && class_exists('EGP_Popup_Hooks')) {
+            new EGP_Popup_Hooks();
+        }
         new EGP_Widget_Registration();
         new EGP_Global_Settings();
         // Geo Rules system is auto-initialized
