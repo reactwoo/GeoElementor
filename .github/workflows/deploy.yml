@@ -13,20 +13,20 @@ jobs:
       - name: Checkout (for potential artifacts)
         uses: actions/checkout@v4
 
+      - name: Scan host key
+        id: scan
+        env:
+          CPANEL_SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
+        run: |
+          echo "known_hosts=$(ssh-keyscan -H \"$CPANEL_SSH_HOST\")" >> $GITHUB_OUTPUT
+
       - name: Install SSH key (with passphrase)
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.CPANEL_SSH_KEY }}
           name: id_rsa
           passphrase: ${{ secrets.CPANEL_SSH_PASSPHRASE }}
-          known_hosts: ""
-
-      - name: Add host to known_hosts
-        env:
-          CPANEL_SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H "$CPANEL_SSH_HOST" >> ~/.ssh/known_hosts
+          known_hosts: ${{ steps.scan.outputs.known_hosts }}
 
       - name: Deploy (git fetch/reset on server)
         env:
