@@ -13,12 +13,13 @@ jobs:
       - name: Checkout (for potential artifacts)
         uses: actions/checkout@v4
 
-      - name: Start ssh-agent
-        uses: webfactory/ssh-agent@v0.9.0
+      - name: Install SSH key (with passphrase)
+        uses: shimataro/ssh-key-action@v2
         with:
-          ssh-private-key: |
-            ${{ secrets.CPANEL_SSH_KEY }}
-          ssh-passphrase: ${{ secrets.CPANEL_SSH_PASSPHRASE }}
+          key: ${{ secrets.CPANEL_SSH_KEY }}
+          name: id_rsa
+          passphrase: ${{ secrets.CPANEL_SSH_PASSPHRASE }}
+          known_hosts: ""
 
       - name: Add host to known_hosts
         env:
@@ -35,7 +36,7 @@ jobs:
           CPANEL_REPO_PATH: ${{ secrets.CPANEL_REPO_PATH }}
           CPANEL_BRANCH: ${{ secrets.CPANEL_BRANCH }}
         run: |
-          ssh -p "${CPANEL_SSH_PORT:-22}" "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}" "\
+          ssh -p "${CPANEL_SSH_PORT:-22}" -i ~/.ssh/id_rsa "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}" "\
             set -e; \
             if [ ! -d \"${CPANEL_REPO_PATH}/.git\" ]; then \
               echo 'Repository not found at ${CPANEL_REPO_PATH}'; \
