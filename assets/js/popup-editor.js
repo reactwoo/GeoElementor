@@ -61,17 +61,9 @@
                         attempts += 1;
                         if (tryEditor() || attempts >= maxAttempts) {
                             clearInterval(timer);
-                            if (!self.isInitialized) {
-                                // Do NOT initialize fallback in editor preview context; silently skip
-                                try {
-                                    var inPreview = (window.location && window.location.search && window.location.search.indexOf('elementor-preview=') !== -1);
-                                    if (!inPreview) {
-                                        self.setupFrontend();
-                                    }
-                                } catch (e) { /* ignore */ }
-                                self.isInitialized = true;
-                                console.log('[EGP] Popup Editor initialized successfully (frontend)');
-                            }
+                            // In editor bundle we never initialize frontend systems; only editor hooks
+                            if (!self.isInitialized) { self.isInitialized = true; }
+                            console.log('[EGP] Popup Editor ready (no frontend init in editor context)');
                         }
                     }, 200);
                 }
