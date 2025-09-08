@@ -91,6 +91,16 @@
         },
 
         setupFrontend: function () {
+            // Do not initialize any frontend system inside Elementor editor/preview contexts
+            try {
+                if (typeof elementor !== 'undefined') {
+                    return;
+                }
+                if (window.location && /[?&]elementor-preview=/.test(window.location.search)) {
+                    return;
+                }
+            } catch (e) { /* ignore */ }
+
             console.log('[EGP] Setting up frontend popup system');
 
             // Check if Elementor Pro popups are available
