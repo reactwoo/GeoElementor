@@ -273,11 +273,13 @@ class EGP_Popup_Editor {
      * Enqueue editor scripts
      */
     public function enqueue_editor_scripts() {
+        $editor_js_path = EGP_PLUGIN_DIR . 'assets/js/popup-editor.js';
+        $editor_js_ver  = @filemtime($editor_js_path) ?: EGP_VERSION;
         wp_enqueue_script(
             'egp-popup-editor',
             EGP_PLUGIN_URL . 'assets/js/popup-editor.js',
             array('jquery', 'elementor-editor'),
-            EGP_VERSION,
+            $editor_js_ver,
             true
         );
         
@@ -285,6 +287,7 @@ class EGP_Popup_Editor {
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('egp_admin_nonce'),
             'assetsUrl' => EGP_PLUGIN_URL . 'assets/',
+            'isEditor' => true,
             'preferredCountries' => get_option('egp_preferred_countries', array('US','CA','GB')),
             'strings' => array(
                 'saving' => __('Saving geo targeting settings...', 'elementor-geo-popup'),
