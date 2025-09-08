@@ -39,7 +39,7 @@ jobs:
           CPANEL_REPO_PATH: ${{ secrets.CPANEL_REPO_PATH }}
           CPANEL_BRANCH: ${{ secrets.CPANEL_BRANCH }}
         run: |
-          ssh -o ConnectTimeout=10 -o BatchMode=yes -p "${CPANEL_SSH_PORT:-22}" -i ~/.ssh/id_rsa "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}" "\
+          ssh -o IdentitiesOnly=yes -o ConnectTimeout=10 -o BatchMode=yes -p "${CPANEL_SSH_PORT:-22}" -i ~/.ssh/id_rsa "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}" "\
             set -e; \
             if [ ! -d \"${CPANEL_REPO_PATH}/.git\" ]; then \
               echo 'Repository not found at ${CPANEL_REPO_PATH}'; \
