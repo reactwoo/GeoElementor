@@ -113,9 +113,9 @@ class ElementorGeoPopup {
             return;
         }
 
-        // Check if Elementor Pro is active
-        if (!class_exists('ElementorPro\Plugin')) {
-            error_log('[EGP] Elementor Pro not found - showing missing notice');
+        // Check if Elementor Pro is active (robust)
+        if (!$this->is_elementor_pro_active()) {
+            error_log('[EGP] Elementor Pro not found (robust check) - showing missing notice');
             add_action('admin_notices', array($this, 'elementor_pro_missing_notice'));
             return;
         }
@@ -222,6 +222,23 @@ class ElementorGeoPopup {
         new EGP_Widget_Registration();
         new EGP_Global_Settings();
         // Geo Rules system is auto-initialized
+    }
+
+    /**
+     * Robust check for Elementor Pro activation
+     */
+    private function is_elementor_pro_active() {
+        // Multiple signals that Pro is active
+        $by_class = class_exists('ElementorPro\\Plugin');
+        $by_const = defined('ELEMENTOR_PRO_VERSION');
+        $by_action = did_action('elementor_pro/init');
+        $active = ($by_class || $by_const || $by_action);
+        /** Allow override by integrations/tests */
+        return (bool) apply_filters('egp_is_elementor_pro_active', $active, array(
+            'by_class' => $by_class,
+            'by_const' => $by_const,
+            'by_action' => $by_action,
+        ));
     }
 
     /**
