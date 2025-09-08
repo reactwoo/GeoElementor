@@ -25,8 +25,8 @@ class EGP_Popup_Hooks {
             // Use Elementor Pro popup system
             $this->init_elementor_pro_hooks();
         } else {
-            // Use fallback custom popup system
-            if ($this->should_use_fallback_popups()) {
+            // Use fallback custom popup system (skip during editor/preview/AJAX editing)
+            if ($this->should_use_fallback_popups() && !$this->is_editor_context()) {
                 $this->init_fallback_popup_system();
             }
         }
@@ -45,6 +45,26 @@ class EGP_Popup_Hooks {
             class_exists('ElementorPro\Modules\Popup\Module') &&
             method_exists('ElementorPro\Modules\Popup\Module', 'get_popup')
         );
+    }
+    
+    /**
+     * Detect Elementor editor/preview contexts to avoid interfering while editing
+     */
+    private function is_editor_context() {
+        if (is_admin()) { return true; }
+        $is_preview = isset($_GET['elementor-preview']);
+        $is_action_editor = isset($_GET['action']) && $_GET['action'] === 'elementor';
+        $is_ajax = function_exists('wp_doing_ajax') ? wp_doing_ajax() : (defined('DOING_AJAX') && DOING_AJAX);
+        $is_elementor_ajax = $is_ajax && isset($_REQUEST['action']) && (strpos((string) $_REQUEST['action'], 'elementor') !== false);
+        $is_edit_mode = false;
+        if (class_exists('Elementor\\Plugin')) {
+            try {
+                $is_edit_mode = \Elementor\Plugin::$instance && \Elementor\Plugin::$instance->editor && \Elementor\Plugin::$instance->editor->is_edit_mode();
+            } catch (\Throwable $e) {
+                $is_edit_mode = false;
+            }
+        }
+        return ($is_preview || $is_action_editor || $is_elementor_ajax || $is_edit_mode);
     }
     
     /**
@@ -600,6 +620,7 @@ class EGP_Popup_Hooks {
      * Enqueue fallback popup scripts
      */
     public function enqueue_fallback_popup_scripts() {
+        if ($this->is_editor_context()) { return; }
         wp_enqueue_script(
             'egp-fallback-popup',
             EGP_PLUGIN_URL . 'assets/js/geo-widget.js',
@@ -620,9 +641,7 @@ class EGP_Popup_Hooks {
      * Render popup HTML structure
      */
     public function render_popup_html() {
-        if (is_admin()) {
-            return;
-        }
+        if ($this->is_editor_context()) { return; }
         
         // Get active popups for current page
         $popups = $this->get_active_popups();
