@@ -127,11 +127,8 @@ class EGP_Popup_Hooks {
      * Filter popup display based on geo conditions
      */
     public function filter_popup_display($should_show, $popup) {
-        // Always allow in admin/editor contexts so users can edit popups regardless of geo
-        if (is_admin()) {
-            return true;
-        }
-        // Elementor editor or preview should bypass geo rules
+        // Detect editor/preview contexts early
+        $is_admin_ctx = is_admin();
         $is_elementor_preview = (isset($_GET['elementor-preview']) || isset($_GET['elementor_library']) || (isset($_GET['action']) && $_GET['action'] === 'elementor'));
         $is_elementor_edit_mode = false;
         if (class_exists('Elementor\\Plugin')) {
@@ -141,12 +138,9 @@ class EGP_Popup_Hooks {
                 $is_elementor_edit_mode = false;
             }
         }
-        // Elementor AJAX preview/editor requests should bypass
         $is_ajax = function_exists('wp_doing_ajax') ? wp_doing_ajax() : (defined('DOING_AJAX') && DOING_AJAX);
         $is_elementor_ajax = $is_ajax && isset($_REQUEST['action']) && (strpos((string) $_REQUEST['action'], 'elementor') !== false);
-        if ($is_elementor_preview || $is_elementor_edit_mode || $is_elementor_ajax) {
-            return true;
-        }
+
         // Resolve popup ID from different possible types
         $popup_id = null;
         if (is_object($popup) && method_exists($popup, 'get_id')) {
@@ -156,17 +150,15 @@ class EGP_Popup_Hooks {
         } elseif (is_numeric($popup)) {
             $popup_id = (int) $popup;
         }
-        if (!$popup_id) {
-            return $should_show;
-        }
-        // If the current user can edit this popup, bypass rules so they can view it in admin/front preview
-        if (current_user_can('edit_post', $popup_id) || current_user_can('edit_pages') || current_user_can('manage_options')) {
+        $can_edit_popup = $popup_id ? (current_user_can('edit_post', $popup_id) || current_user_can('edit_pages') || current_user_can('manage_options')) : current_user_can('edit_pages');
+
+        // Always allow in admin/editor/preview/editable contexts so users can edit popups regardless of geo or other conditions
+        if ($is_admin_ctx || $is_elementor_preview || $is_elementor_edit_mode || $is_elementor_ajax || $can_edit_popup) {
             return true;
         }
-        // If popup shouldn't show for other reasons, don't override
-        if (!$should_show) {
-            return false;
-        }
+        if (!$popup_id) { return $should_show; }
+        // If popup shouldn't show for other reasons and we're not in editor, honor it
+        if (!$should_show) { return false; }
         
         // Check if this popup has geo targeting enabled
         $geo_settings = $this->get_popup_geo_settings($popup_id);
