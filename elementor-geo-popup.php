@@ -154,11 +154,12 @@ class ElementorGeoPopup {
         }
         
         // Core functionality - Load in proper order
-        // Only load frontend geo features if configured to prevent WSODs
+        // Frontend geo features only when configured
         if ($this->geo_ready) {
             require_once EGP_PLUGIN_DIR . 'includes/geo-detect.php';
-            require_once EGP_PLUGIN_DIR . 'includes/popup-hooks.php';
         }
+        // Always load popup hooks so editor controls appear even if geo isn't ready
+        require_once EGP_PLUGIN_DIR . 'includes/popup-hooks.php';
         require_once EGP_PLUGIN_DIR . 'includes/widget-registration.php';
         require_once EGP_PLUGIN_DIR . 'includes/global-settings.php';
         require_once EGP_PLUGIN_DIR . 'includes/dashboard-api.php';
@@ -212,12 +213,18 @@ class ElementorGeoPopup {
             }
         }, 999);
         
-        // Initialize core components (guard if geo not ready)
+        // Initialize core components
         if ($this->geo_ready && class_exists('EGP_Geo_Detect')) {
             EGP_Geo_Detect::get_instance();
         }
-        if ($this->geo_ready && class_exists('EGP_Popup_Hooks')) {
-            new EGP_Popup_Hooks();
+        // Initialize popup hooks in admin/editor regardless of geo readiness so UI controls show
+        if (class_exists('EGP_Popup_Hooks')) {
+            if (is_admin() || isset($_GET['elementor-preview'])) {
+                new EGP_Popup_Hooks();
+            } elseif ($this->geo_ready) {
+                // Frontend runtime only when geo is ready
+                new EGP_Popup_Hooks();
+            }
         }
         new EGP_Widget_Registration();
         new EGP_Global_Settings();
