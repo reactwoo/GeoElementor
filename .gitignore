@@ -20,5 +20,16 @@ Thumbs.db
 *.sh
 *.bat
 
-# Composer PHAR (we commit vendor already)
+# PHP/Composer and tests – exclude composer setup and vendor from pushes
+composer.json
+composer.lock
 composer.phar
+vendor/
+phpunit.xml*
+/.phpunit.result.cache
+/tests/
+
+# CI/config we don’t ship in release packages
+.github/
+.gitea/
+.gitlab/
