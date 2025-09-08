@@ -1,0 +1,22 @@
+* text=auto eol=lf
+
+/.github            export-ignore
+/.gitea             export-ignore
+/.gitlab            export-ignore
+/dev                export-ignore
+/Dashboard          export-ignore
+/tests              export-ignore
+node_modules        export-ignore
+composer.json       export-ignore
+composer.lock       export-ignore
+composer.phar       export-ignore
+phpunit.xml*        export-ignore
+*.code-workspace    export-ignore
+.vscode             export-ignore
+.idea               export-ignore
+*.log               export-ignore
+*.map               export-ignore
+*.zip               export-ignore
+*.tar.gz            export-ignore
+Thumbs.db           export-ignore
+.DS_Store           export-ignore
