@@ -107,6 +107,23 @@ class EGP_Popup_Hooks {
      * Filter popup display based on geo conditions
      */
     public function filter_popup_display($should_show, $popup) {
+        // Always allow in admin/editor contexts so users can edit popups regardless of geo
+        if (is_admin()) {
+            return true;
+        }
+        // Elementor editor or preview should bypass geo rules
+        $is_elementor_preview = (isset($_GET['elementor-preview']) || isset($_GET['elementor_library']) || (isset($_GET['action']) && $_GET['action'] === 'elementor'));
+        $is_elementor_edit_mode = false;
+        if (class_exists('Elementor\\Plugin')) {
+            try {
+                $is_elementor_edit_mode = \Elementor\Plugin::$instance && \Elementor\Plugin::$instance->editor && \Elementor\Plugin::$instance->editor->is_edit_mode();
+            } catch (\Throwable $e) {
+                $is_elementor_edit_mode = false;
+            }
+        }
+        if ($is_elementor_preview || $is_elementor_edit_mode) {
+            return true;
+        }
         // Resolve popup ID from different possible types
         $popup_id = null;
         if (is_object($popup) && method_exists($popup, 'get_id')) {
