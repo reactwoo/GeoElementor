@@ -1,0 +1,55 @@
+name: Deploy to cPanel (future.livebuild.site)
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    name: SSH deploy to cPanel
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for potential artifacts)
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        env:
+          CPANEL_SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
+          CPANEL_SSH_KEY: ${{ secrets.CPANEL_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$CPANEL_SSH_HOST" >> ~/.ssh/known_hosts
+          echo "$CPANEL_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Deploy (git fetch/reset on server)
+        env:
+          CPANEL_SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
+          CPANEL_SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
+          CPANEL_REPO_PATH: ${{ secrets.CPANEL_REPO_PATH }}
+          CPANEL_BRANCH: ${{ secrets.CPANEL_BRANCH }}
+        run: |
+          ssh -i ~/.ssh/id_rsa ${CPANEL_SSH_USER}@${CPANEL_SSH_HOST} "\
+            set -e; \
+            if [ ! -d \"${CPANEL_REPO_PATH}/.git\" ]; then \
+              echo 'Repository not found at ${CPANEL_REPO_PATH}'; \
+              exit 1; \
+            fi; \
+            cd ${CPANEL_REPO_PATH}; \
+            git fetch --all; \
+            git reset --hard origin/${CPANEL_BRANCH:-main}; \
+          "
+
+      # Optional build step on the server (uncomment if needed)
+      # - name: Build on server (composer/npm)
+      #   env:
+      #     CPANEL_SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
+      #     CPANEL_SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
+      #     CPANEL_REPO_PATH: ${{ secrets.CPANEL_REPO_PATH }}
+      #   run: |
+      #     ssh -i ~/.ssh/id_rsa ${CPANEL_SSH_USER}@${CPANEL_SSH_HOST} "\
+      #       set -e; \
+      #       cd ${CPANEL_REPO_PATH}; \
+      #       # composer install --no-dev --prefer-dist --no-interaction; \
+      #       # npm ci && npm run build; \
+      #     "
