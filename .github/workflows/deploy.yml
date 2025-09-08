@@ -26,9 +26,14 @@ jobs:
       - name: Prepare SSH (write private key)
         env:
           CPANEL_SSH_KEY: ${{ secrets.CPANEL_SSH_KEY }}
+          CPANEL_SSH_KEY_B64: ${{ secrets.CPANEL_SSH_KEY_B64 }}
         run: |
           set -e
-          (umask 077 && printf "%s\n" "$CPANEL_SSH_KEY" > ~/.ssh/id_rsa)
+          if [ -n "$CPANEL_SSH_KEY_B64" ]; then
+            echo "$CPANEL_SSH_KEY_B64" | base64 -d > ~/.ssh/id_rsa
+          else
+            (umask 077 && printf "%s\n" "$CPANEL_SSH_KEY" > ~/.ssh/id_rsa)
+          fi
           chmod 600 ~/.ssh/id_rsa
 
       - name: Deploy (git fetch/reset on server)
