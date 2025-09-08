@@ -13,22 +13,23 @@ jobs:
       - name: Checkout (for potential artifacts)
         uses: actions/checkout@v4
 
-      - name: Scan host key
-        id: scan
+      - name: Prepare known_hosts
         env:
           CPANEL_SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
+          CPANEL_SSH_PORT: ${{ secrets.CPANEL_SSH_PORT }}
         run: |
-          echo "known_hosts=$(ssh-keyscan -H \"$CPANEL_SSH_HOST\")" >> $GITHUB_OUTPUT
+          set -e
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${CPANEL_SSH_PORT:-22}" -H -t rsa,ecdsa,ed25519 "$CPANEL_SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          chmod 600 ~/.ssh/known_hosts
 
-      - name: Prepare SSH (write key and known_hosts)
+      - name: Prepare SSH (write private key)
         env:
           CPANEL_SSH_KEY: ${{ secrets.CPANEL_SSH_KEY }}
         run: |
           set -e
-          mkdir -p ~/.ssh
-          printf "%s\n" "${{ steps.scan.outputs.known_hosts }}" >> ~/.ssh/known_hosts
           (umask 077 && printf "%s\n" "$CPANEL_SSH_KEY" > ~/.ssh/id_rsa)
-          chmod 600 ~/.ssh/id_rsa ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_rsa
 
       - name: Deploy (git fetch/reset on server)
         env:
@@ -38,7 +39,7 @@ jobs:
           CPANEL_REPO_PATH: ${{ secrets.CPANEL_REPO_PATH }}
           CPANEL_BRANCH: ${{ secrets.CPANEL_BRANCH }}
         run: |
-          ssh -p "${CPANEL_SSH_PORT:-22}" -i ~/.ssh/id_rsa "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}" "\
+          ssh -o ConnectTimeout=10 -o BatchMode=yes -p "${CPANEL_SSH_PORT:-22}" -i ~/.ssh/id_rsa "${CPANEL_SSH_USER}@${CPANEL_SSH_HOST}" "\
             set -e; \
             if [ ! -d \"${CPANEL_REPO_PATH}/.git\" ]; then \
               echo 'Repository not found at ${CPANEL_REPO_PATH}'; \
