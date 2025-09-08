@@ -121,7 +121,10 @@ class EGP_Popup_Hooks {
                 $is_elementor_edit_mode = false;
             }
         }
-        if ($is_elementor_preview || $is_elementor_edit_mode) {
+        // Elementor AJAX preview/editor requests should bypass
+        $is_ajax = function_exists('wp_doing_ajax') ? wp_doing_ajax() : (defined('DOING_AJAX') && DOING_AJAX);
+        $is_elementor_ajax = $is_ajax && isset($_REQUEST['action']) && (strpos((string) $_REQUEST['action'], 'elementor') !== false);
+        if ($is_elementor_preview || $is_elementor_edit_mode || $is_elementor_ajax) {
             return true;
         }
         // Resolve popup ID from different possible types
@@ -135,6 +138,10 @@ class EGP_Popup_Hooks {
         }
         if (!$popup_id) {
             return $should_show;
+        }
+        // If the current user can edit this popup, bypass rules so they can view it in admin/front preview
+        if (current_user_can('edit_post', $popup_id) || current_user_can('edit_pages') || current_user_can('manage_options')) {
+            return true;
         }
         // If popup shouldn't show for other reasons, don't override
         if (!$should_show) {
