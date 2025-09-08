@@ -47,9 +47,18 @@ class EGP_Geo_Detect {
      * Inject geo popup script
      */
     public function inject_geo_popup_script() {
-        // Only inject on frontend pages
-        if (is_admin() || wp_doing_ajax()) {
-            if (get_option('egp_debug_mode')) { error_log('EGP: Skipping guard injection (admin or ajax)'); }
+        // Only inject on real frontend pages (never in wp-admin, AJAX, or Elementor editor/preview)
+        $is_admin_ctx = is_admin();
+        $is_ajax_ctx  = wp_doing_ajax();
+        $is_elementor_preview = (isset($_GET['elementor-preview']) || isset($_GET['elementor_library']) || (isset($_GET['action']) && $_GET['action'] === 'elementor'));
+        $is_elementor_edit_mode = false;
+        if (class_exists('Elementor\\Plugin')) {
+            try {
+                $is_elementor_edit_mode = \Elementor\Plugin::$instance && \Elementor\Plugin::$instance->editor && \Elementor\Plugin::$instance->editor->is_edit_mode();
+            } catch (\Throwable $e) { $is_elementor_edit_mode = false; }
+        }
+        if ($is_admin_ctx || $is_ajax_ctx || $is_elementor_preview || $is_elementor_edit_mode) {
+            if (get_option('egp_debug_mode')) { error_log('EGP: Skipping guard injection (admin/ajax/elementor-editor)'); }
             return;
         }
         
