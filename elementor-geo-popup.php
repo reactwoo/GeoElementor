@@ -94,7 +94,7 @@ class ElementorGeoPopup {
             require_once EGP_PLUGIN_DIR . 'admin/variant-groups.php';
             require_once EGP_PLUGIN_DIR . 'includes/licensing.php';
             require_once EGP_PLUGIN_DIR . 'includes/activation-setup.php';
-            require_once EGP_PLUGIN_DIR . 'demo-fallback-system.php';
+            // Demo helpers are not needed in production; removed from runtime
             // Ensure Geo Rules CPT and admin/AJAX are available in wp-admin regardless of Elementor state
             require_once EGP_PLUGIN_DIR . 'includes/geo-rules.php';
             // Initialize admin-only components early
