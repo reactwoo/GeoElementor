@@ -222,11 +222,8 @@
         var targetId = '';
         if (elementIdSetting) {
             targetId = ('' + elementIdSetting).trim();
-        } else {
-            var $idField = jQuery('input[name*="egp_element_id"]');
-            if ($idField.length && $idField.val()) {
-                targetId = $idField.val().trim();
-            }
+        } else if (jQuery('input[name*="egp_element_id"]').length && jQuery('input[name*="egp_element_id"]').val()) {
+            targetId = jQuery('input[name*="egp_element_id"]').val().trim();
         } else if (panel.model.get('id')) {
             targetId = panel.model.get('id');
         }
