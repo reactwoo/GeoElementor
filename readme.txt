@@ -4,7 +4,7 @@ Tags: elementor, popup, geolocation, geo-targeting, maxmind, country-specific, w
 Requires at least: 5.0
 Tested up to: 6.4
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -188,10 +188,47 @@ For developers, the plugin provides several action and filter hooks for customiz
 
 == Roadmap ==
 
-Future versions may include:
+== Changelog ==
+
+= 1.0.2 =
+* **NEW: Modern Analytics Dashboard** - Complete rewrite with Google Analytics-style interface
+* **NEW: Lightweight Architecture** - Ultra-lightweight vanilla JavaScript dashboard (~15KB total)
+* **NEW: Comprehensive Analytics API** - 4 new REST API endpoints for real-time data
+* **NEW: Overview Metrics Cards** - Total rules, active rules, clicks, countries, conversion rates
+* **NEW: Interactive Country Charts** - Visual representation of top performing countries
+* **NEW: Performance Trends** - 30-day performance trends with visual timeline
+* **NEW: Rules Performance Table** - Sortable table with detailed rule analytics
+* **NEW: Real-time Data Updates** - Live data fetching from WordPress REST API
+* **NEW: Responsive Design** - Mobile-first design that works on all devices
+* **NEW: Zero Dependencies** - Pure vanilla JavaScript with no external libraries
+* **IMPROVED: Admin Menu** - Renamed "Geo Elementor" submenu to "Dashboard"
+* **IMPROVED: Performance** - Significantly faster loading and reduced memory usage
+* **IMPROVED: Code Architecture** - Modern ES6+ JavaScript patterns
+* **IMPROVED: Bundle Optimization** - Tree shaking and aggressive minification
+
+= 1.0.1 =
+* Initial release with core geo-targeting functionality
+* Elementor integration for popups and pages
+* MaxMind GeoLite2 database integration
+* Basic admin interface for rule management
+* Country-based targeting system
+
+= 1.0.0 =
+* Initial plugin release
+* Core geo-targeting functionality
+* Basic WordPress integration
+
+== Upgrade Notice ==
+
+= 1.0.2 =
+Major update with new analytics dashboard! The admin interface has been completely redesigned with a modern Google Analytics-style dashboard featuring comprehensive analytics, interactive charts, and real-time data updates. The new dashboard is ultra-lightweight (~15KB) and requires no external dependencies.
+
+= 1.0.1 =
+Initial release with core geo-targeting functionality for Elementor.
+
+== Future Roadmap ==
 
 * City-level geolocation targeting
-* Advanced analytics and reporting
 * A/B testing for geo-targeted popups
 * Integration with popular analytics platforms
 * Enhanced caching and performance optimization
