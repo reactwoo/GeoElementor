@@ -1083,6 +1083,7 @@ class EGP_Geo_Rules {
 
         $target_type = sanitize_text_field($_POST['target_type'] ?? '');
         $target_id = sanitize_text_field($_POST['target_id'] ?? '');
+        $element_ref_id = sanitize_text_field($_POST['element_ref_id'] ?? '');
         $countries = isset($_POST['countries']) ? array_map('sanitize_text_field', $_POST['countries']) : array();
         $priority = intval($_POST['priority'] ?? 50);
         $active = !empty($_POST['active']);
@@ -1274,9 +1275,40 @@ class EGP_Geo_Rules {
 
         error_log('[EGP Debug] Processed data: target_type=' . $target_type . ', target_id=' . $target_id . ', countries=' . implode(',', $countries));
 
+        // If an element_ref_id (stable elementor model id) is provided and target_type is section/widget,
+        // try to find an existing rule by that ref and update its target_id instead of creating a duplicate
+        if (in_array($target_type, array('section','widget'), true) && !empty($element_ref_id)) {
+            $existing_by_ref = get_posts(array(
+                'post_type' => $this->post_type,
+                'post_status' => 'any',
+                'meta_query' => array(
+                    array('key' => $this->meta_prefix.'element_ref_id', 'value' => (string) $element_ref_id)
+                ),
+                'fields' => 'ids',
+                'posts_per_page' => 1
+            ));
+            if (!empty($existing_by_ref)) {
+                $post_id = intval($existing_by_ref[0]);
+                if (!empty($title)) { wp_update_post(array('ID' => $post_id, 'post_title' => $title)); }
+                update_post_meta($post_id, $this->meta_prefix.'target_type', $target_type);
+                update_post_meta($post_id, $this->meta_prefix.'target_id', (string) $target_id);
+                update_post_meta($post_id, $this->meta_prefix.'countries', array_values(array_unique(array_map('strtoupper', (array)$countries))));
+                update_post_meta($post_id, $this->meta_prefix.'priority', intval($priority));
+                update_post_meta($post_id, $this->meta_prefix.'active', $active ? '1' : '0');
+                update_post_meta($post_id, $this->meta_prefix.'source', 'elementor');
+                if (!empty($element_type)) { update_post_meta($post_id, $this->meta_prefix.'element_type', $element_type); }
+                if (!empty($tracking_id)) { update_post_meta($post_id, $this->meta_prefix.'tracking_id', $tracking_id); }
+                update_post_meta($post_id, $this->meta_prefix.'element_ref_id', (string) $element_ref_id);
+                wp_send_json_success(array('success'=>true, 'rule_id'=>$post_id, 'updated_by'=>'element_ref_id'));
+            }
+        }
+
         $result = $this->save_or_update_rule($target_type, $target_id, $countries, $priority, $active, 'elementor', $title, $element_type, $tracking_id);
         
         if ($result['success']) {
+            if (!empty($element_ref_id)) {
+                update_post_meta(intval($result['rule_id']), $this->meta_prefix.'element_ref_id', (string) $element_ref_id);
+            }
             error_log('[EGP Debug] Elementor rule saved successfully: ' . $result['rule_id']);
             wp_send_json_success($result);
         } else {

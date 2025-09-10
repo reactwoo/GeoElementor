@@ -241,7 +241,8 @@
             priority: 50,
             active: true,
             title: (targetType.charAt(0).toUpperCase() + targetType.slice(1)) + ' ' + targetId,
-            element_type: targetType
+            element_type: targetType,
+            element_ref_id: (panel.model && panel.model.get('id')) ? panel.model.get('id') : ''
         };
         var url = (window.egpEditor && egpEditor.ajaxUrl) || (typeof ajaxurl !== 'undefined' ? ajaxurl : null);
         if (!url) { if (window.console && console.warn) console.warn('[EGP] No ajax URL available'); return; }
