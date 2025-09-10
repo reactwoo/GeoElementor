@@ -327,7 +327,64 @@ class EGP_Dashboard_API {
             return $b['clicks'] <=> $a['clicks'];
         });
         
-        // Fallback: if there are no Rules yet, surface Elementor Popups with geo enabled
+        // Also surface Variant Group mappings as pseudo-rules (so Dashboard reflects DB-driven targeting)
+        if (class_exists('RW_Geo_Mapping_CRUD') && class_exists('RW_Geo_Variant_CRUD')) {
+            $mapping_crud = new \RW_Geo_Mapping_CRUD();
+            $variant_crud = new \RW_Geo_Variant_CRUD();
+            $variants = $variant_crud->get_all();
+            $variant_by_id = array();
+            foreach ($variants as $v) { $variant_by_id[$v->id] = $v; }
+
+            $mappings = $mapping_crud->get_all();
+            foreach ($mappings as $m) {
+                $variant = isset($variant_by_id[$m->variant_id]) ? $variant_by_id[$m->variant_id] : null;
+                $title = '';
+                $type = '';
+                $created = $variant ? $variant->created_at : current_time('mysql');
+                $modified = $variant ? $variant->updated_at : $created;
+                if (!empty($m->popup_id)) {
+                    $type = 'Popup';
+                    $post = get_post(intval($m->popup_id));
+                    $title = ($post && $post->post_title) ? $post->post_title : 'Popup #' . intval($m->popup_id);
+                } elseif (!empty($m->page_id)) {
+                    $type = 'Page';
+                    $post = get_post(intval($m->page_id));
+                    $title = ($post && $post->post_title) ? $post->post_title : 'Page #' . intval($m->page_id);
+                } elseif (!empty($m->section_ref)) {
+                    $type = 'Section';
+                    $title = 'Section ' . $m->section_ref;
+                } elseif (!empty($m->widget_ref)) {
+                    $type = 'Widget';
+                    $title = 'Widget ' . $m->widget_ref;
+                } else {
+                    continue;
+                }
+
+                $rules_data[] = array(
+                    'id' => 'variant-' . $m->id,
+                    'title' => $title,
+                    'type' => $type,
+                    'countries' => array(strtoupper($m->country_iso2)),
+                    'countriesCount' => 1,
+                    'clicks' => 0,
+                    'views' => 0,
+                    'conversionRate' => 0,
+                    'active' => true,
+                    'created' => $created,
+                    'lastModified' => $modified
+                );
+            }
+
+            // Re-sort to keep deterministic order
+            usort($rules_data, function($a, $b){
+                if ($a['clicks'] === $b['clicks']) {
+                    return strtotime($b['created']) <=> strtotime($a['created']);
+                }
+                return $b['clicks'] <=> $a['clicks'];
+            });
+        }
+
+        // Fallback: if still empty, surface Elementor Popups with geo enabled via page settings
         if (empty($rules_data)) {
             $popups = get_posts(array(
                 'post_type' => 'elementor_library',
