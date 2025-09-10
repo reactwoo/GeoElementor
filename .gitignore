@@ -13,6 +13,25 @@
 # Node artifacts (if any)
 node_modules/
 
+# Esbuild/TS caches
+*.tsbuildinfo
+.tsbuildinfo
+.esbuild/
+.cache/
+cache/
+tmp/
+temp/
+
+# Local build outputs that should not be versioned
+# Keep built dashboard assets tracked (needed on remote sites)
+!assets/js/dashboard/
+!assets/js/dashboard/dashboard.js
+!assets/js/dashboard/dashboard.css
+assets/js/dashboard/*.map
+dist/
+build/
+coverage/
+
 # OS junk
 Thumbs.db
 
@@ -33,3 +52,4 @@ phpunit.xml*
 .github/
 .gitea/
 .gitlab/
+key.b64

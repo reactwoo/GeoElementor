@@ -28,8 +28,9 @@ class EGP_Admin_Dashboard {
 		// Check if built dashboard files exist
 		$dashboard_js = EGP_PLUGIN_URL . 'assets/js/dashboard/dashboard.js';
 		$dashboard_css = EGP_PLUGIN_URL . 'assets/js/dashboard/dashboard.css';
+		$dashboard_js_path = (defined('EGP_PLUGIN_DIR') ? EGP_PLUGIN_DIR : plugin_dir_path(dirname(__FILE__))) . 'assets/js/dashboard/dashboard.js';
 		
-		if (file_exists(EGP_PLUGIN_PATH . 'assets/js/dashboard/dashboard.js')) {
+		if (file_exists($dashboard_js_path)) {
 			// Load lightweight vanilla JS dashboard
 			wp_enqueue_script('egp-dashboard', $dashboard_js, array(), EGP_VERSION, true);
 			wp_enqueue_style('egp-dashboard', $dashboard_css, array(), EGP_VERSION);

@@ -24,38 +24,53 @@ const buildOptions = {
 };
 
 // CSS processing - basic minification
-const cssContent = fs.readFileSync('src/dashboard.css', 'utf8');
-const minifiedCSS = cssContent
-  .replace(/\/\*[\s\S]*?\*\//g, '') // Remove comments
-  .replace(/\s+/g, ' ') // Minify whitespace
-  .replace(/;\s*}/g, '}') // Remove semicolons before closing braces
-  .replace(/:\s+/g, ':') // Remove space after colons
-  .replace(/,\s+/g, ',') // Remove space after commas
-  .trim();
+function buildCSS() {
+  const cssContent = fs.readFileSync('src/dashboard.css', 'utf8');
+  const minifiedCSS = cssContent
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/;\s*}/g, '}')
+    .replace(/:\s+/g, ':')
+    .replace(/,\s+/g, ',')
+    .trim();
 
-fs.writeFileSync(`${outputDir}/dashboard.css`, minifiedCSS);
-
-console.log('🎨 CSS minified');
-
-if (isWatch) {
-  console.log('👀 Watching for changes...');
-  esbuild.build({
-    ...buildOptions,
-    watch: {
-      onRebuild(error, result) {
-        if (error) console.error('❌ Build failed:', error);
-        else console.log('✅ Rebuild completed');
-      },
-    },
-  });
-} else {
-  esbuild.build(buildOptions).then((result) => {
-    const jsSize = (result.outputFiles[0].contents.length / 1024).toFixed(2);
-    const cssSize = (minifiedCSS.length / 1024).toFixed(2);
-    
-    console.log('✅ Dashboard built successfully!');
-    console.log(`📁 JS: ${outputDir}/dashboard.js (${jsSize}KB)`);
-    console.log(`📁 CSS: ${outputDir}/dashboard.css (${cssSize}KB)`);
-    console.log(`📊 Total: ${(parseFloat(jsSize) + parseFloat(cssSize)).toFixed(2)}KB`);
-  }).catch(() => process.exit(1));
+  fs.writeFileSync(`${outputDir}/dashboard.css`, minifiedCSS);
+  console.log('🎨 CSS minified');
+  return minifiedCSS.length;
 }
+
+async function buildJSOnce() {
+  await esbuild.build(buildOptions);
+}
+
+async function watchJS() {
+  const ctx = await esbuild.context(buildOptions);
+  await ctx.watch();
+  console.log('👀 Watching for changes...');
+}
+
+async function run() {
+  // Always (re)build CSS once on startup
+  const cssBytes = buildCSS();
+
+  if (isWatch) {
+    await watchJS();
+  } else {
+    try {
+      await buildJSOnce();
+      const jsStats = fs.statSync(`${outputDir}/dashboard.js`);
+      const jsSizeKb = (jsStats.size / 1024).toFixed(2);
+      const cssSizeKb = (cssBytes / 1024).toFixed(2);
+      const totalKb = (parseFloat(jsSizeKb) + parseFloat(cssSizeKb)).toFixed(2);
+      console.log('✅ Dashboard built successfully!');
+      console.log(`📁 JS: ${outputDir}/dashboard.js (${jsSizeKb}KB)`);
+      console.log(`📁 CSS: ${outputDir}/dashboard.css (${cssSizeKb}KB)`);
+      console.log(`📊 Total: ${totalKb}KB`);
+    } catch (err) {
+      console.error('❌ Build failed:', err);
+      process.exit(1);
+    }
+  }
+}
+
+run();
