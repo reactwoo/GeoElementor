@@ -64,6 +64,8 @@
         if (window.console && console.log) {
             console.log('[EGP] Countries updated:', selectedCountries);
         }
+        // Attempt to persist immediately
+        try { saveGeoRuleFromPanel(); } catch (e) { }
     });
 
     // Handle copy element ID button
@@ -151,9 +153,16 @@
                             initializeGeoControls();
                             // Auto-generate Element ID after controls are initialized
                             setTimeout(autoGenerateElementId, 300);
+                            // Bind save on toggle change
+                            $(document).off('change.egp', 'input[name*="egp_geo_enabled"]').on('change.egp', 'input[name*="egp_geo_enabled"]', function () {
+                                try { saveGeoRuleFromPanel(); } catch (e) { }
+                            });
+                            // Bind explicit save button if ever added
                         }, 200);
                     }
                 });
+                // Also try to save on editor document save
+                elementor.channels.editor.on('saved', function () { try { saveGeoRuleFromPanel(); } catch (e) { } });
             }
             // Also initialize on panel open
             setTimeout(function () {
@@ -169,8 +178,47 @@
             setTimeout(function () {
                 initializeGeoControls();
                 setTimeout(autoGenerateElementId, 200);
+                try { saveGeoRuleFromPanel(); } catch (e) { }
             }, 100);
         }
     });
+
+    // Persist current panel settings as a Geo Rule via AJAX
+    function saveGeoRuleFromPanel() {
+        if (typeof elementor === 'undefined' || !elementor.getPanelView) { return; }
+        var panel = elementor.getPanelView().getCurrentPageView();
+        if (!panel || !panel.model) { return; }
+        var elType = panel.model.get('elType') || '';
+        var targetType = (elType === 'widget') ? 'widget' : 'section';
+        var $root = jQuery('.elementor-control-egp_geo_tools');
+        if (!$root.length) { return; }
+        var enabled = $root.find('input[name*="egp_geo_enabled"]').is(':checked');
+        var countriesStore = $root.find('input[name*="egp_geo_countries_store"]').val() || '[]';
+        var countries = [];
+        try { countries = JSON.parse(countriesStore); } catch (e) { countries = []; }
+        var targetId = '';
+        var $idField = jQuery('input[name*="egp_element_id"]');
+        if ($idField.length && $idField.val()) {
+            targetId = $idField.val().trim();
+        } else if (panel.model.get('id')) {
+            targetId = panel.model.get('id');
+        }
+        if (!enabled || !countries.length || !targetId) { return; }
+
+        var data = {
+            action: 'egp_save_elementor_geo_rule',
+            nonce: (window.egpEditor && egpEditor.nonce) || '',
+            target_type: targetType,
+            target_id: targetId,
+            countries: countries,
+            priority: 50,
+            active: true,
+            title: (targetType.charAt(0).toUpperCase() + targetType.slice(1)) + ' ' + targetId,
+            element_type: targetType
+        };
+        jQuery.post((window.egpEditor && egpEditor.ajaxUrl) || ajaxurl, data)
+            .done(function (res) { try { if (window.console && console.log) console.log('[EGP] Saved geo rule from builder', res); } catch (e) { } })
+            .fail(function (err) { try { if (window.console && console.warn) console.warn('[EGP] Failed to save geo rule', err); } catch (e) { } });
+    }
 
 })(jQuery);
