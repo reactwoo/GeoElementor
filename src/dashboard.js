@@ -22,11 +22,12 @@ class GeoElementorDashboard {
 
   async fetchData() {
     try {
+      const base = (window.egpDashboard && egpDashboard.restBase) ? egpDashboard.restBase.replace(/\/$/, '') : '/wp-json/geo-elementor/v1';
       const [overview, countries, rules, trends] = await Promise.all([
-        this.apiCall('/wp-json/geo-elementor/v1/analytics/overview'),
-        this.apiCall('/wp-json/geo-elementor/v1/analytics/countries'),
-        this.apiCall('/wp-json/geo-elementor/v1/analytics/rules'),
-        this.apiCall('/wp-json/geo-elementor/v1/analytics/trends')
+        this.apiCall(`${base}/analytics/overview`),
+        this.apiCall(`${base}/analytics/countries`),
+        this.apiCall(`${base}/analytics/rules`),
+        this.apiCall(`${base}/analytics/trends`)
       ]);
 
       this.data = { overview, countries, rules, trends };
@@ -37,7 +38,11 @@ class GeoElementorDashboard {
   }
 
   async apiCall(url) {
-    const response = await fetch(url);
+    const headers = {};
+    if (window.egpDashboard && egpDashboard.nonce) {
+      headers['X-WP-Nonce'] = egpDashboard.nonce;
+    }
+    const response = await fetch(url, { headers });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
   }

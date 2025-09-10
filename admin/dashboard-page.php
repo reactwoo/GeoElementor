@@ -32,8 +32,18 @@ class EGP_Admin_Dashboard {
 		
 		if (file_exists($dashboard_js_path)) {
 			// Load lightweight vanilla JS dashboard
-			wp_enqueue_script('egp-dashboard', $dashboard_js, array(), EGP_VERSION, true);
-			wp_enqueue_style('egp-dashboard', $dashboard_css, array(), EGP_VERSION);
+			$ver_js = function_exists('filemtime') ? @filemtime($dashboard_js_path) : EGP_VERSION;
+			wp_enqueue_script('egp-dashboard', $dashboard_js, array(), $ver_js ?: EGP_VERSION, true);
+			$css_path = (defined('EGP_PLUGIN_DIR') ? EGP_PLUGIN_DIR : plugin_dir_path(dirname(__FILE__))) . 'assets/js/dashboard/dashboard.css';
+			$ver_css = function_exists('filemtime') ? @filemtime($css_path) : EGP_VERSION;
+			wp_enqueue_style('egp-dashboard', $dashboard_css, array(), $ver_css ?: EGP_VERSION);
+
+			// Provide REST base and nonce for authenticated wp-admin requests
+			wp_localize_script('egp-dashboard', 'egpDashboard', array(
+				'restBase' => rest_url('geo-elementor/v1/'),
+				'nonce'   => wp_create_nonce('wp_rest'),
+				'isAdmin' => is_admin(),
+			));
 		} else {
 			// Fallback to inline loading message
 			$inline_js = 'document.getElementById("geo-el-admin-app").innerHTML = "<div style=\\"text-align:center;padding:2rem;\\"><h3>Dashboard Loading...</h3><p>Please run <code>npm run build</code> to build the dashboard.</p></div>";';
