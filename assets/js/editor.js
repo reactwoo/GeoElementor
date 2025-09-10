@@ -191,11 +191,15 @@
         var elType = panel.model.get('elType') || '';
         var targetType = (elType === 'widget') ? 'widget' : 'section';
         var $root = jQuery('.elementor-control-egp_geo_tools');
-        if (!$root.length) { return; }
-        var enabled = $root.find('input[name*="egp_geo_enabled"]').is(':checked');
-        var countriesStore = $root.find('input[name*="egp_geo_countries_store"]').val() || '[]';
+        if (!$root.length) { if (window.console && console.warn) console.warn('[EGP] Geo controls root not found'); return; }
+        var enabled = jQuery('input[name*="egp_geo_enabled"]').is(':checked');
+        var countriesStore = jQuery('input[name*="egp_geo_countries_store"]').val() || '[]';
         var countries = [];
         try { countries = JSON.parse(countriesStore); } catch (e) { countries = []; }
+        if (!countries.length) {
+            var selectVals = jQuery('#egp_countries_native').val();
+            if (Array.isArray(selectVals)) { countries = selectVals; }
+        }
         var targetId = '';
         var $idField = jQuery('input[name*="egp_element_id"]');
         if ($idField.length && $idField.val()) {
@@ -203,7 +207,10 @@
         } else if (panel.model.get('id')) {
             targetId = panel.model.get('id');
         }
-        if (!enabled || !countries.length || !targetId) { return; }
+        if (window.console && console.log) console.log('[EGP] Save check', { enabled: enabled, countries: countries, targetId: targetId, targetType: targetType });
+        if (!enabled) { if (window.console && console.log) console.log('[EGP] Not enabled, skip save'); return; }
+        if (!countries.length) { if (window.console && console.warn) console.warn('[EGP] No countries selected, skip save'); return; }
+        if (!targetId) { if (window.console && console.warn) console.warn('[EGP] Missing targetId, skip save'); return; }
 
         var data = {
             action: 'egp_save_elementor_geo_rule',
@@ -218,7 +225,7 @@
         };
         var url = (window.egpEditor && egpEditor.ajaxUrl) || (typeof ajaxurl !== 'undefined' ? ajaxurl : null);
         if (!url) { if (window.console && console.warn) console.warn('[EGP] No ajax URL available'); return; }
-        if (window.console && console.log) console.log('[EGP] Saving geo rule...', data);
+        if (window.console && console.log) console.log('[EGP] Saving geo rule...', data, 'ajaxUrl=', url);
         jQuery.ajax({ url: url, method: 'POST', data: data, dataType: 'json' })
             .done(function (res) { try { if (window.console && console.log) console.log('[EGP] Saved geo rule from builder', res); } catch (e) { } })
             .fail(function (xhr) { try { console.warn('[EGP] Failed to save geo rule', xhr && (xhr.responseText || xhr.status)); } catch (e) { } });
