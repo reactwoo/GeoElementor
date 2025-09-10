@@ -21,6 +21,10 @@ if (!class_exists('ZipArchive')) {
     die("Error: ZipArchive class not available. Please install the zip extension.\n");
 }
 
+// Set the correct paths for the dev-tools directory
+$plugin_root = dirname(dirname(__FILE__));
+$addons_dir = $plugin_root . '/addons/';
+
 /**
  * Create zip file for an add-on
  */
@@ -34,7 +38,8 @@ function create_addon_zip($addon_id, $source_dir, $output_dir = null) {
         mkdir($output_dir, 0755, true);
     }
     
-    $source_path = dirname(__FILE__) . '/addons/' . $addon_id;
+    global $addons_dir;
+    $source_path = $addons_dir . $addon_id;
     $zip_file = $output_dir . $addon_id . '.zip';
     
     if (!file_exists($source_path)) {
@@ -93,7 +98,8 @@ function format_bytes($size, $precision = 2) {
  * Validate add-on structure
  */
 function validate_addon($addon_id) {
-    $addon_path = dirname(__FILE__) . '/addons/' . $addon_id;
+    global $addons_dir;
+    $addon_path = $addons_dir . $addon_id;
     
     if (!file_exists($addon_path)) {
         return "Add-on directory not found: $addon_path";
@@ -147,7 +153,7 @@ if (php_sapi_name() === 'cli') {
         echo "Example: php create-addon-zip.php city-targeting /path/to/output/\n\n";
         
         echo "Available add-ons:\n";
-        $addons_dir = dirname(__FILE__) . '/addons/';
+        global $addons_dir;
         if (is_dir($addons_dir)) {
             $addons = scandir($addons_dir);
             foreach ($addons as $addon) {
@@ -201,7 +207,7 @@ if (php_sapi_name() === 'cli') {
             <div class="addon-list">
                 <h2>Available Add-Ons</h2>
                 <?php
-                $addons_dir = dirname(__FILE__) . '/addons/';
+                global $addons_dir;
                 if (is_dir($addons_dir)) {
                     $addons = scandir($addons_dir);
                     foreach ($addons as $addon) {

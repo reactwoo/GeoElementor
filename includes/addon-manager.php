@@ -68,7 +68,7 @@ class EGP_Addon_Manager {
         add_action('wp_ajax_egp_deactivate_addon', array($this, 'ajax_deactivate_addon'));
         add_action('wp_ajax_egp_uninstall_addon', array($this, 'ajax_uninstall_addon'));
         add_action('wp_ajax_egp_update_addon', array($this, 'ajax_update_addon'));
-        add_action('wp_ajax_egp_upload_addon', array($this, 'ajax_upload_addon'));
+        // Upload functionality removed - for internal development only
     }
     
     /**
@@ -267,63 +267,7 @@ class EGP_Addon_Manager {
         return true;
     }
     
-    /**
-     * Install add-on from zip file
-     */
-    public function install_addon_from_zip($zip_file) {
-        if (!file_exists($zip_file)) {
-            return new WP_Error('zip_not_found', __('Zip file not found', 'elementor-geo-popup'));
-        }
-        
-        // Validate zip file
-        $validation = $this->validate_addon_zip($zip_file);
-        if (is_wp_error($validation)) {
-            return $validation;
-        }
-        
-        $addon_data = $validation;
-        $addon_id = $addon_data['id'];
-        
-        // Check if already installed
-        if ($this->is_addon_installed($addon_id)) {
-            return new WP_Error('addon_already_installed', __('Add-on is already installed', 'elementor-geo-popup'));
-        }
-        
-        // Check requirements
-        if (!$this->check_requirements($addon_data)) {
-            return new WP_Error('requirements_not_met', __('Add-on requirements not met', 'elementor-geo-popup'));
-        }
-        
-        // Create add-on directory
-        $addon_path = $this->addon_dir . $addon_id;
-        if (!file_exists($addon_path)) {
-            wp_mkdir_p($addon_path);
-        }
-        
-        // Extract zip file
-        $extracted = $this->extract_addon_zip($zip_file, $addon_path);
-        if (is_wp_error($extracted)) {
-            return $extracted;
-        }
-        
-        // Register add-on
-        $this->register_addon($addon_data);
-        
-        // Register as installed
-        $this->installed_addons[$addon_id] = array(
-            'version' => $addon_data['version'],
-            'installed_at' => current_time('mysql'),
-            'active' => false,
-            'source' => 'uploaded'
-        );
-        
-        $this->save_installed_addons();
-        
-        // Clean up zip file
-        unlink($zip_file);
-        
-        return true;
-    }
+    // Zip installation methods removed - for internal development only
     
     /**
      * Activate an add-on
@@ -486,94 +430,7 @@ class EGP_Addon_Manager {
         }
     }
     
-    /**
-     * Validate add-on zip file
-     */
-    private function validate_addon_zip($zip_file) {
-        // Check if zip extension is available
-        if (!class_exists('ZipArchive')) {
-            return new WP_Error('zip_not_supported', __('ZipArchive class not available', 'elementor-geo-popup'));
-        }
-        
-        $zip = new ZipArchive();
-        $result = $zip->open($zip_file);
-        
-        if ($result !== TRUE) {
-            return new WP_Error('zip_invalid', __('Invalid zip file', 'elementor-geo-popup'));
-        }
-        
-        // Look for add-on info file
-        $info_file = null;
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $filename = $zip->getNameIndex($i);
-            if (strpos($filename, 'addon-info.json') !== false) {
-                $info_file = $filename;
-                break;
-            }
-        }
-        
-        if (!$info_file) {
-            $zip->close();
-            return new WP_Error('no_info_file', __('Add-on info file not found', 'elementor-geo-popup'));
-        }
-        
-        // Read and validate info file
-        $info_content = $zip->getFromName($info_file);
-        $addon_data = json_decode($info_content, true);
-        
-        if (!$addon_data) {
-            $zip->close();
-            return new WP_Error('invalid_info_file', __('Invalid add-on info file', 'elementor-geo-popup'));
-        }
-        
-        // Validate required fields
-        $required_fields = array('id', 'name', 'version', 'file', 'class');
-        foreach ($required_fields as $field) {
-            if (empty($addon_data[$field])) {
-                $zip->close();
-                return new WP_Error('missing_field', sprintf(__('Missing required field: %s', 'elementor-geo-popup'), $field));
-            }
-        }
-        
-        // Check if main add-on file exists
-        $main_file = $addon_data['file'];
-        if ($zip->locateName($main_file) === false) {
-            $zip->close();
-            return new WP_Error('main_file_missing', __('Main add-on file not found in zip', 'elementor-geo-popup'));
-        }
-        
-        $zip->close();
-        
-        return $addon_data;
-    }
-    
-    /**
-     * Extract add-on zip file
-     */
-    private function extract_addon_zip($zip_file, $destination) {
-        if (!class_exists('ZipArchive')) {
-            return new WP_Error('zip_not_supported', __('ZipArchive class not available', 'elementor-geo-popup'));
-        }
-        
-        $zip = new ZipArchive();
-        $result = $zip->open($zip_file);
-        
-        if ($result !== TRUE) {
-            return new WP_Error('zip_invalid', __('Invalid zip file', 'elementor-geo-popup'));
-        }
-        
-        // Extract all files
-        $extracted = $zip->extractTo($destination);
-        
-        if (!$extracted) {
-            $zip->close();
-            return new WP_Error('extraction_failed', __('Failed to extract zip file', 'elementor-geo-popup'));
-        }
-        
-        $zip->close();
-        
-        return true;
-    }
+    // Zip validation and extraction methods removed - for internal development only
     
     /**
      * Remove directory recursively
@@ -640,7 +497,6 @@ class EGP_Addon_Manager {
                 <div class="egp-addons-tabs">
                     <a href="#installed" class="nav-tab nav-tab-active"><?php echo esc_html__('Installed', 'elementor-geo-popup'); ?></a>
                     <a href="#available" class="nav-tab"><?php echo esc_html__('Available', 'elementor-geo-popup'); ?></a>
-                    <a href="#upload" class="nav-tab"><?php echo esc_html__('Upload', 'elementor-geo-popup'); ?></a>
                 </div>
                 
                 <div id="installed" class="egp-tab-content active">
@@ -649,10 +505,6 @@ class EGP_Addon_Manager {
                 
                 <div id="available" class="egp-tab-content">
                     <?php $this->render_available_addons(); ?>
-                </div>
-                
-                <div id="upload" class="egp-tab-content">
-                    <?php $this->render_upload_addon(); ?>
                 </div>
             </div>
         </div>
@@ -940,256 +792,9 @@ class EGP_Addon_Manager {
         wp_send_json_success(__('Add-on updated successfully', 'elementor-geo-popup'));
     }
     
-    /**
-     * AJAX: Upload add-on zip
-     */
-    public function ajax_upload_addon() {
-        check_ajax_referer('egp_addon_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(__('Insufficient permissions', 'elementor-geo-popup'));
-        }
-        
-        // Check if file was uploaded
-        if (!isset($_FILES['addon_zip']) || $_FILES['addon_zip']['error'] !== UPLOAD_ERR_OK) {
-            wp_send_json_error(__('No file uploaded or upload error', 'elementor-geo-popup'));
-        }
-        
-        $uploaded_file = $_FILES['addon_zip'];
-        
-        // Validate file type
-        $file_type = wp_check_filetype($uploaded_file['name'], array('zip' => 'application/zip'));
-        if (!$file_type['type']) {
-            wp_send_json_error(__('Invalid file type. Please upload a zip file.', 'elementor-geo-popup'));
-        }
-        
-        // Move uploaded file to temporary location
-        $upload_dir = wp_upload_dir();
-        $temp_dir = $upload_dir['basedir'] . '/egp-temp-addons/';
-        
-        if (!file_exists($temp_dir)) {
-            wp_mkdir_p($temp_dir);
-        }
-        
-        $temp_file = $temp_dir . 'addon_' . time() . '.zip';
-        
-        if (!move_uploaded_file($uploaded_file['tmp_name'], $temp_file)) {
-            wp_send_json_error(__('Failed to move uploaded file', 'elementor-geo-popup'));
-        }
-        
-        // Install add-on from zip
-        $result = $this->install_addon_from_zip($temp_file);
-        
-        if (is_wp_error($result)) {
-            // Clean up temp file
-            if (file_exists($temp_file)) {
-                unlink($temp_file);
-            }
-            wp_send_json_error($result->get_error_message());
-        }
-        
-        wp_send_json_success(__('Add-on uploaded and installed successfully', 'elementor-geo-popup'));
-    }
+    // Upload AJAX handler removed - for internal development only
     
-    /**
-     * Render upload add-on interface
-     */
-    private function render_upload_addon() {
-        ?>
-        <div class="egp-upload-addon">
-            <h2><?php echo esc_html__('Upload Add-On', 'elementor-geo-popup'); ?></h2>
-            <p><?php echo esc_html__('Upload a zip file containing an add-on to install it.', 'elementor-geo-popup'); ?></p>
-            
-            <form id="egp-upload-addon-form" enctype="multipart/form-data">
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">
-                            <label for="addon_zip"><?php echo esc_html__('Add-On Zip File', 'elementor-geo-popup'); ?></label>
-                        </th>
-                        <td>
-                            <input type="file" id="addon_zip" name="addon_zip" accept=".zip" required />
-                            <p class="description">
-                                <?php echo esc_html__('Select a zip file containing the add-on. The zip must contain an addon-info.json file.', 'elementor-geo-popup'); ?>
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-                
-                <p class="submit">
-                    <button type="submit" class="button button-primary" id="egp-upload-addon-btn">
-                        <?php echo esc_html__('Upload & Install', 'elementor-geo-popup'); ?>
-                    </button>
-                </p>
-            </form>
-            
-            <div id="egp-upload-progress" style="display: none;">
-                <div class="egp-progress-bar">
-                    <div class="egp-progress-fill"></div>
-                </div>
-                <p class="egp-progress-text"><?php echo esc_html__('Uploading and installing add-on...', 'elementor-geo-popup'); ?></p>
-            </div>
-            
-            <div id="egp-upload-result"></div>
-            
-            <div class="egp-upload-help">
-                <h3><?php echo esc_html__('Creating an Add-On Zip File', 'elementor-geo-popup'); ?></h3>
-                <p><?php echo esc_html__('To create a distributable add-on zip file:', 'elementor-geo-popup'); ?></p>
-                <ol>
-                    <li><?php echo esc_html__('Create a folder for your add-on', 'elementor-geo-popup'); ?></li>
-                    <li><?php echo esc_html__('Add your add-on PHP file (e.g., my-addon.php)', 'elementor-geo-popup'); ?></li>
-                    <li><?php echo esc_html__('Create an addon-info.json file with add-on metadata', 'elementor-geo-popup'); ?></li>
-                    <li><?php echo esc_html__('Include any additional files (CSS, JS, images, etc.)', 'elementor-geo-popup'); ?></li>
-                    <li><?php echo esc_html__('Zip the entire folder', 'elementor-geo-popup'); ?></li>
-                </ol>
-                
-                <h4><?php echo esc_html__('Example addon-info.json:', 'elementor-geo-popup'); ?></h4>
-                <pre><code>{
-    "id": "my-addon",
-    "name": "My Custom Add-On",
-    "description": "Description of my add-on",
-    "version": "1.0.0",
-    "author": "Your Name",
-    "author_uri": "https://yourwebsite.com",
-    "plugin_uri": "https://yourwebsite.com",
-    "requires": "1.0.0",
-    "tested": "1.0.1",
-    "file": "my-addon.php",
-    "class": "EGP_My_Addon",
-    "category": "targeting",
-    "tags": ["custom", "targeting"],
-    "screenshot": "",
-    "icon": "eicon-cog",
-    "premium": false,
-    "status": "available"
-}</code></pre>
-            </div>
-        </div>
-        
-        <style>
-        .egp-upload-addon {
-            max-width: 800px;
-        }
-        
-        .egp-progress-bar {
-            width: 100%;
-            height: 20px;
-            background: #f0f0f0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 10px 0;
-        }
-        
-        .egp-progress-fill {
-            height: 100%;
-            background: #0073aa;
-            width: 0%;
-            transition: width 0.3s ease;
-            animation: egp-progress-pulse 2s infinite;
-        }
-        
-        @keyframes egp-progress-pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
-        }
-        
-        .egp-upload-help {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f9f9f9;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        
-        .egp-upload-help h3,
-        .egp-upload-help h4 {
-            margin-top: 0;
-        }
-        
-        .egp-upload-help pre {
-            background: #fff;
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 4px;
-            overflow-x: auto;
-        }
-        
-        .egp-upload-help code {
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-        }
-        </style>
-        
-        <script>
-        jQuery(document).ready(function($) {
-            $('#egp-upload-addon-form').on('submit', function(e) {
-                e.preventDefault();
-                
-                var $form = $(this);
-                var $btn = $('#egp-upload-addon-btn');
-                var $progress = $('#egp-upload-progress');
-                var $result = $('#egp-upload-result');
-                
-                // Show progress
-                $progress.show();
-                $btn.prop('disabled', true);
-                $result.empty();
-                
-                // Create FormData
-                var formData = new FormData();
-                formData.append('action', 'egp_upload_addon');
-                formData.append('nonce', $('input[name="egp_addon_nonce"]').val());
-                formData.append('addon_zip', $('#addon_zip')[0].files[0]);
-                
-                // Upload with progress
-                $.ajax({
-                    url: ajaxurl,
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    xhr: function() {
-                        var xhr = new window.XMLHttpRequest();
-                        xhr.upload.addEventListener("progress", function(evt) {
-                            if (evt.lengthComputable) {
-                                var percentComplete = evt.loaded / evt.total * 100;
-                                $('.egp-progress-fill').css('width', percentComplete + '%');
-                            }
-                        }, false);
-                        return xhr;
-                    },
-                    success: function(response) {
-                        $progress.hide();
-                        $btn.prop('disabled', false);
-                        
-                        if (response.success) {
-                            $result.html(
-                                '<div class="notice notice-success"><p>' + response.data + '</p></div>'
-                            );
-                            $form[0].reset();
-                            // Refresh add-on list
-                            setTimeout(function() {
-                                location.reload();
-                            }, 2000);
-                        } else {
-                            $result.html(
-                                '<div class="notice notice-error"><p>' + (response.data || 'Upload failed') + '</p></div>'
-                            );
-                        }
-                    },
-                    error: function() {
-                        $progress.hide();
-                        $btn.prop('disabled', false);
-                        $result.html(
-                            '<div class="notice notice-error"><p>Upload failed. Please try again.</p></div>'
-                        );
-                    }
-                });
-            });
-        });
-        </script>
-        <?php
-    }
+    // Upload interface removed - for internal development only
 }
 
 // Initialize the add-on manager
