@@ -55,6 +55,9 @@ class EGP_Geo_Rules {
         add_action('wp_ajax_egp_save_geo_rule', array($this, 'ajax_save_geo_rule'));
         add_action('wp_ajax_nopriv_egp_track_click', array($this, 'ajax_track_click'));
         add_action('wp_ajax_egp_track_click', array($this, 'ajax_track_click'));
+        // Views tracking
+        add_action('wp_ajax_nopriv_egp_track_view', array($this, 'ajax_track_view'));
+        add_action('wp_ajax_egp_track_view', array($this, 'ajax_track_view'));
         add_action('wp_ajax_egp_get_target_options', array($this, 'ajax_get_target_options'));
         add_action('wp_ajax_egp_save_elementor_geo_rule', array($this, 'ajax_save_elementor_geo_rule'));
         add_action('wp_ajax_egp_remove_elementor_geo_rule', array($this, 'ajax_remove_elementor_geo_rule'));
@@ -638,6 +641,21 @@ class EGP_Geo_Rules {
             error_log("EGP Geo Rule: Click tracked for rule ID {$rule_id}, total clicks: {$new_clicks}");
         }
     }
+
+    /**
+     * Track views for a geo rule
+     */
+    public function track_view($rule_id) {
+        if (!$rule_id) {
+            return;
+        }
+        $current_views = get_post_meta($rule_id, $this->meta_prefix . 'views', true);
+        $new_views = intval($current_views) + 1;
+        update_post_meta($rule_id, $this->meta_prefix . 'views', $new_views);
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log("EGP Geo Rule: View tracked for rule ID {$rule_id}, total views: {$new_views}");
+        }
+    }
     
     /**
      * Add tracking data to head
@@ -678,6 +696,21 @@ class EGP_Geo_Rules {
                 });
             }
         }
+
+        function egpTrackView(ruleId) {
+            if (!ruleId) return;
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", ' . json_encode(admin_url('admin-ajax.php')) . ', true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    if (window.console && console.log) {
+                        console.log("EGP: View tracked for rule", ruleId);
+                    }
+                }
+            };
+            xhr.send("action=egp_track_view&rule_id=" + ruleId + "&nonce=' . wp_create_nonce('egp_track_view_nonce') . '");
+        }
         </script>';
     }
     
@@ -693,6 +726,8 @@ class EGP_Geo_Rules {
         $geo_rules = $this->get_matching_rules($current_page_id);
         
         if (empty($geo_rules)) {
+            // Record untracked hit for current visitor country so dashboard can surface gaps
+            $this->increment_untracked_country($this->get_user_country());
             return;
         }
         
@@ -715,6 +750,18 @@ class EGP_Geo_Rules {
         }
 
         // Popup geo filtering handled by JS guard in geo-detect to avoid API conflicts
+    }
+
+    /**
+     * Increment untracked country counter (when no rules matched the request)
+     */
+    private function increment_untracked_country($country) {
+        $code = strtoupper(trim((string) $country));
+        if (!$code || strlen($code) !== 2) { return; }
+        $counts = get_option('egp_untracked_country_counts', array());
+        if (!is_array($counts)) { $counts = array(); }
+        $counts[$code] = isset($counts[$code]) ? intval($counts[$code]) + 1 : 1;
+        update_option('egp_untracked_country_counts', $counts, false);
     }
     
     /**
@@ -985,13 +1032,39 @@ class EGP_Geo_Rules {
         check_ajax_referer('egp_track_click_nonce', 'nonce');
         
         $rule_id = isset($_POST['rule_id']) ? intval($_POST['rule_id']) : 0;
-        
+        if (!$rule_id) {
+            $popup_id = isset($_POST['popup_id']) ? intval($_POST['popup_id']) : 0;
+            if ($popup_id > 0) {
+                $rule = $this->get_rule_by_target('popup', (string) $popup_id);
+                if ($rule) { $rule_id = intval($rule->ID); }
+            }
+        }
         if (!$rule_id) {
             wp_send_json_error(__('Invalid rule ID', 'elementor-geo-popup'));
         }
-        
         $this->track_click($rule_id);
         
+        wp_send_json_success();
+    }
+
+    /**
+     * AJAX: Track view for a geo rule
+     */
+    public function ajax_track_view() {
+        check_ajax_referer('egp_track_view_nonce', 'nonce');
+        $rule_id = isset($_POST['rule_id']) ? intval($_POST['rule_id']) : 0;
+        if (!$rule_id) {
+            // Allow fallback by popup_id -> resolve rule
+            $popup_id = isset($_POST['popup_id']) ? intval($_POST['popup_id']) : 0;
+            if ($popup_id > 0) {
+                $rule = $this->get_rule_by_target('popup', (string) $popup_id);
+                if ($rule) { $rule_id = intval($rule->ID); }
+            }
+        }
+        if (!$rule_id) {
+            wp_send_json_error(__('Invalid rule ID', 'elementor-geo-popup'));
+        }
+        $this->track_view($rule_id);
         wp_send_json_success();
     }
 

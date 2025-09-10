@@ -23,14 +23,15 @@ class GeoElementorDashboard {
   async fetchData() {
     try {
       const base = (window.egpDashboard && egpDashboard.restBase) ? egpDashboard.restBase.replace(/\/$/, '') : '/wp-json/geo-elementor/v1';
-      const [overview, countries, rules, trends] = await Promise.all([
+      const [overview, countries, rules, trends, untracked] = await Promise.all([
         this.apiCall(`${base}/analytics/overview`),
         this.apiCall(`${base}/analytics/countries`),
         this.apiCall(`${base}/analytics/rules`),
-        this.apiCall(`${base}/analytics/trends`)
+        this.apiCall(`${base}/analytics/trends`),
+        this.apiCall(`${base}/analytics/untracked`)
       ]);
 
-      this.data = { overview, countries, rules, trends };
+      this.data = { overview, countries, rules, trends, untracked };
     } catch (error) {
       console.error('Error fetching data:', error);
       this.renderError();
@@ -86,6 +87,7 @@ class GeoElementorDashboard {
             ${this.renderCountryChart()}
             ${this.renderTrendsChart()}
           </div>
+          ${this.renderUntrackedCard()}
           ${this.renderRulesTable()}
         </div>
       </div>
@@ -102,14 +104,14 @@ class GeoElementorDashboard {
       <div class="dashboard-header">
         <div class="header-content">
           <div class="header-title">
-            <div class="header-icon">🌍</div>
+            <div class="header-icon">${this.icon('globe')}</div>
             <div>
               <h1>Geo Analytics Dashboard</h1>
               <p>Monitor your geo-targeted content performance</p>
             </div>
           </div>
           <button onclick="location.reload()" class="refresh-btn">
-            🔄 Refresh Data
+            ${this.icon('refresh', 18)} Refresh Data
           </button>
         </div>
       </div>
@@ -121,12 +123,12 @@ class GeoElementorDashboard {
 
     const { overview } = this.data;
     const cards = [
-      { title: 'Total Rules', value: overview.totalRules, icon: '🎯' },
-      { title: 'Active Rules', value: overview.activeRules, icon: '✅' },
-      { title: 'Total Clicks', value: this.formatNumber(overview.totalClicks), icon: '🖱️' },
-      { title: 'Countries', value: overview.countriesTargeted, icon: '🌍' },
-      { title: 'Conversion', value: `${overview.conversionRate}%`, icon: '📈' },
-      { title: 'Groups', value: overview.variantGroups, icon: '👥' }
+      { title: 'Total Rules', value: overview.totalRules, icon: this.icon('target') },
+      { title: 'Active Rules', value: overview.activeRules, icon: this.icon('check') },
+      { title: 'Total Clicks', value: this.formatNumber(overview.totalClicks), icon: this.icon('mouse') },
+      { title: 'Countries', value: overview.countriesTargeted, icon: this.icon('globe') },
+      { title: 'Conversion', value: `${overview.conversionRate}%`, icon: this.icon('chart') },
+      { title: 'Groups', value: overview.variantGroups, icon: this.icon('users') }
     ];
 
     return `
@@ -153,7 +155,7 @@ class GeoElementorDashboard {
     return `
       <div class="chart-container">
         <div class="chart-header">
-          <h3>🌍 Top Countries by Clicks</h3>
+          <h3>${this.icon('globe', 16)} Top Countries by Clicks</h3>
           <span class="chart-subtitle">${this.data.countries.length} countries tracked</span>
         </div>
         <div class="country-bars">
@@ -185,7 +187,7 @@ class GeoElementorDashboard {
     return `
       <div class="chart-container">
         <div class="chart-header">
-          <h3>📈 Performance Trends</h3>
+          <h3>${this.icon('chart', 16)} Performance Trends</h3>
           <span class="chart-subtitle">Last 30 days</span>
         </div>
         <div class="trends-summary">
@@ -239,7 +241,7 @@ class GeoElementorDashboard {
       return `
         <div class="chart-container">
           <div class="empty-state">
-            <div class="empty-icon">🎯</div>
+            <div class="empty-icon">${this.icon('target', 40)}</div>
             <h3>No rules found</h3>
             <p>Create your first geo rule to start tracking performance.</p>
           </div>
@@ -252,7 +254,7 @@ class GeoElementorDashboard {
     return `
       <div class="chart-container">
         <div class="chart-header">
-          <h3>🎯 Rules Performance</h3>
+          <h3>${this.icon('target', 16)} Rules Performance</h3>
           <span class="chart-subtitle">${this.data.rules.length} total rules</span>
         </div>
         <div class="rules-table">
@@ -298,6 +300,50 @@ class GeoElementorDashboard {
         </div>
       </div>
     `;
+  }
+
+  renderUntrackedCard() {
+    const items = Array.isArray(this.data.untracked) ? this.data.untracked : [];
+    if (!items.length) return '';
+    return `
+      <div class="chart-container">
+        <div class="chart-header">
+          <h3>${this.icon('flag', 16)} Untracked Countries</h3>
+          <span class="chart-subtitle">Top ${items.length} without rules</span>
+        </div>
+        <div class="country-bars">
+          ${items.map(it => `
+            <div class="country-bar">
+              <div class="country-info">
+                <span class="country-name">${it.countryName}</span>
+                <span class="country-code">(${it.country})</span>
+              </div>
+              <div class="bar-container">
+                <div class="bar" style="width:${Math.min(100, (it.hits / items[0].hits) * 100)}%"></div>
+                <span class="bar-value">${this.formatNumber(it.hits)}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  icon(name, size = 20) {
+    const stroke = '#6b7280';
+    const sw = 2;
+    const attrs = `width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"`;
+    switch (name) {
+      case 'globe': return `<svg ${attrs}><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 0 20a15.3 15.3 0 0 1 0-20z"/></svg>`;
+      case 'chart': return `<svg ${attrs}><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="7"/><rect x="12" y="6" width="3" height="11"/><rect x="17" y="13" width="3" height="4"/></svg>`;
+      case 'target': return `<svg ${attrs}><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>`;
+      case 'check': return `<svg ${attrs}><path d="M20 6L9 17l-5-5"/></svg>`;
+      case 'mouse': return `<svg ${attrs}><rect x="8" y="3" width="8" height="18" rx="4"/><path d="M12 7v4"/></svg>`;
+      case 'users': return `<svg ${attrs}><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
+      case 'refresh': return `<svg ${attrs}><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>`;
+      case 'flag': return `<svg ${attrs}><path d="M4 22V6a2 2 0 0 1 2-2h0l2 1l2-1h6a2 2 0 0 1 2 2v9h-8l-2 1l-2-1H4z"/></svg>`;
+      default: return `<svg ${attrs}></svg>`;
+    }
   }
 
   initCharts() {

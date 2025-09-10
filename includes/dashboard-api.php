@@ -39,6 +39,12 @@ class EGP_Dashboard_API {
 			'permission_callback' => function () { return current_user_can('manage_options'); },
 			'callback' => array($this, 'get_trends_data'),
 		));
+
+		register_rest_route('geo-elementor/v1', '/analytics/untracked', array(
+			'methods'  => 'GET',
+			'permission_callback' => function () { return current_user_can('manage_options'); },
+			'callback' => array($this, 'get_untracked_countries'),
+		));
 	}
 
 	    public function get_dashboard_data() {
@@ -57,6 +63,23 @@ class EGP_Dashboard_API {
             'items' => $geo_rules,
         );
     }
+
+	public function get_untracked_countries() {
+		$counts = get_option('egp_untracked_country_counts', array());
+		if (!is_array($counts)) { $counts = array(); }
+		// Sort desc by count
+		arsort($counts);
+		$top = array_slice($counts, 0, 5, true);
+		$out = array();
+		foreach ($top as $code => $count) {
+			$out[] = array(
+				'country' => strtoupper($code),
+				'countryName' => $this->get_country_name(strtoupper($code)),
+				'hits' => intval($count),
+			);
+		}
+		return $out;
+	}
     
     /**
      * Get geo rules data for dashboard
