@@ -20,27 +20,33 @@ class EGP_Admin_Dashboard {
 	}
 
 	public function enqueue_assets($hook) {
-		// Accept when loaded via our top-level menu
-		if ($hook !== 'geo-elementor_page_geo-el-dashboard' && $hook !== 'settings_page_geo-el-dashboard') {
+		// Only load on our dashboard page
+		if ($hook !== 'toplevel_page_geo-elementor') {
 			return;
 		}
 
-		// WP element and api-fetch are available in admin. Ensure dependencies.
-		wp_enqueue_script('wp-element');
-		wp_enqueue_script('wp-api-fetch');
-
-		// Inline minimal JS to mount a basic placeholder until we port React bundle.
-		$inline_js = 'window.GEO_EL = window.GEO_EL || {};';
-		$inline_js .= 'window.GEO_EL.nonce = ' . wp_json_encode(wp_create_nonce('wp_rest')) . ';';
-		$inline_js .= 'window.GEO_EL.isPro = ' . (current_user_can('manage_woocommerce') ? 'true' : 'false') . ';';
-		$inline_js .= '(function(){var m=document.getElementById("geo-el-admin-app"); if(!m) return; m.innerHTML = "<div class=\\"geo-el-admin\\">Loading…</div>";})();';
-		wp_add_inline_script('wp-element', $inline_js, 'after');
-
-		// Basic styles to avoid unstyled content; can be replaced by built bundle later
-		$inline_css = '.geo-el-admin{font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;}';
-		wp_register_style('egp-dashboard', false);
-		wp_enqueue_style('egp-dashboard');
-		wp_add_inline_style('egp-dashboard', $inline_css);
+		// Enqueue React and our dashboard bundle
+		wp_enqueue_script('react');
+		wp_enqueue_script('react-dom');
+		
+		// Check if built dashboard files exist
+		$dashboard_js = EGP_PLUGIN_URL . 'assets/js/dashboard/dashboard.js';
+		$dashboard_css = EGP_PLUGIN_URL . 'assets/js/dashboard/dashboard.css';
+		
+		if (file_exists(EGP_PLUGIN_PATH . 'assets/js/dashboard/dashboard.js')) {
+			wp_enqueue_script('egp-dashboard', $dashboard_js, array('react', 'react-dom'), EGP_VERSION, true);
+		} else {
+			// Fallback to inline loading message
+			$inline_js = 'window.GEO_EL = window.GEO_EL || {};';
+			$inline_js .= 'window.GEO_EL.nonce = ' . wp_json_encode(wp_create_nonce('wp_rest')) . ';';
+			$inline_js .= 'window.GEO_EL.isPro = ' . (current_user_can('manage_woocommerce') ? 'true' : 'false') . ';';
+			$inline_js .= 'document.getElementById("geo-el-admin-app").innerHTML = "<div style=\\"text-align:center;padding:2rem;\\"><h3>Dashboard Loading...</h3><p>Please run <code>npm run build</code> to build the React dashboard.</p></div>";';
+			wp_add_inline_script('react', $inline_js, 'after');
+		}
+		
+		if (file_exists(EGP_PLUGIN_PATH . 'assets/js/dashboard/dashboard.css')) {
+			wp_enqueue_style('egp-dashboard', $dashboard_css, array(), EGP_VERSION);
+		}
 	}
 }
 

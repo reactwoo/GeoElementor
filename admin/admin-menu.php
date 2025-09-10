@@ -35,7 +35,15 @@ class EGP_Admin_Menu {
 			);
 		}
 
-		// The Dashboard submenu is automatically provided by the top-level page
+		// Submenu: Dashboard (renamed from Geo Elementor)
+		add_submenu_page(
+			'geo-elementor',
+			__('Dashboard', 'elementor-geo-popup'),
+			__('Dashboard', 'elementor-geo-popup'),
+			$capability,
+			'geo-elementor',
+			array($this, 'render_dashboard')
+		);
 
 		// Submenu: Rules (renamed from Geo Rules)
 		add_submenu_page(
