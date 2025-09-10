@@ -50,6 +50,18 @@
         GeoElementorEditor.init();
     });
 
+    // Utilities
+    function getCurrentSettings() {
+        try {
+            var panel = elementor.getPanelView().getCurrentPageView();
+            if (panel && panel.model && typeof panel.model.get === 'function') {
+                var s = panel.model.get('settings');
+                if (s && typeof s.get === 'function' && typeof s.set === 'function') { return { panel: panel, settings: s }; }
+            }
+        } catch (e) { }
+        return { panel: null, settings: null };
+    }
+
     // Handle Elementor controls synchronization
     $(document).on('change', '#egp_countries_native', function () {
         var selectedCountries = [];
@@ -60,6 +72,12 @@
         var $store = $(this).closest('.elementor-control').find('input[name*="egp_geo_countries_store"]');
         if ($store.length) {
             $store.val(JSON.stringify(selectedCountries));
+        }
+        // Persist into Elementor model so Publish captures the change
+        var ctx = getCurrentSettings();
+        if (ctx.settings) {
+            try { ctx.settings.set('egp_geo_countries_store', JSON.stringify(selectedCountries)); } catch (e) { }
+            try { ctx.panel.model.trigger('change'); } catch (e) { }
         }
         if (window.console && console.log) {
             console.log('[EGP] Countries updated:', selectedCountries);
@@ -155,7 +173,21 @@
                             setTimeout(autoGenerateElementId, 300);
                             // Bind save on toggle change
                             $(document).off('change.egp', 'input[name*="egp_geo_enabled"]').on('change.egp', 'input[name*="egp_geo_enabled"]', function () {
+                                // Mirror into model
+                                var ctx = getCurrentSettings();
+                                if (ctx.settings) {
+                                    try { ctx.settings.set('egp_geo_enabled', $(this).is(':checked') ? 'yes' : ''); } catch (e) { }
+                                    try { ctx.panel.model.trigger('change'); } catch (e) { }
+                                }
                                 try { saveGeoRuleFromPanel(); } catch (e) { }
+                            });
+                            // Bind element ID change
+                            $(document).off('input.egp', 'input[name*="egp_element_id"]').on('input.egp', 'input[name*="egp_element_id"]', function () {
+                                var ctx = getCurrentSettings();
+                                if (ctx.settings) {
+                                    try { ctx.settings.set('egp_element_id', ($(this).val() || '').trim()); } catch (e) { }
+                                    try { ctx.panel.model.trigger('change'); } catch (e) { }
+                                }
                             });
                             // Bind explicit save button if ever added
                         }, 200);
