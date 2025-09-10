@@ -1,0 +1,13 @@
+{
+  "name": "geo-elementor-dashboard",
+  "version": "1.0.0",
+  "description": "Lightweight dashboard for Geo Elementor plugin",
+  "main": "index.js",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.19.8"
+  }
+}

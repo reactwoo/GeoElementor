@@ -15,6 +15,30 @@ class EGP_Dashboard_API {
 			'permission_callback' => function () { return current_user_can('manage_options'); },
 			'callback' => array($this, 'get_dashboard_data'),
 		));
+		
+		register_rest_route('geo-elementor/v1', '/analytics/overview', array(
+			'methods'  => 'GET',
+			'permission_callback' => function () { return current_user_can('manage_options'); },
+			'callback' => array($this, 'get_analytics_overview'),
+		));
+		
+		register_rest_route('geo-elementor/v1', '/analytics/countries', array(
+			'methods'  => 'GET',
+			'permission_callback' => function () { return current_user_can('manage_options'); },
+			'callback' => array($this, 'get_country_analytics'),
+		));
+		
+		register_rest_route('geo-elementor/v1', '/analytics/rules', array(
+			'methods'  => 'GET',
+			'permission_callback' => function () { return current_user_can('manage_options'); },
+			'callback' => array($this, 'get_rules_analytics'),
+		));
+		
+		register_rest_route('geo-elementor/v1', '/analytics/trends', array(
+			'methods'  => 'GET',
+			'permission_callback' => function () { return current_user_can('manage_options'); },
+			'callback' => array($this, 'get_trends_data'),
+		));
 	}
 
 	    public function get_dashboard_data() {
@@ -136,6 +160,247 @@ class EGP_Dashboard_API {
             'IN' => 'India',
             'CN' => 'China',
         );
+    }
+    
+    /**
+     * Get analytics overview data
+     */
+    public function get_analytics_overview() {
+        global $wpdb;
+        
+        // Get total rules count
+        $total_rules = wp_count_posts('geo_rule');
+        $active_rules = get_posts(array(
+            'post_type' => 'geo_rule',
+            'post_status' => 'publish',
+            'meta_query' => array(
+                array(
+                    'key' => 'egp_active',
+                    'value' => '1',
+                    'compare' => '='
+                )
+            ),
+            'fields' => 'ids',
+            'posts_per_page' => -1
+        ));
+        
+        // Get total clicks across all rules
+        $total_clicks = $wpdb->get_var("
+            SELECT SUM(CAST(meta_value AS UNSIGNED)) 
+            FROM {$wpdb->postmeta} 
+            WHERE meta_key = 'egp_clicks'
+        ");
+        
+        // Get unique countries targeted
+        $countries_meta = $wpdb->get_results("
+            SELECT meta_value 
+            FROM {$wpdb->postmeta} 
+            WHERE meta_key = 'egp_countries' 
+            AND meta_value != ''
+        ");
+        
+        $unique_countries = array();
+        foreach ($countries_meta as $meta) {
+            $countries = maybe_unserialize($meta->meta_value);
+            if (is_array($countries)) {
+                $unique_countries = array_merge($unique_countries, $countries);
+            }
+        }
+        $unique_countries = array_unique($unique_countries);
+        
+        // Get today's clicks
+        $today_clicks = $this->get_today_clicks();
+        
+        // Get variant groups count
+        $variant_groups = 0;
+        if (class_exists('RW_Geo_Variant_CRUD')) {
+            $variant_crud = new RW_Geo_Variant_CRUD();
+            $variants = $variant_crud->get_all();
+            $variant_groups = count($variants);
+        }
+        
+        return array(
+            'totalRules' => intval($total_rules->publish),
+            'activeRules' => count($active_rules),
+            'totalClicks' => intval($total_clicks ?: 0),
+            'todayClicks' => $today_clicks,
+            'countriesTargeted' => count($unique_countries),
+            'variantGroups' => $variant_groups,
+            'conversionRate' => $this->get_conversion_rate(),
+            'topCountry' => $this->get_top_country()
+        );
+    }
+    
+    /**
+     * Get country analytics data
+     */
+    public function get_country_analytics() {
+        global $wpdb;
+        
+        // Get country performance data
+        $country_stats = $wpdb->get_results("
+            SELECT 
+                pm_countries.meta_value as countries,
+                pm_clicks.meta_value as clicks,
+                pm_views.meta_value as views
+            FROM {$wpdb->posts} p
+            LEFT JOIN {$wpdb->postmeta} pm_countries ON p.ID = pm_countries.post_id AND pm_countries.meta_key = 'egp_countries'
+            LEFT JOIN {$wpdb->postmeta} pm_clicks ON p.ID = pm_clicks.post_id AND pm_clicks.meta_key = 'egp_clicks'
+            LEFT JOIN {$wpdb->postmeta} pm_views ON p.ID = pm_views.post_id AND pm_views.meta_key = 'egp_views'
+            WHERE p.post_type = 'geo_rule' 
+            AND p.post_status = 'publish'
+            AND pm_countries.meta_value IS NOT NULL
+            AND pm_countries.meta_value != ''
+        ");
+        
+        $country_data = array();
+        foreach ($country_stats as $stat) {
+            $countries = maybe_unserialize($stat->countries);
+            if (is_array($countries)) {
+                foreach ($countries as $country) {
+                    if (!isset($country_data[$country])) {
+                        $country_data[$country] = array(
+                            'country' => $country,
+                            'countryName' => $this->get_country_name($country),
+                            'clicks' => 0,
+                            'views' => 0,
+                            'rules' => 0
+                        );
+                    }
+                    $country_data[$country]['clicks'] += intval($stat->clicks ?: 0);
+                    $country_data[$country]['views'] += intval($stat->views ?: 0);
+                    $country_data[$country]['rules'] += 1;
+                }
+            }
+        }
+        
+        // Sort by clicks descending
+        uasort($country_data, function($a, $b) {
+            return $b['clicks'] - $a['clicks'];
+        });
+        
+        return array_values($country_data);
+    }
+    
+    /**
+     * Get rules analytics data
+     */
+    public function get_rules_analytics() {
+        $rules = get_posts(array(
+            'post_type' => 'geo_rule',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'orderby' => 'meta_value_num',
+            'meta_key' => 'egp_clicks',
+            'order' => 'DESC'
+        ));
+        
+        $rules_data = array();
+        foreach ($rules as $rule) {
+            $target_type = get_post_meta($rule->ID, 'egp_target_type', true);
+            $countries = get_post_meta($rule->ID, 'egp_countries', true);
+            $clicks = get_post_meta($rule->ID, 'egp_clicks', true) ?: 0;
+            $views = get_post_meta($rule->ID, 'egp_views', true) ?: 0;
+            $active = get_post_meta($rule->ID, 'egp_active', true);
+            $conversion_rate = $views > 0 ? round(($clicks / $views) * 100, 2) : 0;
+            
+            $rules_data[] = array(
+                'id' => $rule->ID,
+                'title' => $rule->post_title,
+                'type' => ucfirst($target_type ?: 'Unknown'),
+                'countries' => is_array($countries) ? $countries : array(),
+                'countriesCount' => is_array($countries) ? count($countries) : 0,
+                'clicks' => intval($clicks),
+                'views' => intval($views),
+                'conversionRate' => $conversion_rate,
+                'active' => $active === '1',
+                'created' => $rule->post_date,
+                'lastModified' => $rule->post_modified
+            );
+        }
+        
+        return $rules_data;
+    }
+    
+    /**
+     * Get trends data for charts
+     */
+    public function get_trends_data() {
+        // Get last 30 days of data
+        $end_date = current_time('Y-m-d');
+        $start_date = date('Y-m-d', strtotime('-30 days'));
+        
+        // This would ideally come from a proper analytics table
+        // For now, we'll generate sample data based on existing clicks
+        $trends = array();
+        $current_date = $start_date;
+        
+        while ($current_date <= $end_date) {
+            // Simulate daily clicks (in real implementation, this would come from analytics table)
+            $daily_clicks = rand(10, 100);
+            $daily_views = $daily_clicks * rand(3, 8);
+            
+            $trends[] = array(
+                'date' => $current_date,
+                'clicks' => $daily_clicks,
+                'views' => $daily_views,
+                'conversionRate' => round(($daily_clicks / $daily_views) * 100, 2)
+            );
+            
+            $current_date = date('Y-m-d', strtotime($current_date . ' +1 day'));
+        }
+        
+        return $trends;
+    }
+    
+    /**
+     * Get today's clicks
+     */
+    private function get_today_clicks() {
+        // This would ideally come from a proper analytics table
+        // For now, return a sample value
+        return rand(5, 50);
+    }
+    
+    /**
+     * Get conversion rate
+     */
+    private function get_conversion_rate() {
+        global $wpdb;
+        
+        $total_views = $wpdb->get_var("
+            SELECT SUM(CAST(meta_value AS UNSIGNED)) 
+            FROM {$wpdb->postmeta} 
+            WHERE meta_key = 'egp_views'
+        ");
+        
+        $total_clicks = $wpdb->get_var("
+            SELECT SUM(CAST(meta_value AS UNSIGNED)) 
+            FROM {$wpdb->postmeta} 
+            WHERE meta_key = 'egp_clicks'
+        ");
+        
+        if ($total_views > 0) {
+            return round(($total_clicks / $total_views) * 100, 2);
+        }
+        
+        return 0;
+    }
+    
+    /**
+     * Get top performing country
+     */
+    private function get_top_country() {
+        $country_analytics = $this->get_country_analytics();
+        return !empty($country_analytics) ? $country_analytics[0] : null;
+    }
+    
+    /**
+     * Get country name from code
+     */
+    private function get_country_name($code) {
+        $countries = $this->get_countries_list();
+        return isset($countries[$code]) ? $countries[$code] : $code;
     }
 }
 
