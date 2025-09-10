@@ -68,11 +68,9 @@
         $(this).find('option:selected').each(function () {
             selectedCountries.push($(this).val());
         });
-        // Update the hidden JSON store
-        var $store = $(this).closest('.elementor-control').find('input[name*="egp_geo_countries_store"]');
-        if ($store.length) {
-            $store.val(JSON.stringify(selectedCountries));
-        }
+        // Update all hidden JSON stores (container/section DOM can differ)
+        var $stores = $('input[name*="egp_geo_countries_store"]');
+        if ($stores.length) { $stores.val(JSON.stringify(selectedCountries)); }
         // Persist into Elementor model so Publish captures the change
         var ctx = getCurrentSettings();
         if (ctx.settings) {
