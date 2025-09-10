@@ -216,9 +216,12 @@
             title: (targetType.charAt(0).toUpperCase() + targetType.slice(1)) + ' ' + targetId,
             element_type: targetType
         };
-        jQuery.post((window.egpEditor && egpEditor.ajaxUrl) || ajaxurl, data)
+        var url = (window.egpEditor && egpEditor.ajaxUrl) || (typeof ajaxurl !== 'undefined' ? ajaxurl : null);
+        if (!url) { if (window.console && console.warn) console.warn('[EGP] No ajax URL available'); return; }
+        if (window.console && console.log) console.log('[EGP] Saving geo rule...', data);
+        jQuery.ajax({ url: url, method: 'POST', data: data, dataType: 'json' })
             .done(function (res) { try { if (window.console && console.log) console.log('[EGP] Saved geo rule from builder', res); } catch (e) { } })
-            .fail(function (err) { try { if (window.console && console.warn) console.warn('[EGP] Failed to save geo rule', err); } catch (e) { } });
+            .fail(function (xhr) { try { console.warn('[EGP] Failed to save geo rule', xhr && (xhr.responseText || xhr.status)); } catch (e) { } });
     }
 
 })(jQuery);
