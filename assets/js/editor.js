@@ -191,9 +191,28 @@
         var elType = panel.model.get('elType') || '';
         var targetType = (elType === 'widget') ? 'widget' : 'section';
         var $root = jQuery('.elementor-control-egp_geo_tools');
-        if (!$root.length) { if (window.console && console.warn) console.warn('[EGP] Geo controls root not found'); return; }
-        var enabled = jQuery('input[name*="egp_geo_enabled"]').is(':checked');
-        var countriesStore = jQuery('input[name*="egp_geo_countries_store"]').val() || '[]';
+        if (!$root.length) { if (window.console && console.warn) console.warn('[EGP] Geo controls root not found'); }
+
+        // Prefer reading from Elementor model settings (more reliable than DOM)
+        var settings = (panel.model && typeof panel.model.get === 'function') ? panel.model.get('settings') : null;
+        var enabled = false;
+        var countriesStore = '[]';
+        var elementIdSetting = '';
+        try {
+            if (settings && typeof settings.get === 'function') {
+                var rawEnabled = settings.get('egp_geo_enabled');
+                enabled = (rawEnabled === 'yes' || rawEnabled === '1' || rawEnabled === true);
+                var rawStore = settings.get('egp_geo_countries_store');
+                if (rawStore) { countriesStore = rawStore; }
+                var rawElId = settings.get('egp_element_id');
+                if (rawElId) { elementIdSetting = rawElId; }
+            }
+        } catch (e) { }
+        // DOM fallbacks if model settings are not yet bound
+        if (countriesStore === '[]') {
+            var domStore = jQuery('input[name*="egp_geo_countries_store"]').val();
+            if (domStore) { countriesStore = domStore; }
+        }
         var countries = [];
         try { countries = JSON.parse(countriesStore); } catch (e) { countries = []; }
         if (!countries.length) {
@@ -201,9 +220,13 @@
             if (Array.isArray(selectVals)) { countries = selectVals; }
         }
         var targetId = '';
-        var $idField = jQuery('input[name*="egp_element_id"]');
-        if ($idField.length && $idField.val()) {
-            targetId = $idField.val().trim();
+        if (elementIdSetting) {
+            targetId = ('' + elementIdSetting).trim();
+        } else {
+            var $idField = jQuery('input[name*="egp_element_id"]');
+            if ($idField.length && $idField.val()) {
+                targetId = $idField.val().trim();
+            }
         } else if (panel.model.get('id')) {
             targetId = panel.model.get('id');
         }
