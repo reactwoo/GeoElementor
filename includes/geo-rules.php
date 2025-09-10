@@ -1827,7 +1827,7 @@ class EGP_Geo_Rules {
                             }
                         }
                         // Allowed → track a view
-                        try { if (typeof egpTrackView === 'function') { egpTrackView(null, popupId); } } catch(e) {}
+                        try { if (window.egpTrackView) { window.egpTrackView(null, popupId); } } catch(e) {}
                     }
                     
                     // Country check passed (or no geo-targeting) - proceed with original popup logic
@@ -1861,7 +1861,7 @@ class EGP_Geo_Rules {
                             }
                         }
                         // Allowed → track a view on trigger as well (covers direct triggers)
-                        try { if (typeof egpTrackView === 'function') { egpTrackView(null, popupId); } } catch(e) {}
+                        try { if (window.egpTrackView) { window.egpTrackView(null, popupId); } } catch(e) {}
                     }
                     
                     // Country check passed (or no geo-targeting) - proceed with original trigger logic
