@@ -76,6 +76,7 @@
         if (ctx.settings) {
             try { ctx.settings.set('egp_geo_countries_store', JSON.stringify(selectedCountries)); } catch (e) { }
             try { ctx.panel.model.trigger('change'); } catch (e) { }
+            try { if (elementor && elementor.saver && typeof elementor.saver.setFlagEditorChange === 'function') { elementor.saver.setFlagEditorChange(true); } } catch (e) { }
         }
         if (window.console && console.log) {
             console.log('[EGP] Countries updated:', selectedCountries);
@@ -176,6 +177,7 @@
                                 if (ctx.settings) {
                                     try { ctx.settings.set('egp_geo_enabled', $(this).is(':checked') ? 'yes' : ''); } catch (e) { }
                                     try { ctx.panel.model.trigger('change'); } catch (e) { }
+                                    try { if (elementor && elementor.saver && typeof elementor.saver.setFlagEditorChange === 'function') { elementor.saver.setFlagEditorChange(true); } } catch (e) { }
                                 }
                                 try { saveGeoRuleFromPanel(); } catch (e) { }
                             });
@@ -185,6 +187,7 @@
                                 if (ctx.settings) {
                                     try { ctx.settings.set('egp_element_id', ($(this).val() || '').trim()); } catch (e) { }
                                     try { ctx.panel.model.trigger('change'); } catch (e) { }
+                                    try { if (elementor && elementor.saver && typeof elementor.saver.setFlagEditorChange === 'function') { elementor.saver.setFlagEditorChange(true); } } catch (e) { }
                                 }
                             });
                             // Bind explicit save button if ever added
