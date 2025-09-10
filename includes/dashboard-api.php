@@ -286,12 +286,12 @@ class EGP_Dashboard_API {
      * Get rules analytics data
      */
     public function get_rules_analytics() {
+        // Fetch all rules regardless of whether analytics meta exists
         $rules = get_posts(array(
             'post_type' => 'geo_rule',
-            'post_status' => 'publish',
+            'post_status' => array('publish'),
             'posts_per_page' => -1,
-            'orderby' => 'meta_value_num',
-            'meta_key' => 'egp_clicks',
+            'orderby' => 'date',
             'order' => 'DESC'
         ));
         
@@ -319,6 +319,51 @@ class EGP_Dashboard_API {
             );
         }
         
+        // Sort by clicks desc, then by date desc to stabilize
+        usort($rules_data, function($a, $b){
+            if ($a['clicks'] === $b['clicks']) {
+                return strtotime($b['created']) <=> strtotime($a['created']);
+            }
+            return $b['clicks'] <=> $a['clicks'];
+        });
+        
+        // Fallback: if there are no Rules yet, surface Elementor Popups with geo enabled
+        if (empty($rules_data)) {
+            $popups = get_posts(array(
+                'post_type' => 'elementor_library',
+                'post_status' => array('publish','draft','private'),
+                'meta_query' => array(
+                    array('key' => '_elementor_template_type', 'value' => 'popup'),
+                ),
+                'posts_per_page' => -1,
+            ));
+            foreach ($popups as $p) {
+                $page_settings = get_post_meta($p->ID, '_elementor_page_settings', true);
+                if (!is_array($page_settings)) { continue; }
+                $enabled = isset($page_settings['egp_enable_geo_targeting']) && $page_settings['egp_enable_geo_targeting'] === 'yes';
+                $countries = isset($page_settings['egp_countries']) && is_array($page_settings['egp_countries']) ? $page_settings['egp_countries'] : array();
+                if ($enabled && !empty($countries)) {
+                    $rules_data[] = array(
+                        'id' => $p->ID,
+                        'title' => $p->post_title,
+                        'type' => 'Popup',
+                        'countries' => $countries,
+                        'countriesCount' => count($countries),
+                        'clicks' => 0,
+                        'views' => 0,
+                        'conversionRate' => 0,
+                        'active' => true,
+                        'created' => $p->post_date,
+                        'lastModified' => $p->post_modified
+                    );
+                }
+            }
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[EGP Dashboard] Rules analytics count: ' . count($rules_data));
+        }
+
         return $rules_data;
     }
     
