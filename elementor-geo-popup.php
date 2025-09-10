@@ -372,7 +372,13 @@ class ElementorGeoPopup {
             }
         });
 
-        // Remove broad after_section_end hooks for production to avoid duplication or re-entrancy
+        // Ensure Geo Targeting section appears in Elementor Advanced tab for Sections and Containers
+        add_action('elementor/element/section/section_advanced/after_section_end', function($element, $args = null) {
+            try { $this->add_geo_targeting_controls($element); } catch (\Throwable $e) { if (defined('WP_DEBUG') && WP_DEBUG) error_log('[EGP] Section controls error: ' . $e->getMessage()); }
+        }, 20, 2);
+        add_action('elementor/element/container/section_advanced/after_section_end', function($element, $args = null) {
+            try { $this->add_geo_targeting_controls($element); } catch (\Throwable $e) { if (defined('WP_DEBUG') && WP_DEBUG) error_log('[EGP] Container controls error: ' . $e->getMessage()); }
+        }, 20, 2);
 
         error_log('[EGP] Elementor controls registration completed');
 

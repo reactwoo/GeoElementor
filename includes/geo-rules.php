@@ -45,6 +45,7 @@ class EGP_Geo_Rules {
         // Frontend targeting
         add_action('wp_head', array($this, 'add_tracking_data'));
         add_action('wp_footer', array($this, 'add_analytics_script'));
+        add_action('wp_footer', array($this, 'add_element_geo_filter_script'), 20);
         
         // Elementor integration
         add_action('elementor/editor/before_enqueue_scripts', array($this, 'enqueue_editor_scripts'));
@@ -726,8 +727,11 @@ class EGP_Geo_Rules {
         $geo_rules = $this->get_matching_rules($current_page_id);
         
         if (empty($geo_rules)) {
-            // Record untracked hit for current visitor country so dashboard can surface gaps
-            $this->increment_untracked_country($this->get_user_country());
+            // Record untracked hit only if no active rule exists for this visitor country at all
+            $visitor_country = $this->get_user_country();
+            if (!$this->country_is_tracked($visitor_country)) {
+                $this->increment_untracked_country($visitor_country);
+            }
             return;
         }
         
@@ -762,6 +766,31 @@ class EGP_Geo_Rules {
         if (!is_array($counts)) { $counts = array(); }
         $counts[$code] = isset($counts[$code]) ? intval($counts[$code]) + 1 : 1;
         update_option('egp_untracked_country_counts', $counts, false);
+    }
+
+    /**
+     * Determine if any active rule (of any type) targets the given country
+     */
+    private function country_is_tracked($country) {
+        $code = strtoupper(trim((string) $country));
+        if (!$code || strlen($code) !== 2) { return false; }
+        $rules = get_posts(array(
+            'post_type' => $this->post_type,
+            'post_status' => 'publish',
+            'meta_query' => array(
+                array('key' => $this->meta_prefix . 'active', 'value' => '1', 'compare' => '=')
+            ),
+            'posts_per_page' => -1,
+            'fields' => 'ids'
+        ));
+        if (empty($rules)) { return false; }
+        foreach ($rules as $rid) {
+            $countries = get_post_meta($rid, $this->meta_prefix . 'countries', true);
+            if (is_array($countries) && in_array($code, array_map('strtoupper', $countries), true)) {
+                return true;
+            }
+        }
+        return false;
     }
     
     /**
@@ -835,6 +864,55 @@ class EGP_Geo_Rules {
         }
         
         return $matching_rules;
+    }
+
+    /**
+     * Hide Sections/Containers/Widgets on the frontend when visitor country is not targeted by rules.
+     */
+    public function add_element_geo_filter_script() {
+        if (is_admin()) { return; }
+        $user_country = strtoupper($this->get_user_country());
+        if (!$user_country) { return; }
+
+        // Fetch active section/widget rules (manual targeting)
+        $rules = get_posts(array(
+            'post_type' => $this->post_type,
+            'post_status' => 'publish',
+            'meta_query' => array(
+                array('key' => $this->meta_prefix . 'active', 'value' => '1', 'compare' => '=')
+            ),
+            'posts_per_page' => -1
+        ));
+
+        $targets = array();
+        foreach ($rules as $rule) {
+            $type = get_post_meta($rule->ID, $this->meta_prefix . 'target_type', true);
+            if ($type !== 'section' && $type !== 'widget') { continue; }
+            $target_id = trim((string) get_post_meta($rule->ID, $this->meta_prefix . 'target_id', true));
+            if ($target_id === '' || strpos($target_id, 'template:') === 0) { continue; }
+            $countries = get_post_meta($rule->ID, $this->meta_prefix . 'countries', true);
+            if (!is_array($countries) || empty($countries)) { continue; }
+            $countries = array_values(array_unique(array_map('strtoupper', $countries)));
+
+            // Heuristic: alphanumeric with dashes/underscores => CSS ID; otherwise treat as Elementor data-id
+            $is_css_id = (bool) preg_match('/^[A-Za-z][A-Za-z0-9_-]*$/', $target_id);
+            $targets[] = array(
+                'ref' => $target_id,
+                'refType' => $is_css_id ? 'css' : 'element',
+                'countries' => $countries,
+            );
+        }
+
+        if (empty($targets)) { return; }
+
+        echo '<script>';
+        echo 'document.addEventListener("DOMContentLoaded",function(){';
+        echo 'var userCountry=' . wp_json_encode($user_country) . ';';
+        echo 'var targets=' . wp_json_encode($targets) . ';';
+        echo 'var hidden=new Set();';
+        echo 'targets.forEach(function(t){var allow=(t.countries||[]).map(function(c){return (c||"").toUpperCase()});if(allow.indexOf(userCountry)===-1){try{var el=null;if(t.refType==="css"){el=document.getElementById(t.ref);}else{el=document.querySelector("[data-id=\""+t.ref+"\"]");}if(el && !hidden.has(t.ref)){el.style.display="none";el.classList.add("egp-hidden");hidden.add(t.ref);}}catch(e){}}});';
+        echo '});';
+        echo '</script>';
     }
     
     /**
@@ -1748,6 +1826,8 @@ class EGP_Geo_Rules {
                                 return false;
                             }
                         }
+                        // Allowed → track a view
+                        try { if (typeof egpTrackView === 'function') { egpTrackView(null, popupId); } } catch(e) {}
                     }
                     
                     // Country check passed (or no geo-targeting) - proceed with original popup logic
@@ -1780,6 +1860,8 @@ class EGP_Geo_Rules {
                                 return false;
                             }
                         }
+                        // Allowed → track a view on trigger as well (covers direct triggers)
+                        try { if (typeof egpTrackView === 'function') { egpTrackView(null, popupId); } } catch(e) {}
                     }
                     
                     // Country check passed (or no geo-targeting) - proceed with original trigger logic
