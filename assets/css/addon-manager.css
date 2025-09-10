@@ -1,0 +1,378 @@
+/**
+ * Add-On Manager Styles
+ * 
+ * @package ElementorGeoPopup
+ * @since 1.1.0
+ */
+
+.egp-addons-container {
+    margin-top: 20px;
+}
+
+.egp-addons-tabs {
+    margin-bottom: 20px;
+    border-bottom: 1px solid #ccd0d4;
+}
+
+.egp-addons-tabs .nav-tab {
+    margin-bottom: -1px;
+    margin-right: 0.5em;
+    padding: 8px 12px;
+    text-decoration: none;
+    border: 1px solid transparent;
+    border-bottom: none;
+    background: transparent;
+    color: #0073aa;
+    cursor: pointer;
+}
+
+.egp-addons-tabs .nav-tab:hover {
+    color: #005177;
+    background-color: #f1f1f1;
+}
+
+.egp-addons-tabs .nav-tab-active {
+    background: #fff;
+    border-color: #ccd0d4;
+    border-bottom: 1px solid #fff;
+    color: #000;
+}
+
+.egp-tab-content {
+    display: none;
+}
+
+.egp-tab-content.active {
+    display: block;
+}
+
+.egp-addon-card {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    transition: box-shadow 0.2s ease;
+}
+
+.egp-addon-card:hover {
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.egp-addon-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.egp-addon-icon {
+    font-size: 24px;
+    margin-right: 15px;
+    color: #0073aa;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.egp-addon-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+}
+
+.egp-addon-status {
+    margin-left: auto;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.egp-addon-status.active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.egp-addon-status.inactive {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.egp-addon-status.premium {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.egp-addon-description {
+    color: #666;
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+.egp-addon-meta {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 15px;
+    font-size: 13px;
+    color: #666;
+}
+
+.egp-addon-meta span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.egp-addon-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.egp-addon-actions .button {
+    padding: 6px 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    border-radius: 3px;
+    text-decoration: none;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all 0.2s ease;
+}
+
+.egp-addon-actions .button-primary {
+    background: #0073aa;
+    border-color: #0073aa;
+    color: #fff;
+}
+
+.egp-addon-actions .button-primary:hover {
+    background: #005177;
+    border-color: #005177;
+    color: #fff;
+}
+
+.egp-addon-actions .button-secondary {
+    background: #f7f7f7;
+    border-color: #ccd0d4;
+    color: #555;
+}
+
+.egp-addon-actions .button-secondary:hover {
+    background: #f1f1f1;
+    border-color: #999;
+    color: #333;
+}
+
+.egp-addon-actions .button-link-delete {
+    background: transparent;
+    border-color: transparent;
+    color: #a00;
+    text-decoration: underline;
+}
+
+.egp-addon-actions .button-link-delete:hover {
+    background: transparent;
+    border-color: transparent;
+    color: #dc3232;
+}
+
+.egp-addon-actions .button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.egp-addon-actions .button:disabled:hover {
+    background: inherit;
+    border-color: inherit;
+    color: inherit;
+}
+
+/* City Settings Styles */
+.egp-city-test-section {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 20px;
+    margin-top: 30px;
+}
+
+.egp-city-test-section h2 {
+    margin-top: 0;
+    color: #333;
+}
+
+.egp-city-test-section p {
+    color: #666;
+    margin-bottom: 15px;
+}
+
+#egp-city-test-result {
+    margin-top: 15px;
+}
+
+#egp-city-test-result > div {
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid;
+    margin-bottom: 10px;
+}
+
+#egp-city-test-result .success {
+    background: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+#egp-city-test-result .error {
+    background: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+#egp-city-test-result .info {
+    background: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .egp-addon-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .egp-addon-status {
+        margin-left: 0;
+        align-self: flex-start;
+    }
+    
+    .egp-addon-actions {
+        flex-direction: column;
+    }
+    
+    .egp-addon-actions .button {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .egp-addon-meta {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+/* Loading States */
+.egp-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.egp-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: egp-spin 1s linear infinite;
+}
+
+@keyframes egp-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Notices */
+.egp-notice {
+    padding: 12px;
+    margin: 15px 0;
+    border-left: 4px solid;
+    background: #fff;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.egp-notice.notice-success {
+    border-left-color: #46b450;
+    background: #f7fff7;
+}
+
+.egp-notice.notice-error {
+    border-left-color: #dc3232;
+    background: #fff7f7;
+}
+
+.egp-notice.notice-warning {
+    border-left-color: #ffb900;
+    background: #fffbf0;
+}
+
+.egp-notice.notice-info {
+    border-left-color: #00a0d2;
+    background: #f0f8ff;
+}
+
+/* Form Styles */
+.egp-form-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.egp-form-table th,
+.egp-form-table td {
+    padding: 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.egp-form-table th {
+    background: #f9f9f9;
+    font-weight: 600;
+    width: 200px;
+}
+
+.egp-form-table input[type="text"],
+.egp-form-table input[type="number"],
+.egp-form-table input[type="email"],
+.egp-form-table input[type="url"],
+.egp-form-table textarea,
+.egp-form-table select {
+    width: 100%;
+    max-width: 400px;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.egp-form-table input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.egp-form-table .description {
+    font-size: 13px;
+    color: #666;
+    margin-top: 5px;
+    line-height: 1.4;
+}
+
+.egp-form-table .description a {
+    color: #0073aa;
+    text-decoration: none;
+}
+
+.egp-form-table .description a:hover {
+    text-decoration: underline;
+}

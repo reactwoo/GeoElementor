@@ -127,6 +127,10 @@ class ElementorGeoPopup {
 
         // Load plugin components
         $this->load_dependencies();
+        
+        // Initialize add-on manager
+        require_once EGP_PLUGIN_DIR . 'includes/addon-manager.php';
+        require_once EGP_PLUGIN_DIR . 'includes/addon-base.php';
 
         // Register Elementor hooks when Elementor is ready
         add_action('elementor/init', array($this, 'register_elementor_hooks'));

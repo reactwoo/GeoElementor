@@ -59,6 +59,16 @@ class EGP_Admin_Menu {
 			array($this, 'render_settings')
 		);
 
+		// Submenu: Add-Ons
+		add_submenu_page(
+			'geo-elementor',
+			__('Add-Ons', 'elementor-geo-popup'),
+			__('Add-Ons', 'elementor-geo-popup'),
+			$capability,
+			'egp-addons',
+			array($this, 'render_addons')
+		);
+
 		// Submenu: License
 		add_submenu_page(
 			'geo-elementor',
@@ -372,6 +382,20 @@ class EGP_Admin_Menu {
 			return;
 		}
 		do_action('egp_render_settings_page');
+	}
+
+	public function render_addons() {
+		// Render Add-Ons page via add-on manager
+		if (class_exists('EGP_Addon_Manager')) {
+			$addon_manager = EGP_Addon_Manager::get_instance();
+			$addon_manager->admin_page();
+			return;
+		}
+		
+		// Fallback if add-on manager not available
+		echo '<div class="wrap"><h1>' . esc_html__('Add-Ons', 'elementor-geo-popup') . '</h1>';
+		echo '<div class="notice notice-error"><p>' . esc_html__('Add-On manager not available. Please ensure the plugin is properly loaded.', 'elementor-geo-popup') . '</p></div>';
+		echo '</div>';
 	}
 
 	public function render_license() {

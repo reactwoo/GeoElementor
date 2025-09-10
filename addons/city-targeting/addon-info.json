@@ -1,0 +1,19 @@
+{
+    "id": "city-targeting",
+    "name": "City Targeting",
+    "description": "Target content based on visitor city location using OpenWeatherMap API",
+    "version": "1.0.0",
+    "author": "ReactWoo",
+    "author_uri": "https://reactwoo.com",
+    "plugin_uri": "https://reactwoo.com",
+    "requires": "1.0.0",
+    "tested": "1.0.1",
+    "file": "city-targeting.php",
+    "class": "EGP_City_Targeting_Addon",
+    "category": "geo-targeting",
+    "tags": ["city", "location", "geo", "weather"],
+    "screenshot": "",
+    "icon": "eicon-map-pin",
+    "premium": false,
+    "status": "available"
+}
