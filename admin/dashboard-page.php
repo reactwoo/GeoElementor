@@ -25,27 +25,18 @@ class EGP_Admin_Dashboard {
 			return;
 		}
 
-		// Enqueue React and our dashboard bundle
-		wp_enqueue_script('react');
-		wp_enqueue_script('react-dom');
-		
 		// Check if built dashboard files exist
 		$dashboard_js = EGP_PLUGIN_URL . 'assets/js/dashboard/dashboard.js';
 		$dashboard_css = EGP_PLUGIN_URL . 'assets/js/dashboard/dashboard.css';
 		
 		if (file_exists(EGP_PLUGIN_PATH . 'assets/js/dashboard/dashboard.js')) {
-			wp_enqueue_script('egp-dashboard', $dashboard_js, array('react', 'react-dom'), EGP_VERSION, true);
+			// Load lightweight vanilla JS dashboard
+			wp_enqueue_script('egp-dashboard', $dashboard_js, array(), EGP_VERSION, true);
+			wp_enqueue_style('egp-dashboard', $dashboard_css, array(), EGP_VERSION);
 		} else {
 			// Fallback to inline loading message
-			$inline_js = 'window.GEO_EL = window.GEO_EL || {};';
-			$inline_js .= 'window.GEO_EL.nonce = ' . wp_json_encode(wp_create_nonce('wp_rest')) . ';';
-			$inline_js .= 'window.GEO_EL.isPro = ' . (current_user_can('manage_woocommerce') ? 'true' : 'false') . ';';
-			$inline_js .= 'document.getElementById("geo-el-admin-app").innerHTML = "<div style=\\"text-align:center;padding:2rem;\\"><h3>Dashboard Loading...</h3><p>Please run <code>npm run build</code> to build the React dashboard.</p></div>";';
-			wp_add_inline_script('react', $inline_js, 'after');
-		}
-		
-		if (file_exists(EGP_PLUGIN_PATH . 'assets/js/dashboard/dashboard.css')) {
-			wp_enqueue_style('egp-dashboard', $dashboard_css, array(), EGP_VERSION);
+			$inline_js = 'document.getElementById("geo-el-admin-app").innerHTML = "<div style=\\"text-align:center;padding:2rem;\\"><h3>Dashboard Loading...</h3><p>Please run <code>npm run build</code> to build the dashboard.</p></div>";';
+			wp_add_inline_script('jquery', $inline_js, 'after');
 		}
 	}
 }

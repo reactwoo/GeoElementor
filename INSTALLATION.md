@@ -25,11 +25,12 @@
 ## What's Included
 
 ✅ **Submenu Renamed**: "Geo Elementor" → "Dashboard"  
-✅ **Modern React UI**: Google Analytics-style interface  
+✅ **Lightweight UI**: Google Analytics-style interface (~15KB total)  
 ✅ **Interactive Charts**: Country performance, trends, rules analytics  
 ✅ **Real-time Data**: Live updates from your WordPress data  
 ✅ **Responsive Design**: Works on all devices  
 ✅ **Comprehensive Analytics**: Rules, clicks, views, countries, conversion rates  
+✅ **Zero Dependencies**: Pure vanilla JavaScript, no external libraries  
 
 ## Features Overview
 

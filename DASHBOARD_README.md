@@ -1,6 +1,6 @@
 # Geo Elementor Dashboard
 
-A modern React.js dashboard for the Geo Elementor plugin, featuring Google Analytics-style UI with comprehensive analytics and reporting.
+A lightweight vanilla JavaScript dashboard for the Geo Elementor plugin, featuring Google Analytics-style UI with comprehensive analytics and reporting.
 
 ## Features
 
@@ -9,14 +9,15 @@ A modern React.js dashboard for the Geo Elementor plugin, featuring Google Analy
 - **Rules Performance Table**: Sortable table with detailed rule analytics
 - **Real-time Data**: Live updates from WordPress REST API
 - **Responsive Design**: Works on desktop and mobile devices
+- **Ultra Lightweight**: Minimal bundle size (~15KB total)
 
 ## Tech Stack
 
-- **Frontend**: React 18 with modern hooks
-- **Charts**: Recharts for beautiful visualizations
-- **Styling**: Tailwind CSS for Google Analytics-like design
-- **Build System**: Vite for fast development and building
-- **Icons**: Lucide React for consistent iconography
+- **Frontend**: Vanilla JavaScript (ES6+)
+- **Charts**: CSS-based visualizations (no external libraries)
+- **Styling**: Custom CSS with modern design
+- **Build System**: esbuild for ultra-fast building
+- **Bundle Size**: ~10KB JS + ~5KB CSS
 
 ## Setup & Development
 
@@ -59,15 +60,8 @@ A modern React.js dashboard for the Geo Elementor plugin, featuring Google Analy
 
 ```
 src/
-├── main.jsx              # React app entry point
-├── App.jsx               # Main dashboard component
-├── index.css             # Global styles with Tailwind
-└── components/
-    ├── OverviewCards.jsx     # Overview metrics cards
-    ├── CountryChart.jsx      # Country performance charts
-    ├── TrendsChart.jsx       # Performance trends over time
-    ├── RulesTable.jsx        # Rules performance table
-    └── LoadingSpinner.jsx    # Loading state component
+├── dashboard.js          # Main dashboard JavaScript
+└── dashboard.css         # Dashboard styles
 ```
 
 ## API Endpoints
@@ -83,17 +77,17 @@ The dashboard consumes these WordPress REST API endpoints:
 
 ### Adding New Charts
 
-1. Create a new component in `src/components/`
-2. Import and use in `App.jsx`
-3. Add corresponding API endpoint in `includes/dashboard-api.php`
+1. Add new chart method to the `GeoElementorDashboard` class in `src/dashboard.js`
+2. Add corresponding API endpoint in `includes/dashboard-api.php`
+3. Add chart styles to `src/dashboard.css`
 
 ### Styling
 
-The dashboard uses Tailwind CSS. Customize the design by:
+The dashboard uses custom CSS. Customize the design by:
 
-1. Modifying `tailwind.config.js` for theme changes
-2. Adding custom styles in `src/index.css`
-3. Using Tailwind utility classes in components
+1. Modifying styles in `src/dashboard.css`
+2. Using CSS custom properties for theming
+3. Adding responsive breakpoints as needed
 
 ### Data Sources
 
