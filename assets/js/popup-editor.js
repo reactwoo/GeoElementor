@@ -172,6 +172,14 @@
                             <p class="description">Hold Ctrl/Cmd to select multiple countries</p>
                         </div>
                     </div>
+                    <div class="elementor-panel-field">
+                        <label class="elementor-panel-field-label">Element ID (for Manual Rules)</label>
+                        <div class="elementor-panel-field-control">
+                            <input type="text" id="egp_popup_element_id" placeholder="Leave empty to use popup name" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <p class="description" style="margin-top:5px;">Optional: Custom element ID for creating manual geo rules. Leave empty to use popup template name.</p>
+                            <button type="button" id="egp_generate_popup_id" style="margin-top:5px;padding:5px 10px;background:#007cba;color:white;border:none;border-radius:4px;cursor:pointer;">Generate ID</button>
+                        </div>
+                    </div>
                 </div>
             `);
 
@@ -273,6 +281,15 @@
             panel.$el.on('change', 'input, select', function () {
                 EGP_Popup_Editor_JS.saveGeoSettings(panel, model);
             });
+
+            // Handle generate ID button
+            panel.$el.on('click', '#egp_generate_popup_id', function () {
+                var timestamp = Date.now();
+                var random = Math.floor(Math.random() * 1000);
+                var elementId = 'geo_popup_' + timestamp + '_' + random;
+                panel.$el.find('#egp_popup_element_id').val(elementId);
+                console.log('[EGP] Generated popup element ID:', elementId);
+            });
         },
 
         saveGeoSettings: function (panel, model) {
@@ -281,8 +298,14 @@
             settings.egp_geo_enabled = panel.$el.find('#egp_enable_geo').is(':checked');
             settings.egp_countries = panel.$el.find('#egp_countries').val() || [];
 
+            // Include custom element ID if provided
+            var customElementId = panel.$el.find('#egp_popup_element_id').val().trim();
+            if (customElementId) {
+                settings.egp_element_id = customElementId;
+            }
+
             model.set('settings', settings);
-            console.log('[EGP] Geo settings saved for popup:', model.get('id'));
+            console.log('[EGP] Geo settings saved for popup:', model.get('id'), customElementId ? '(custom ID: ' + customElementId + ')' : '(using popup name)');
         },
 
         hidePopup: function ($popup) {

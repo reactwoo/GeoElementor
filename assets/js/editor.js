@@ -57,44 +57,51 @@
             if (panel && panel.model && typeof panel.model.get === 'function') {
                 var s = panel.model.get('settings');
                 if (s && typeof s.get === 'function' && typeof s.set === 'function') {
+                    console.log('[EGP] Got panel and settings:', {
+                        panelId: panel.model.get('id'),
+                        panelType: panel.model.get('elType'),
+                        hasSettings: !!s
+                    });
                     return { panel: panel, settings: s };
                 }
             }
-        } catch (e) { }
+        } catch (e) {
+            console.log('[EGP] Error getting current settings:', e);
+        }
+        console.log('[EGP] No valid panel/settings found');
         return { panel: null, settings: null };
     }
 
-    // Handle Elementor controls synchronization
+    // Handle Elementor controls synchronization - optimized for performance
     $(document).on('change', '#egp_countries_native', function () {
         var selectedCountries = [];
         $(this).find('option:selected').each(function () {
             selectedCountries.push($(this).val());
         });
-        // Update all hidden JSON stores (container/section DOM can differ)
-        var $stores = $('input[name*="egp_geo_countries_store"]');
-        if ($stores.length) { $stores.val(JSON.stringify(selectedCountries)); }
-        // Simple persistence - just set model and trigger change (like popup does)
+
+        // Get current context once
         var ctx = getCurrentSettings();
-        if (ctx.settings) {
-            // Set the model settings directly (this works)
-            ctx.settings.set('egp_geo_countries_store', JSON.stringify(selectedCountries));
+        if (!ctx.settings) { return; }
 
-            // Trigger change to mark as dirty (this works)
-            ctx.panel.model.trigger('change');
+        // Update model settings (this is the key to persistence)
+        ctx.settings.set('egp_geo_countries_store', JSON.stringify(selectedCountries));
 
-            // Update hidden input for PHP side (scope to current panel to avoid popup conflicts)
-            var panelEl = ctx.panel ? ctx.panel.$el : null;
-            if (panelEl) {
-                var hiddenInput = panelEl.find('input[name*="egp_geo_countries_store"]');
-                if (hiddenInput.length) {
-                    hiddenInput.val(JSON.stringify(selectedCountries)).trigger('input');
-                }
+        // Verify the setting was stored
+        var stored = ctx.settings.get('egp_geo_countries_store');
+        console.log('[EGP] Stored countries in model:', stored);
+
+        // Trigger change on the model (this marks Elementor document as dirty)
+        ctx.panel.model.trigger('change');
+
+        // Update hidden input within this panel only
+        if (ctx.panel && ctx.panel.$el) {
+            var hiddenInput = ctx.panel.$el.find('input[name*="egp_geo_countries_store"]');
+            if (hiddenInput.length) {
+                hiddenInput.val(JSON.stringify(selectedCountries)).trigger('input');
             }
         }
-        if (window.console && console.log) {
-            console.log('[EGP] Countries updated:', selectedCountries);
-        }
-        // Attempt to persist immediately
+
+        // Save to database
         try { saveGeoRuleFromPanel(); } catch (e) { }
     });
 
