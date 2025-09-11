@@ -53,12 +53,64 @@
     // Utilities
     function getCurrentSettings() {
         try {
+            // First try the panel method
             var panel = elementor.getPanelView().getCurrentPageView();
             if (panel && panel.model && typeof panel.model.get === 'function') {
                 var s = panel.model.get('settings');
-                if (s && typeof s.get === 'function' && typeof s.set === 'function') { return { panel: panel, settings: s }; }
+                if (s && typeof s.get === 'function' && typeof s.set === 'function') {
+                    console.log('[EGP] Found settings via panel:', s.get('egp_geo_enabled'), s.get('egp_geo_countries_store'));
+                    return { panel: panel, settings: s };
+                }
             }
-        } catch (e) { }
+        } catch (e) {
+            console.log('[EGP] Panel method failed:', e);
+        }
+
+        // Fallback: Try to get current element from Elementor selection
+        try {
+            if (window.$e && $e.components && $e.components.get) {
+                var selection = $e.components.get('document/elements');
+                if (selection && selection.getCurrentElement) {
+                    var currentElement = selection.getCurrentElement();
+                    if (currentElement && currentElement.model) {
+                        var s = currentElement.model.get('settings');
+                        if (s && typeof s.get === 'function' && typeof s.set === 'function') {
+                            console.log('[EGP] Found settings via selection:', s.get('egp_geo_enabled'), s.get('egp_geo_countries_store'));
+                            return { panel: { model: currentElement.model }, settings: s };
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.log('[EGP] Selection method failed:', e);
+        }
+
+        // Another fallback: Try to get from editor components
+        try {
+            if (elementor && elementor.channels && elementor.channels.editor) {
+                var currentModel = null;
+                elementor.channels.editor.on('section:activated', function (sectionName, editor) {
+                    if (sectionName === 'section_advanced') {
+                        // Get the current element model
+                        if (editor && editor.model) {
+                            currentModel = editor.model;
+                        }
+                    }
+                });
+
+                if (currentModel) {
+                    var s = currentModel.get('settings');
+                    if (s && typeof s.get === 'function' && typeof s.set === 'function') {
+                        console.log('[EGP] Found settings via editor channel:', s.get('egp_geo_enabled'), s.get('egp_geo_countries_store'));
+                        return { panel: { model: currentModel }, settings: s };
+                    }
+                }
+            }
+        } catch (e) {
+            console.log('[EGP] Editor channel method failed:', e);
+        }
+
+        console.log('[EGP] No settings found');
         return { panel: null, settings: null };
     }
 
@@ -80,18 +132,26 @@
             // Try multiple approaches to mark document as modified
             try {
                 if (window.$e && $e.run) {
+                    // Use the correct container - the panel model or the element model
+                    var container = ctx.panel.model;
                     $e.run('document/elements/settings', {
-                        container: ctx.panel.model,
+                        container: container,
                         settings: { egp_geo_countries_store: JSON.stringify(selectedCountries) }
                     });
+                    console.log('[EGP] Updated via $e.run with container:', container.id);
                 }
-            } catch (e) { }
+            } catch (e) {
+                console.log('[EGP] $e.run failed:', e);
+            }
 
             try {
                 if (window.$e && $e.internal) {
                     $e.internal('document/save/set-is-modified', { status: true });
+                    console.log('[EGP] Marked document as modified');
                 }
-            } catch (e) { }
+            } catch (e) {
+                console.log('[EGP] $e.internal failed:', e);
+            }
 
             // Alternative: Try to directly mark the document as dirty
             try {
@@ -99,17 +159,33 @@
                     var currentDoc = elementor.documents.getCurrent();
                     if (currentDoc && typeof currentDoc.setIsDirty === 'function') {
                         currentDoc.setIsDirty(true);
+                        console.log('[EGP] Marked document as dirty via direct method');
                     }
                 }
-            } catch (e) { }
+            } catch (e) {
+                console.log('[EGP] Direct document method failed:', e);
+            }
 
             // Force Elementor to recognize changes by updating the control directly
             try {
                 var hiddenInput = $('input[name*="egp_geo_countries_store"]');
                 if (hiddenInput.length) {
                     hiddenInput.val(JSON.stringify(selectedCountries)).trigger('input').trigger('change');
+                    console.log('[EGP] Triggered input change on hidden control');
                 }
-            } catch (e) { }
+            } catch (e) {
+                console.log('[EGP] Hidden input trigger failed:', e);
+            }
+
+            // Additional approach: Try to trigger Elementor's change detection
+            try {
+                if (ctx.panel && ctx.panel.model && typeof ctx.panel.model.trigger === 'function') {
+                    ctx.panel.model.trigger('change:settings');
+                    console.log('[EGP] Triggered change:settings');
+                }
+            } catch (e) {
+                console.log('[EGP] change:settings trigger failed:', e);
+            }
         }
         if (window.console && console.log) {
             console.log('[EGP] Countries updated:', selectedCountries);
@@ -214,18 +290,25 @@
                                     // Try multiple approaches to mark document as modified
                                     try {
                                         if (window.$e && $e.run) {
+                                            var container = ctx.panel.model;
                                             $e.run('document/elements/settings', {
-                                                container: ctx.panel.model,
+                                                container: container,
                                                 settings: { egp_geo_enabled: ($(this).is(':checked') ? 'yes' : '') }
                                             });
+                                            console.log('[EGP] Updated enabled via $e.run with container:', container.id);
                                         }
-                                    } catch (e) { }
+                                    } catch (e) {
+                                        console.log('[EGP] $e.run enabled failed:', e);
+                                    }
 
                                     try {
                                         if (window.$e && $e.internal) {
                                             $e.internal('document/save/set-is-modified', { status: true });
+                                            console.log('[EGP] Marked document as modified (enabled)');
                                         }
-                                    } catch (e) { }
+                                    } catch (e) {
+                                        console.log('[EGP] $e.internal enabled failed:', e);
+                                    }
 
                                     // Alternative: Try to directly mark the document as dirty
                                     try {
@@ -233,9 +316,12 @@
                                             var currentDoc = elementor.documents.getCurrent();
                                             if (currentDoc && typeof currentDoc.setIsDirty === 'function') {
                                                 currentDoc.setIsDirty(true);
+                                                console.log('[EGP] Marked document as dirty via direct method (enabled)');
                                             }
                                         }
-                                    } catch (e) { }
+                                    } catch (e) {
+                                        console.log('[EGP] Direct document method enabled failed:', e);
+                                    }
                                 }
                                 try { saveGeoRuleFromPanel(); } catch (e) { }
                             });
@@ -249,18 +335,25 @@
                                     // Try multiple approaches to mark document as modified
                                     try {
                                         if (window.$e && $e.run) {
+                                            var container = ctx.panel.model;
                                             $e.run('document/elements/settings', {
-                                                container: ctx.panel.model,
+                                                container: container,
                                                 settings: { egp_element_id: (($(this).val() || '').trim()) }
                                             });
+                                            console.log('[EGP] Updated element_id via $e.run with container:', container.id);
                                         }
-                                    } catch (e) { }
+                                    } catch (e) {
+                                        console.log('[EGP] $e.run element_id failed:', e);
+                                    }
 
                                     try {
                                         if (window.$e && $e.internal) {
                                             $e.internal('document/save/set-is-modified', { status: true });
+                                            console.log('[EGP] Marked document as modified (element_id)');
                                         }
-                                    } catch (e) { }
+                                    } catch (e) {
+                                        console.log('[EGP] $e.internal element_id failed:', e);
+                                    }
 
                                     // Alternative: Try to directly mark the document as dirty
                                     try {
@@ -268,9 +361,12 @@
                                             var currentDoc = elementor.documents.getCurrent();
                                             if (currentDoc && typeof currentDoc.setIsDirty === 'function') {
                                                 currentDoc.setIsDirty(true);
+                                                console.log('[EGP] Marked document as dirty via direct method (element_id)');
                                             }
                                         }
-                                    } catch (e) { }
+                                    } catch (e) {
+                                        console.log('[EGP] Direct document method element_id failed:', e);
+                                    }
                                 }
                             });
                             // Bind explicit save button if ever added
@@ -301,19 +397,38 @@
 
     // Persist current panel settings as a Geo Rule via AJAX
     function saveGeoRuleFromPanel() {
-        if (typeof elementor === 'undefined' || !elementor.getPanelView) { return; }
+        console.log('[EGP] saveGeoRuleFromPanel called');
+
+        if (typeof elementor === 'undefined' || !elementor.getPanelView) {
+            console.log('[EGP] Elementor not available');
+            return;
+        }
+
         var panel = elementor.getPanelView().getCurrentPageView();
-        if (!panel || !panel.model) { return; }
+        if (!panel || !panel.model) {
+            console.log('[EGP] No panel or panel model found');
+            return;
+        }
+
         var elType = panel.model.get('elType') || '';
         var targetType = (elType === 'widget') ? 'widget' : 'section';
         var $root = jQuery('.elementor-control-egp_geo_tools');
-        if (!$root.length) { if (window.console && console.warn) console.warn('[EGP] Geo controls root not found'); }
+
+        console.log('[EGP] Panel info:', {
+            elType: elType,
+            targetType: targetType,
+            panelId: panel.model.get('id'),
+            hasControlsRoot: $root.length > 0
+        });
 
         // Prefer reading from Elementor model settings (more reliable than DOM)
         var settings = (panel.model && typeof panel.model.get === 'function') ? panel.model.get('settings') : null;
         var enabled = false;
         var countriesStore = '[]';
         var elementIdSetting = '';
+
+        console.log('[EGP] Reading settings from model:', settings ? 'found' : 'not found');
+
         try {
             if (settings && typeof settings.get === 'function') {
                 var rawEnabled = settings.get('egp_geo_enabled');
@@ -322,8 +437,19 @@
                 if (rawStore) { countriesStore = rawStore; }
                 var rawElId = settings.get('egp_element_id');
                 if (rawElId) { elementIdSetting = rawElId; }
+
+                console.log('[EGP] Settings values:', {
+                    rawEnabled: rawEnabled,
+                    enabled: enabled,
+                    rawStore: rawStore,
+                    countriesStore: countriesStore,
+                    rawElId: rawElId,
+                    elementIdSetting: elementIdSetting
+                });
             }
-        } catch (e) { }
+        } catch (e) {
+            console.log('[EGP] Error reading settings:', e);
+        }
         // DOM fallbacks if model settings are not yet bound
         if (countriesStore === '[]') {
             var domStore = jQuery('input[name*="egp_geo_countries_store"]').val();
@@ -369,3 +495,6 @@
     }
 
 })(jQuery);
+
+
+
