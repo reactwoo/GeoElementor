@@ -335,6 +335,12 @@ class ElementorGeoPopup {
      * Register Geo Targeting controls for Elementor elements
      */
     private function register_elementor_geo_controls() {
+        // Prevent multiple registrations
+        static $controls_registered = false;
+        if ($controls_registered) {
+            return;
+        }
+
         // Use Elementor's proper hook system - register controls for all element types
         error_log('[EGP] register_elementor_geo_controls() called');
         add_action('admin_footer', function() {
@@ -348,25 +354,34 @@ class ElementorGeoPopup {
 
             // Get all registered widgets
             $widget_types = $widgets_manager->get_widget_types();
-            error_log('[EGP] Found ' . count($widget_types) . ' widget types');
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[EGP] Found ' . count($widget_types) . ' widget types');
+            }
 
-            // Add controls to each widget type
+            // Add controls to each widget type (only log if debug is enabled)
+            $debug_mode = defined('WP_DEBUG') && WP_DEBUG;
             foreach ($widget_types as $widget_type => $widget) {
-                error_log('[EGP] Processing widget: ' . $widget_type);
+                if ($debug_mode) {
+                    error_log('[EGP] Processing widget: ' . $widget_type);
+                }
                 $this->add_geo_controls_to_widget($widget);
             }
         });
 
         // Add support for containers (Elementor 3.0+)
         add_action('elementor/elements/elements_registered', function($elements_manager) {
-            error_log('[EGP] Elements registered hook fired');
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[EGP] Elements registered hook fired');
+            }
 
             // Get container element if it exists
             if (method_exists($elements_manager, 'get_element_types')) {
                 $element_types = $elements_manager->get_element_types();
                 if (isset($element_types['container'])) {
                     $container = $element_types['container'];
-                    error_log('[EGP] Found container element, adding geo controls');
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log('[EGP] Found container element, adding geo controls');
+                    }
                     $this->add_geo_controls_to_container($container);
                 }
             }
@@ -484,16 +499,27 @@ class ElementorGeoPopup {
         });
 
         // Removed general element hook to prevent infinite loops
+
+        // Mark as registered to prevent future executions
+        $controls_registered = true;
     }
 
     /**
      * Add Geo Targeting controls to a widget using Elementor's API
      */
     private function add_geo_controls_to_widget($widget) {
-        // Check if widget already has our controls
+        // Check if widget already has our controls (with static cache)
+        static $processed_widgets = array();
+        $widget_name = $widget->get_name();
+
+        if (isset($processed_widgets[$widget_name])) {
+            return;
+        }
+
         $controls = $widget->get_controls();
         if (isset($controls['egp_geo_tools'])) {
-            error_log('[EGP] Widget ' . $widget->get_name() . ' already has geo controls');
+            error_log('[EGP] Widget ' . $widget_name . ' already has geo controls');
+            $processed_widgets[$widget_name] = true;
             return;
         }
 
@@ -711,16 +737,25 @@ class ElementorGeoPopup {
             $name = $widget->get_name();
             echo '<script>console.log("[EGP] ✅ Geo Targeting panel added to widget: ' . esc_js($name) . '");</script>';
         });
+
+        // Mark widget as processed
+        $processed_widgets[$widget_name] = true;
     }
 
     /**
      * Add Geo Targeting controls to a container using Elementor's API
      */
     private function add_geo_controls_to_container($container) {
-        // Check if container already has our controls
+        // Check if container already has our controls (with static cache)
+        static $container_processed = false;
+        if ($container_processed) {
+            return;
+        }
+
         $controls = $container->get_controls();
         if (isset($controls['egp_geo_tools'])) {
             error_log('[EGP] Container already has geo controls');
+            $container_processed = true;
             return;
         }
 
@@ -937,6 +972,9 @@ class ElementorGeoPopup {
         add_action('admin_footer', function() {
             echo '<script>console.log("[EGP] ✅ Geo Targeting panel added to container");</script>';
         });
+
+        // Mark container as processed
+        $container_processed = true;
     }
 
     /**
