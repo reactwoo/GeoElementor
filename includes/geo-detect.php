@@ -433,7 +433,11 @@ class EGP_Geo_Detect {
                     $ctrs = get_post_meta($rid, 'egp_countries', true);
                     if (!empty($eid) && is_array($ctrs)) {
                         $norm = array_map('strtoupper', array_map('sanitize_text_field', $ctrs));
-                        $element_rules[(string)$eid] = array_values(array_unique($norm));
+                        // Include both countries and rule ID for tracking
+                        $element_rules[(string)$eid] = array(
+                            'countries' => array_values(array_unique($norm)),
+                            'rule_id' => (string)$rid
+                        );
                     }
                 }
             }
@@ -524,7 +528,18 @@ class EGP_Geo_Detect {
                     var cc = String(country).toUpperCase();
                     Object.keys(egpElementRules || {}).forEach(function(ref){
                         try {
-                            var allowed = Array.isArray(egpElementRules[ref]) && egpElementRules[ref].indexOf(cc) !== -1;
+                            var ruleData = egpElementRules[ref];
+                            var allowed = false;
+                            var ruleId = null;
+
+                            if (typeof ruleData === 'object' && ruleData !== null) {
+                                // New structure: {countries: [...], rule_id: "123"}
+                                allowed = Array.isArray(ruleData.countries) && ruleData.countries.indexOf(cc) !== -1;
+                                ruleId = ruleData.rule_id;
+                            } else {
+                                // Legacy structure: just countries array
+                                allowed = Array.isArray(ruleData) && ruleData.indexOf(cc) !== -1;
+                            }
                             var selectors = [
                                 '.elementor-element[data-id="' + ref + '"]',
                                 '#' + CSS.escape(ref),
@@ -533,7 +548,25 @@ class EGP_Geo_Detect {
                             selectors.forEach(function(selector){
                                 try {
                                     var nodes = document.querySelectorAll(selector);
-                                    nodes.forEach(function(node){ if (!allowed) { node.style.display='none'; node.style.visibility='hidden'; } });
+                                    nodes.forEach(function(node){
+                                        if (!allowed) {
+                                            node.style.display='none';
+                                            node.style.visibility='hidden';
+                                        } else {
+                                            // Track view for allowed section/container
+                                            try {
+                                                if (window.egpTrackView && typeof window.egpTrackView === 'function') {
+                                                    // Use rule ID from the element rules data structure
+                                                    var trackRuleId = ruleId || node.getAttribute('data-egp-rule-id') ||
+                                                                     node.getAttribute('data-rule-id') || ref;
+                                                    if (trackRuleId && !node.__egpTracked) {
+                                                        window.egpTrackView(trackRuleId);
+                                                        node.__egpTracked = true; // prevent duplicate tracking
+                                                    }
+                                                }
+                                            } catch(trackErr){}
+                                        }
+                                    });
                                 } catch(ee){}
                             });
                         } catch(e){}

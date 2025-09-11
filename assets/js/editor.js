@@ -72,34 +72,28 @@
         return { panel: null, settings: null };
     }
 
-    // Handle Elementor controls synchronization - optimized for performance
+    // Handle Elementor controls synchronization - use popup approach
     $(document).on('change', '#egp_countries_native', function () {
         var selectedCountries = [];
         $(this).find('option:selected').each(function () {
             selectedCountries.push($(this).val());
         });
 
-        // Get current context once
+        // Get current context
         var ctx = getCurrentSettings();
-        if (!ctx.settings) { return; }
+        if (!ctx.settings || !ctx.panel) { return; }
 
-        // Update model settings (this is the key to persistence)
-        ctx.settings.set('egp_geo_countries_store', JSON.stringify(selectedCountries));
+        // Use EXACT same approach as popup editor
+        var settings = ctx.panel.model.get('settings') || {};
 
-        // Verify the setting was stored
-        var stored = ctx.settings.get('egp_geo_countries_store');
-        console.log('[EGP] Stored countries in model:', stored);
+        // Set countries directly like popup does
+        settings.egp_countries = selectedCountries;
+        settings.egp_geo_countries_store = JSON.stringify(selectedCountries);
 
-        // Trigger change on the model (this marks Elementor document as dirty)
-        ctx.panel.model.trigger('change');
+        // Set the entire settings object (this triggers Elementor save state)
+        ctx.panel.model.set('settings', settings);
 
-        // Update hidden input within this panel only
-        if (ctx.panel && ctx.panel.$el) {
-            var hiddenInput = ctx.panel.$el.find('input[name*="egp_geo_countries_store"]');
-            if (hiddenInput.length) {
-                hiddenInput.val(JSON.stringify(selectedCountries)).trigger('input');
-            }
-        }
+        console.log('[EGP] Countries saved to model:', selectedCountries);
 
         // Save to database
         try { saveGeoRuleFromPanel(); } catch (e) { }
@@ -192,20 +186,22 @@
                             setTimeout(autoGenerateElementId, 300);
                             // Bind save on toggle change
                             $(document).off('change.egp', 'input[name*="egp_geo_enabled"]').on('change.egp', 'input[name*="egp_geo_enabled"]', function () {
-                                // Simple persistence - just set model and trigger change
+                                // Use popup approach for enable toggle
                                 var ctx = getCurrentSettings();
-                                if (ctx.settings) {
-                                    ctx.settings.set('egp_geo_enabled', $(this).is(':checked') ? 'yes' : '');
-                                    ctx.panel.model.trigger('change');
+                                if (ctx.settings && ctx.panel) {
+                                    var settings = ctx.panel.model.get('settings') || {};
+                                    settings.egp_geo_enabled = $(this).is(':checked') ? 'yes' : '';
+                                    ctx.panel.model.set('settings', settings);
                                 }
                                 try { saveGeoRuleFromPanel(); } catch (e) { }
                             });
                             // Bind element ID change
                             $(document).off('input.egp', 'input[name*="egp_element_id"]').on('input.egp', 'input[name*="egp_element_id"]', function () {
                                 var ctx = getCurrentSettings();
-                                if (ctx.settings) {
-                                    ctx.settings.set('egp_element_id', ($(this).val() || '').trim());
-                                    ctx.panel.model.trigger('change');
+                                if (ctx.settings && ctx.panel) {
+                                    var settings = ctx.panel.model.get('settings') || {};
+                                    settings.egp_element_id = ($(this).val() || '').trim();
+                                    ctx.panel.model.set('settings', settings);
                                 }
                             });
                             // Bind explicit save button if ever added
