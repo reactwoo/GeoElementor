@@ -76,8 +76,40 @@
         if (ctx.settings) {
             try { ctx.settings.set('egp_geo_countries_store', JSON.stringify(selectedCountries)); } catch (e) { }
             try { ctx.panel.model.trigger('change'); } catch (e) { }
-            try { if (window.$e && $e.run) { $e.run('document/elements/settings', { container: ctx.panel.model, settings: { egp_geo_countries_store: JSON.stringify(selectedCountries) } }); } } catch (e) { }
-            try { if (window.$e && $e.internal) { $e.internal('document/save/set-is-modified', { status: true }); } } catch (e) { }
+
+            // Try multiple approaches to mark document as modified
+            try {
+                if (window.$e && $e.run) {
+                    $e.run('document/elements/settings', {
+                        container: ctx.panel.model,
+                        settings: { egp_geo_countries_store: JSON.stringify(selectedCountries) }
+                    });
+                }
+            } catch (e) { }
+
+            try {
+                if (window.$e && $e.internal) {
+                    $e.internal('document/save/set-is-modified', { status: true });
+                }
+            } catch (e) { }
+
+            // Alternative: Try to directly mark the document as dirty
+            try {
+                if (elementor && elementor.documents && elementor.documents.getCurrent) {
+                    var currentDoc = elementor.documents.getCurrent();
+                    if (currentDoc && typeof currentDoc.setIsDirty === 'function') {
+                        currentDoc.setIsDirty(true);
+                    }
+                }
+            } catch (e) { }
+
+            // Force Elementor to recognize changes by updating the control directly
+            try {
+                var hiddenInput = $('input[name*="egp_geo_countries_store"]');
+                if (hiddenInput.length) {
+                    hiddenInput.val(JSON.stringify(selectedCountries)).trigger('input').trigger('change');
+                }
+            } catch (e) { }
         }
         if (window.console && console.log) {
             console.log('[EGP] Countries updated:', selectedCountries);
@@ -178,8 +210,32 @@
                                 if (ctx.settings) {
                                     try { ctx.settings.set('egp_geo_enabled', $(this).is(':checked') ? 'yes' : ''); } catch (e) { }
                                     try { ctx.panel.model.trigger('change'); } catch (e) { }
-                                    try { if (window.$e && $e.run) { $e.run('document/elements/settings', { container: ctx.panel.model, settings: { egp_geo_enabled: ($(this).is(':checked') ? 'yes' : '') } }); } } catch (e) { }
-                                    try { if (window.$e && $e.internal) { $e.internal('document/save/set-is-modified', { status: true }); } } catch (e) { }
+
+                                    // Try multiple approaches to mark document as modified
+                                    try {
+                                        if (window.$e && $e.run) {
+                                            $e.run('document/elements/settings', {
+                                                container: ctx.panel.model,
+                                                settings: { egp_geo_enabled: ($(this).is(':checked') ? 'yes' : '') }
+                                            });
+                                        }
+                                    } catch (e) { }
+
+                                    try {
+                                        if (window.$e && $e.internal) {
+                                            $e.internal('document/save/set-is-modified', { status: true });
+                                        }
+                                    } catch (e) { }
+
+                                    // Alternative: Try to directly mark the document as dirty
+                                    try {
+                                        if (elementor && elementor.documents && elementor.documents.getCurrent) {
+                                            var currentDoc = elementor.documents.getCurrent();
+                                            if (currentDoc && typeof currentDoc.setIsDirty === 'function') {
+                                                currentDoc.setIsDirty(true);
+                                            }
+                                        }
+                                    } catch (e) { }
                                 }
                                 try { saveGeoRuleFromPanel(); } catch (e) { }
                             });
@@ -189,8 +245,32 @@
                                 if (ctx.settings) {
                                     try { ctx.settings.set('egp_element_id', ($(this).val() || '').trim()); } catch (e) { }
                                     try { ctx.panel.model.trigger('change'); } catch (e) { }
-                                    try { if (window.$e && $e.run) { $e.run('document/elements/settings', { container: ctx.panel.model, settings: { egp_element_id: (($(this).val() || '').trim()) } }); } } catch (e) { }
-                                    try { if (window.$e && $e.internal) { $e.internal('document/save/set-is-modified', { status: true }); } } catch (e) { }
+
+                                    // Try multiple approaches to mark document as modified
+                                    try {
+                                        if (window.$e && $e.run) {
+                                            $e.run('document/elements/settings', {
+                                                container: ctx.panel.model,
+                                                settings: { egp_element_id: (($(this).val() || '').trim()) }
+                                            });
+                                        }
+                                    } catch (e) { }
+
+                                    try {
+                                        if (window.$e && $e.internal) {
+                                            $e.internal('document/save/set-is-modified', { status: true });
+                                        }
+                                    } catch (e) { }
+
+                                    // Alternative: Try to directly mark the document as dirty
+                                    try {
+                                        if (elementor && elementor.documents && elementor.documents.getCurrent) {
+                                            var currentDoc = elementor.documents.getCurrent();
+                                            if (currentDoc && typeof currentDoc.setIsDirty === 'function') {
+                                                currentDoc.setIsDirty(true);
+                                            }
+                                        }
+                                    } catch (e) { }
                                 }
                             });
                             // Bind explicit save button if ever added
