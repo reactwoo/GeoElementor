@@ -82,10 +82,13 @@
             // Trigger change to mark as dirty (this works)
             ctx.panel.model.trigger('change');
 
-            // Update hidden input for PHP side
-            var hiddenInput = $('input[name*="egp_geo_countries_store"]');
-            if (hiddenInput.length) {
-                hiddenInput.val(JSON.stringify(selectedCountries)).trigger('input');
+            // Update hidden input for PHP side (scope to current panel to avoid popup conflicts)
+            var panelEl = ctx.panel ? ctx.panel.$el : null;
+            if (panelEl) {
+                var hiddenInput = panelEl.find('input[name*="egp_geo_countries_store"]');
+                if (hiddenInput.length) {
+                    hiddenInput.val(JSON.stringify(selectedCountries)).trigger('input');
+                }
             }
         }
         if (window.console && console.log) {
@@ -249,22 +252,28 @@
                 if (rawElId) { elementIdSetting = rawElId; }
             }
         } catch (e) { }
-        // DOM fallbacks if model settings are not yet bound
+        // DOM fallbacks if model settings are not yet bound (scope to avoid popup conflicts)
         if (countriesStore === '[]') {
-            var domStore = jQuery('input[name*="egp_geo_countries_store"]').val();
-            if (domStore) { countriesStore = domStore; }
+            var panelEl = panel.$el || null;
+            if (panelEl) {
+                var domStore = panelEl.find('input[name*="egp_geo_countries_store"]').val();
+                if (domStore) { countriesStore = domStore; }
+            }
         }
         var countries = [];
         try { countries = JSON.parse(countriesStore); } catch (e) { countries = []; }
         if (!countries.length) {
-            var selectVals = jQuery('#egp_countries_native').val();
-            if (Array.isArray(selectVals)) { countries = selectVals; }
+            var panelEl = panel.$el || null;
+            if (panelEl) {
+                var selectVals = panelEl.find('#egp_countries_native').val();
+                if (Array.isArray(selectVals)) { countries = selectVals; }
+            }
         }
         var targetId = '';
         if (elementIdSetting) {
             targetId = ('' + elementIdSetting).trim();
-        } else if (jQuery('input[name*="egp_element_id"]').length && jQuery('input[name*="egp_element_id"]').val()) {
-            targetId = jQuery('input[name*="egp_element_id"]').val().trim();
+        } else if (panel.$el && panel.$el.find('input[name*="egp_element_id"]').length && panel.$el.find('input[name*="egp_element_id"]').val()) {
+            targetId = panel.$el.find('input[name*="egp_element_id"]').val().trim();
         } else if (panel.model.get('id')) {
             targetId = panel.model.get('id');
         }
