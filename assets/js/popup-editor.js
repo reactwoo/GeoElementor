@@ -168,7 +168,7 @@
                     <div class="elementor-panel-field">
                         <label class="elementor-panel-field-label">Target Countries</label>
                         <div class="elementor-panel-field-control">
-                            <select id="egp_countries" multiple="multiple" style="width: 100%; min-height: 120px;"></select>
+                            <div id="egp_countries_container" style="width: 100%;"></div>
                             <p class="description">Hold Ctrl/Cmd to select multiple countries</p>
                         </div>
                     </div>
@@ -193,13 +193,36 @@
             (function () {
                 var fill = function (map) {
                     try {
-                        var $sel = panel.$el.find('#egp_countries');
-                        if (!$sel.length) { return; }
-                        $sel.empty();
+                        var $container = panel.$el.find('#egp_countries_container');
+                        if (!$container.length) { return; }
+
+                        // Create Elementor SELECT2 control
+                        var options = [];
                         var codes = Object.keys(map || {});
                         codes.sort(function (a, b) { return String(map[a]).localeCompare(String(map[b])); });
-                        codes.forEach(function (code) { $sel.append('<option value="' + code + '">' + map[code] + '</option>'); });
-                    } catch (e) { }
+                        codes.forEach(function (code) {
+                            options.push({ id: code, text: map[code] });
+                        });
+
+                        // Initialize Select2 on the container
+                        $container.html('<select id="egp_countries_select" multiple="multiple" style="width: 100%;"></select>');
+                        var $select = $container.find('#egp_countries_select');
+
+                        // Initialize with Select2 if available, otherwise use native select
+                        if (typeof jQuery !== 'undefined' && jQuery.fn.select2) {
+                            $select.select2({
+                                data: options,
+                                placeholder: 'Select countries...',
+                                allowClear: true
+                            });
+                        } else {
+                            // Fallback to native select
+                            options.forEach(function (option) {
+                                $select.append('<option value="' + option.id + '">' + option.text + '</option>');
+                            });
+                        }
+
+                    } catch (e) { console.log('[EGP] Error setting up countries selector:', e); }
                 };
                 var tryJson = function () {
                     var base = (window.egpPopupEditor && egpPopupEditor.assetsUrl) ? egpPopupEditor.assetsUrl : ((window.egpEditor && egpEditor.assetsUrl) ? egpEditor.assetsUrl : '');
@@ -242,7 +265,17 @@
                     panel.$el.find('#egp_enable_geo').prop('checked', true);
                     panel.$el.find('#egp_geo_options').show();
                     if (Array.isArray(data.countries)) {
-                        panel.$el.find('#egp_countries').val(data.countries);
+                        // Set countries in Select2 control
+                        var countriesSelect = panel.$el.find('#egp_countries_select');
+                        if (countriesSelect.length) {
+                            if (countriesSelect.hasClass('select2-hidden-accessible')) {
+                                // Select2 control
+                                countriesSelect.val(data.countries).trigger('change');
+                            } else {
+                                // Fallback to native select
+                                countriesSelect.val(data.countries);
+                            }
+                        }
                     }
                     var summary = $('<div class="elementor-panel-field"><p class="description">Rule: ' + data.title + ' (Priority ' + (data.priority || 0) + ')</p></div>');
                     $geoSection.append(summary);
@@ -296,7 +329,22 @@
             var settings = model.get('settings') || {};
 
             settings.egp_geo_enabled = panel.$el.find('#egp_enable_geo').is(':checked');
-            settings.egp_countries = panel.$el.find('#egp_countries').val() || [];
+
+            // Get countries from Select2 control
+            var countriesSelect = panel.$el.find('#egp_countries_select');
+            if (countriesSelect.length) {
+                if (countriesSelect.hasClass('select2-hidden-accessible')) {
+                    // Select2 control
+                    settings.egp_countries = countriesSelect.val() || [];
+                } else {
+                    // Fallback to native select
+                    var selectedOptions = countriesSelect.find('option:selected');
+                    settings.egp_countries = selectedOptions.length > 0 ?
+                        selectedOptions.map(function () { return $(this).val(); }).get() : [];
+                }
+            } else {
+                settings.egp_countries = [];
+            }
 
             // Include custom element ID if provided
             var customElementId = panel.$el.find('#egp_popup_element_id').val().trim();

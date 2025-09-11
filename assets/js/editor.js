@@ -72,21 +72,27 @@
         return { panel: null, settings: null };
     }
 
-    // Handle Elementor controls synchronization - use popup approach
-    $(document).on('change', '#egp_countries_native', function () {
+    // Handle Elementor controls synchronization - unified approach for all controls
+    $(document).on('change', '[data-setting="egp_countries"], #egp_countries_native', function () {
         var selectedCountries = [];
-        $(this).find('option:selected').each(function () {
-            selectedCountries.push($(this).val());
-        });
+
+        // Handle Elementor SELECT2 control
+        if ($(this).hasClass('select2-hidden-accessible')) {
+            selectedCountries = $(this).val() || [];
+        }
+        // Handle native HTML select (fallback)
+        else {
+            $(this).find('option:selected').each(function () {
+                selectedCountries.push($(this).val());
+            });
+        }
 
         // Get current context
         var ctx = getCurrentSettings();
         if (!ctx.settings || !ctx.panel) { return; }
 
-        // Use EXACT same approach as popup editor
+        // Use unified approach - set entire settings object
         var settings = ctx.panel.model.get('settings') || {};
-
-        // Set countries directly like popup does
         settings.egp_countries = selectedCountries;
         settings.egp_geo_countries_store = JSON.stringify(selectedCountries);
 
@@ -242,34 +248,52 @@
         // Read from Elementor model settings
         var settings = (panel.model && typeof panel.model.get === 'function') ? panel.model.get('settings') : null;
         var enabled = false;
-        var countriesStore = '[]';
+        var countries = [];
         var elementIdSetting = '';
 
         try {
             if (settings && typeof settings.get === 'function') {
                 var rawEnabled = settings.get('egp_geo_enabled');
                 enabled = (rawEnabled === 'yes' || rawEnabled === '1' || rawEnabled === true);
-                var rawStore = settings.get('egp_geo_countries_store');
-                if (rawStore) { countriesStore = rawStore; }
+
+                // Try to get countries from the Elementor control first
+                var rawCountries = settings.get('egp_countries');
+                if (Array.isArray(rawCountries) && rawCountries.length > 0) {
+                    countries = rawCountries;
+                } else {
+                // Fallback to stored JSON
+                    var rawStore = settings.get('egp_geo_countries_store');
+                    if (rawStore) {
+                        try { countries = JSON.parse(rawStore); } catch (e) { }
+                    }
+                }
+
                 var rawElId = settings.get('egp_element_id');
                 if (rawElId) { elementIdSetting = rawElId; }
             }
         } catch (e) { }
-        // DOM fallbacks if model settings are not yet bound (scope to avoid popup conflicts)
-        if (countriesStore === '[]') {
-            var panelEl = panel.$el || null;
-            if (panelEl) {
-                var domStore = panelEl.find('input[name*="egp_geo_countries_store"]').val();
-                if (domStore) { countriesStore = domStore; }
-            }
-        }
-        var countries = [];
-        try { countries = JSON.parse(countriesStore); } catch (e) { countries = []; }
+
+        // If still no countries, try DOM fallback for controls
         if (!countries.length) {
             var panelEl = panel.$el || null;
             if (panelEl) {
-                var selectVals = panelEl.find('#egp_countries_native').val();
-                if (Array.isArray(selectVals)) { countries = selectVals; }
+                // Try Elementor SELECT2 control
+                var select2Val = panelEl.find('[data-setting="egp_countries"]').val();
+                if (select2Val) {
+                    countries = Array.isArray(select2Val) ? select2Val : [select2Val];
+                }
+                // Try native HTML select (fallback)
+                else {
+                    var selectVals = panelEl.find('#egp_countries_native').val();
+                    if (Array.isArray(selectVals)) { countries = selectVals; }
+                }
+                // Try hidden input (legacy fallback)
+                if (!countries.length) {
+                    var domStore = panelEl.find('input[name*="egp_geo_countries_store"]').val();
+                    if (domStore) {
+                        try { countries = JSON.parse(domStore); } catch (e) { }
+                    }
+                }
             }
         }
         var targetId = '';
