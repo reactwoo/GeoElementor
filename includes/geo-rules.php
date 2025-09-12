@@ -50,6 +50,11 @@ class EGP_Geo_Rules {
         // Elementor integration
         add_action('elementor/editor/before_enqueue_scripts', array($this, 'enqueue_editor_scripts'));
         add_action('elementor/dynamic_tags/register', array($this, 'register_dynamic_tags'));
+
+        // Automatic tracking injection for Elementor elements
+        add_action('elementor/frontend/section/before_render', array($this, 'inject_section_tracking'));
+        add_action('elementor/frontend/container/before_render', array($this, 'inject_container_tracking'));
+        add_action('elementor/frontend/widget/before_render', array($this, 'inject_widget_tracking'));
         
         // AJAX handlers
         add_action('wp_ajax_egp_get_geo_rules', array($this, 'ajax_get_geo_rules'));
@@ -59,6 +64,13 @@ class EGP_Geo_Rules {
         // Views tracking
         add_action('wp_ajax_nopriv_egp_track_view', array($this, 'ajax_track_view'));
         add_action('wp_ajax_egp_track_view', array($this, 'ajax_track_view'));
+        // New comprehensive tracking actions
+        add_action('wp_ajax_nopriv_egp_track_impression', array($this, 'ajax_track_impression'));
+        add_action('wp_ajax_egp_track_impression', array($this, 'ajax_track_impression'));
+        add_action('wp_ajax_nopriv_egp_track_form_submit', array($this, 'ajax_track_form_submit'));
+        add_action('wp_ajax_egp_track_form_submit', array($this, 'ajax_track_form_submit'));
+        add_action('wp_ajax_nopriv_egp_track_form_field_focus', array($this, 'ajax_track_form_field_focus'));
+        add_action('wp_ajax_egp_track_form_field_focus', array($this, 'ajax_track_form_field_focus'));
         add_action('wp_ajax_egp_get_target_options', array($this, 'ajax_get_target_options'));
         add_action('wp_ajax_egp_save_elementor_geo_rule', array($this, 'ajax_save_elementor_geo_rule'));
         add_action('wp_ajax_egp_remove_elementor_geo_rule', array($this, 'ajax_remove_elementor_geo_rule'));
@@ -657,7 +669,251 @@ class EGP_Geo_Rules {
             error_log("EGP Geo Rule: View tracked for rule ID {$rule_id}, total views: {$new_views}");
         }
     }
+
+    /**
+     * Track impressions for a geo rule
+     */
+    public function track_impression($rule_id, $element_type = 'unknown') {
+        if (!$rule_id) {
+            return;
+        }
+
+        $current_impressions = get_post_meta($rule_id, $this->meta_prefix . 'impressions', true);
+        $new_impressions = intval($current_impressions) + 1;
+        update_post_meta($rule_id, $this->meta_prefix . 'impressions', $new_impressions);
+
+        // Track element type specific impressions
+        if ($element_type && $element_type !== 'unknown') {
+            $element_key = $this->meta_prefix . 'impressions_' . $element_type;
+            $current_element_impressions = get_post_meta($rule_id, $element_key, true);
+            $new_element_impressions = intval($current_element_impressions) + 1;
+            update_post_meta($rule_id, $element_key, $new_element_impressions);
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log("EGP Geo Rule: Impression tracked for rule ID {$rule_id}, element type: {$element_type}, total impressions: {$new_impressions}");
+        }
+    }
+
+    /**
+     * Track form submissions
+     */
+    public function track_form_submit($rule_id, $form_id, $field_count, $data = array()) {
+        if (!$rule_id) {
+            return;
+        }
+
+        // Track total form submissions
+        $current_submissions = get_post_meta($rule_id, $this->meta_prefix . 'form_submissions', true);
+        $new_submissions = intval($current_submissions) + 1;
+        update_post_meta($rule_id, $this->meta_prefix . 'form_submissions', $new_submissions);
+
+        // Track form-specific data
+        if ($form_id) {
+            $form_key = $this->meta_prefix . 'form_' . $form_id . '_submissions';
+            $current_form_submissions = get_post_meta($rule_id, $form_key, true);
+            $new_form_submissions = intval($current_form_submissions) + 1;
+            update_post_meta($rule_id, $form_key, $new_form_submissions);
+        }
+
+        // Store form metadata
+        if ($field_count > 0) {
+            update_post_meta($rule_id, $this->meta_prefix . 'form_field_count', $field_count);
+        }
+
+        if (isset($data['has_required']) && $data['has_required']) {
+            $current_required = get_post_meta($rule_id, $this->meta_prefix . 'form_has_required', true);
+            if (!$current_required) {
+                update_post_meta($rule_id, $this->meta_prefix . 'form_has_required', '1');
+            }
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log("EGP Geo Rule: Form submission tracked for rule ID {$rule_id}, form: {$form_id}, total submissions: {$new_submissions}");
+        }
+    }
+
+    /**
+     * Track form field interactions
+     */
+    public function track_form_field_interaction($rule_id, $field_name, $field_type) {
+        if (!$rule_id || !$field_name) {
+            return;
+        }
+
+        // Track total field interactions
+        $current_interactions = get_post_meta($rule_id, $this->meta_prefix . 'field_interactions', true);
+        $new_interactions = intval($current_interactions) + 1;
+        update_post_meta($rule_id, $this->meta_prefix . 'field_interactions', $new_interactions);
+
+        // Track field-specific interactions
+        if ($field_name) {
+            $field_key = $this->meta_prefix . 'field_' . sanitize_key($field_name) . '_focus';
+            $current_field_focus = get_post_meta($rule_id, $field_key, true);
+            $new_field_focus = intval($current_field_focus) + 1;
+            update_post_meta($rule_id, $field_key, $new_field_focus);
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log("EGP Geo Rule: Field interaction tracked for rule ID {$rule_id}, field: {$field_name}, type: {$field_type}, total interactions: {$new_interactions}");
+        }
+    }
     
+    /**
+     * Inject tracking attributes into sections with geo targeting
+     */
+    public function inject_section_tracking($section) {
+        $this->inject_element_tracking($section, 'section');
+    }
+
+    /**
+     * Inject tracking attributes into containers with geo targeting
+     */
+    public function inject_container_tracking($container) {
+        $this->inject_element_tracking($container, 'container');
+    }
+
+    /**
+     * Inject tracking attributes into widgets with geo targeting
+     */
+    public function inject_widget_tracking($widget) {
+        $this->inject_element_tracking($widget, 'widget');
+    }
+
+    /**
+     * Generic method to inject tracking into any Elementor element
+     */
+    private function inject_element_tracking($element, $element_type) {
+        // Skip if not a valid element
+        if (!$element || !method_exists($element, 'get_settings')) {
+            return;
+        }
+
+        $settings = $element->get_settings();
+
+        // Check if this element has geo targeting enabled
+        $has_geo_targeting = false;
+
+        // Check different ways geo targeting might be enabled
+        if (isset($settings['geo_targeting_enabled']) && $settings['geo_targeting_enabled'] === 'yes') {
+            $has_geo_targeting = true;
+        } elseif (isset($settings['egp_enable_geo_targeting']) && $settings['egp_enable_geo_targeting'] === 'yes') {
+            $has_geo_targeting = true;
+        }
+
+        if (!$has_geo_targeting) {
+            return;
+        }
+
+        // Get or create rule for this element
+        $rule_id = $this->get_or_create_element_rule($element, $settings, $element_type);
+        if (!$rule_id) {
+            return;
+        }
+
+        // Get existing attributes
+        $existing_attributes = $element->get_render_attribute_string('wrapper') ?: '';
+
+        // Add tracking attributes
+        $tracking_attributes = ' data-rule-id="' . esc_attr($rule_id) . '"';
+        $tracking_attributes .= ' data-element-type="' . esc_attr($element_type) . '"';
+
+        // Add element-specific tracking
+        if ($element_type === 'section' || $element_type === 'container') {
+            $tracking_attributes .= ' data-track-impression="true"';
+        } elseif ($element_type === 'widget') {
+            $tracking_attributes .= ' onclick="egpTrackClick(' . esc_attr($rule_id) . ', \'' . esc_attr($element_type) . '\')"';
+        }
+
+        // Inject the tracking attributes into the wrapper
+        if (method_exists($element, 'add_render_attribute')) {
+            $element->add_render_attribute('_wrapper', 'data-rule-id', $rule_id);
+            $element->add_render_attribute('_wrapper', 'data-element-type', $element_type);
+
+            if ($element_type === 'section' || $element_type === 'container') {
+                $element->add_render_attribute('_wrapper', 'data-track-impression', 'true');
+            }
+        }
+    }
+
+    /**
+     * Get or create a rule for an Elementor element
+     */
+    private function get_or_create_element_rule($element, $settings, $element_type) {
+        $element_id = $element->get_id();
+
+        // Check if a rule already exists for this element
+        $existing_rules = get_posts(array(
+            'post_type' => 'geo_rule',
+            'meta_query' => array(
+                array(
+                    'key' => 'egp_element_id',
+                    'value' => $element_id,
+                    'compare' => '='
+                ),
+                array(
+                    'key' => 'egp_element_type',
+                    'value' => $element_type,
+                    'compare' => '='
+                )
+            ),
+            'posts_per_page' => 1
+        ));
+
+        if (!empty($existing_rules)) {
+            return $existing_rules[0]->ID;
+        }
+
+        // Create a new rule for this element
+        $element_title = $this->get_element_title($element, $element_type);
+
+        $rule_data = array(
+            'post_title' => $element_title,
+            'post_type' => 'geo_rule',
+            'post_status' => 'publish',
+            'meta_input' => array(
+                'egp_target_type' => $element_type,
+                'egp_element_id' => $element_id,
+                'egp_element_type' => $element_type,
+                'egp_countries' => isset($settings['target_countries']) ? $settings['target_countries'] : array(),
+                'egp_active' => '1',
+                'egp_clicks' => 0,
+                'egp_views' => 0,
+                'egp_impressions' => 0
+            )
+        );
+
+        $rule_id = wp_insert_post($rule_data);
+
+        if ($rule_id && !is_wp_error($rule_id)) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("EGP: Created rule ID {$rule_id} for {$element_type} {$element_id}");
+            }
+            return $rule_id;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Get a descriptive title for an Elementor element
+     */
+    private function get_element_title($element, $element_type) {
+        $element_id = $element->get_id();
+
+        switch ($element_type) {
+            case 'section':
+                return "Section ID: {$element_id}";
+            case 'container':
+                return "Container ID: {$element_id}";
+            case 'widget':
+                $widget_name = $element->get_name();
+                return "Widget: " . ucfirst(str_replace('egp_', '', $widget_name)) . " (ID: {$element_id})";
+            default:
+                return "{$element_type} ID: {$element_id}";
+        }
+    }
+
     /**
      * Add tracking data to head
      */
@@ -669,49 +925,155 @@ class EGP_Geo_Rules {
         // Add data layer for tracking
         echo '<script>window.dataLayer = window.dataLayer || [];</script>';
         
-        // Add click tracking JavaScript
+        // Add comprehensive tracking JavaScript
         echo '<script>
-        function egpTrackClick(ruleId) {
-            if (!ruleId) return;
-            
-            // Send AJAX request to track click
-            var xhr = new XMLHttpRequest();
-            xhr.open("POST", "' . admin_url('admin-ajax.php') . '", true);
-            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    // Click tracked successfully
+        // Global tracking system
+        window.EGP_Tracking = window.EGP_Tracking || {
+            trackedImpressions: new Set(),
+            trackedClicks: new Set(),
+            formInteractions: new Map(),
+
+            track: function(action, ruleId, data) {
+                if (!ruleId) return;
+
+                const payload = {
+                    action: "egp_track_" + action,
+                    rule_id: ruleId,
+                    nonce: "' . wp_create_nonce('egp_track_' + action + '_nonce') . '",
+                    data: JSON.stringify(data || {})
+                };
+
+                fetch("' . admin_url('admin-ajax.php') . '", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    },
+                    body: new URLSearchParams(payload)
+                })
+                .then(response => response.json())
+                .then(data => {
                     if (window.console && console.log) {
-                        console.log("EGP: Click tracked for rule", ruleId);
+                        console.log("EGP: " + action + " tracked for rule", ruleId, data);
                     }
-                }
-            };
-            xhr.send("action=egp_track_click&rule_id=" + ruleId + "&nonce=' . wp_create_nonce('egp_track_click_nonce') . '");
-            
-            // Also track in data layer for Google Analytics
-            if (window.dataLayer) {
-                window.dataLayer.push({
-                    "event": "egp_rule_click",
-                    "rule_id": ruleId,
-                    "timestamp": new Date().toISOString()
+                })
+                .catch(error => {
+                    console.error("EGP tracking error:", error);
                 });
+
+                // Google Analytics integration
+                if (window.dataLayer) {
+                    window.dataLayer.push({
+                        "event": "egp_" + action,
+                        "rule_id": ruleId,
+                        "timestamp": new Date().toISOString(),
+                        ...data
+                    });
+                }
             }
+        };
+
+        // Click tracking function
+        function egpTrackClick(ruleId, elementType = "widget") {
+            if (!ruleId || window.EGP_Tracking.trackedClicks.has(ruleId)) return;
+
+            window.EGP_Tracking.trackedClicks.add(ruleId);
+            window.EGP_Tracking.track("click", ruleId, {
+                element_type: elementType,
+                timestamp: Date.now()
+            });
         }
 
+        // View/Impression tracking function
+        function egpTrackImpression(ruleId, elementType = "widget") {
+            if (!ruleId || window.EGP_Tracking.trackedImpressions.has(ruleId)) return;
+
+            window.EGP_Tracking.trackedImpressions.add(ruleId);
+            window.EGP_Tracking.track("impression", ruleId, {
+                element_type: elementType,
+                timestamp: Date.now()
+            });
+        }
+
+        // Form interaction tracking
+        function egpTrackFormInteraction(formId, action, data = {}) {
+            const ruleId = data.ruleId || formId;
+            window.EGP_Tracking.track("form_" + action, ruleId, {
+                form_id: formId,
+                ...data
+            });
+        }
+
+        // Legacy view tracking (backward compatibility)
         function egpTrackView(ruleId) {
-            if (!ruleId) return;
-            var xhr = new XMLHttpRequest();
-            xhr.open("POST", ' . json_encode(admin_url('admin-ajax.php')) . ', true);
-            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    if (window.console && console.log) {
-                        console.log("EGP: View tracked for rule", ruleId);
+            egpTrackImpression(ruleId, "legacy");
+        }
+
+        // Intersection Observer for impression tracking
+        if ("IntersectionObserver" in window) {
+            window.EGP_Observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        const ruleId = entry.target.dataset.ruleId;
+                        const elementType = entry.target.dataset.elementType || "section";
+                        if (ruleId) {
+                            egpTrackImpression(ruleId, elementType);
+                        }
+                    }
+                });
+            }, {
+                threshold: 0.1, // 10% visibility
+                rootMargin: "0px 0px -50px 0px" // Trigger slightly before fully visible
+            });
+        }
+
+        // Form tracking setup
+        document.addEventListener("DOMContentLoaded", function() {
+            // Track form submissions
+            document.addEventListener("submit", function(e) {
+                const form = e.target;
+                const ruleId = form.dataset.ruleId;
+                if (ruleId && form.tagName === "FORM") {
+                    const formData = new FormData(form);
+                    const fieldCount = form.querySelectorAll("input, select, textarea").length;
+
+                    egpTrackFormInteraction(ruleId, "submit", {
+                        ruleId: ruleId,
+                        form_id: form.id || form.dataset.formId,
+                        field_count: fieldCount,
+                        has_required: form.querySelectorAll("[required]").length > 0
+                    });
+                }
+            });
+
+            // Track form field interactions
+            document.addEventListener("focus", function(e) {
+                if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) {
+                    const form = e.target.closest("form");
+                    if (form && form.dataset.ruleId) {
+                        const ruleId = form.dataset.ruleId;
+                        if (!window.EGP_Tracking.formInteractions.has(ruleId)) {
+                            window.EGP_Tracking.formInteractions.set(ruleId, new Set());
+                        }
+                        const interactions = window.EGP_Tracking.formInteractions.get(ruleId);
+                        if (!interactions.has(e.target.name)) {
+                            interactions.add(e.target.name);
+                            egpTrackFormInteraction(ruleId, "field_focus", {
+                                ruleId: ruleId,
+                                field_name: e.target.name,
+                                field_type: e.target.type
+                            });
+                        }
                     }
                 }
-            };
-            xhr.send("action=egp_track_view&rule_id=" + ruleId + "&nonce=' . wp_create_nonce('egp_track_view_nonce') . '");
-        }
+            }, true);
+
+            // Observe elements for impression tracking
+            document.querySelectorAll("[data-rule-id][data-track-impression]").forEach(function(el) {
+                if (window.EGP_Observer) {
+                    window.EGP_Observer.observe(el);
+                }
+            });
+        });
         </script>';
     }
     
@@ -1145,6 +1507,59 @@ class EGP_Geo_Rules {
         }
         $this->track_view($rule_id);
         wp_send_json_success();
+    }
+
+    /**
+     * AJAX: Track impression for a geo rule
+     */
+    public function ajax_track_impression() {
+        check_ajax_referer('egp_track_impression_nonce', 'nonce');
+        $rule_id = isset($_POST['rule_id']) ? intval($_POST['rule_id']) : 0;
+        if (!$rule_id) {
+            wp_send_json_error(__('Invalid rule ID', 'elementor-geo-popup'));
+        }
+
+        $data = isset($_POST['data']) ? json_decode(stripslashes($_POST['data']), true) : array();
+        $element_type = isset($data['element_type']) ? sanitize_text_field($data['element_type']) : 'unknown';
+
+        $this->track_impression($rule_id, $element_type);
+        wp_send_json_success(array('tracked' => true, 'element_type' => $element_type));
+    }
+
+    /**
+     * AJAX: Track form submission
+     */
+    public function ajax_track_form_submit() {
+        check_ajax_referer('egp_track_form_submit_nonce', 'nonce');
+        $rule_id = isset($_POST['rule_id']) ? intval($_POST['rule_id']) : 0;
+        if (!$rule_id) {
+            wp_send_json_error(__('Invalid rule ID', 'elementor-geo-popup'));
+        }
+
+        $data = isset($_POST['data']) ? json_decode(stripslashes($_POST['data']), true) : array();
+        $form_id = isset($data['form_id']) ? sanitize_text_field($data['form_id']) : '';
+        $field_count = isset($data['field_count']) ? intval($data['field_count']) : 0;
+
+        $this->track_form_submit($rule_id, $form_id, $field_count, $data);
+        wp_send_json_success(array('tracked' => true, 'form_id' => $form_id));
+    }
+
+    /**
+     * AJAX: Track form field focus
+     */
+    public function ajax_track_form_field_focus() {
+        check_ajax_referer('egp_track_form_field_focus_nonce', 'nonce');
+        $rule_id = isset($_POST['rule_id']) ? intval($_POST['rule_id']) : 0;
+        if (!$rule_id) {
+            wp_send_json_error(__('Invalid rule ID', 'elementor-geo-popup'));
+        }
+
+        $data = isset($_POST['data']) ? json_decode(stripslashes($_POST['data']), true) : array();
+        $field_name = isset($data['field_name']) ? sanitize_text_field($data['field_name']) : '';
+        $field_type = isset($data['field_type']) ? sanitize_text_field($data['field_type']) : '';
+
+        $this->track_form_field_interaction($rule_id, $field_name, $field_type);
+        wp_send_json_success(array('tracked' => true, 'field_name' => $field_name));
     }
 
     /**

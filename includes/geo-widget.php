@@ -172,13 +172,15 @@ class EGP_Geo_Widget extends \Elementor\Widget_Base {
             'target_countries',
             [
                 'label' => esc_html__('Target Countries', 'elementor-geo-popup'),
-                'type' => \Elementor\Controls_Manager::SELECT2,
+                'type' => \Elementor\Controls_Manager::SELECT,
                 'multiple' => true,
                 'options' => $this->get_countries_list(),
                 'default' => $this->get_preferred_countries(),
                 'condition' => [
                     'geo_targeting_enabled' => 'yes',
                 ],
+                'description' => esc_html__('Select one or more countries to target. Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup'),
+                'select2options' => [], // Disable Select2 to use native multi-select
             ]
         );
 
@@ -344,31 +346,175 @@ class EGP_Geo_Widget extends \Elementor\Widget_Base {
      * Render the main content
      */
     private function render_main_content($settings) {
-        echo '<div class="egp-geo-content">';
-        
+        // Generate unique ID for this widget instance
+        $widget_id = 'egp-widget-' . $this->get_id();
+        $rule_id = $this->get_or_create_rule($settings);
+        $element_type = $this->get_element_type();
+
+        // Determine tracking strategy based on element type
+        $tracking_attributes = $this->get_tracking_attributes($rule_id, $element_type);
+
+        // Check if content contains forms for automatic form tracking
+        $content_html = $this->get_content_html($settings);
+        $has_form = $this->content_has_form($content_html);
+
+        echo '<div class="egp-geo-content" data-rule-id="' . esc_attr($rule_id) . '" data-widget-id="' . esc_attr($widget_id) . '" data-element-type="' . esc_attr($element_type) . '"' . $tracking_attributes . '>';
+
+        // Output content with automatic form tracking if forms are present
+        if ($has_form) {
+            echo $this->add_form_tracking($content_html, $rule_id);
+        } else {
+            echo $content_html;
+        }
+
+        echo '</div>';
+    }
+
+    /**
+     * Get content HTML based on type
+     */
+    private function get_content_html($settings) {
         switch ($settings['content_type']) {
             case 'text':
-                echo wp_kses_post($settings['content_text']);
-                break;
-                
+                return wp_kses_post($settings['content_text']);
+
             case 'html':
-                echo wp_kses_post($settings['content_html']);
-                break;
-                
+                return wp_kses_post($settings['content_html']);
+
             case 'shortcode':
                 if (!empty($settings['content_shortcode'])) {
-                    echo do_shortcode($settings['content_shortcode']);
+                    return do_shortcode($settings['content_shortcode']);
                 }
-                break;
-                
+                return '';
+
             case 'template':
                 if (!empty($settings['content_template'])) {
-                    echo \Elementor\Plugin::$instance->frontend->get_builder_content($settings['content_template'], true);
+                    return \Elementor\Plugin::$instance->frontend->get_builder_content($settings['content_template'], true);
                 }
-                break;
+                return '';
+
+            default:
+                return '';
         }
-        
-        echo '</div>';
+    }
+
+    /**
+     * Check if content contains forms
+     */
+    private function content_has_form($content) {
+        return strpos($content, '<form') !== false || strpos($content, '[contact-form') !== false;
+    }
+
+    /**
+     * Add automatic form tracking to content
+     */
+    private function add_form_tracking($content, $rule_id) {
+        // Add form tracking attributes to any forms in the content
+        $content = preg_replace(
+            '/<form([^>]*)>/i',
+            '<form$1 data-rule-id="' . esc_attr($rule_id) . '">',
+            $content
+        );
+
+        return $content;
+    }
+
+    /**
+     * Get the element type for tracking
+     */
+    private function get_element_type() {
+        // Check if this is being rendered in a section/container context
+        $element_data = $this->get_data();
+        if (isset($element_data['elType'])) {
+            return $element_data['elType'];
+        }
+
+        // Default to widget
+        return 'widget';
+    }
+
+    /**
+     * Get tracking attributes based on element type
+     */
+    private function get_tracking_attributes($rule_id, $element_type) {
+        $attributes = '';
+
+        // Add impression tracking for sections/containers
+        if (in_array($element_type, ['section', 'container'])) {
+            $attributes .= ' data-track-impression="true"';
+        }
+
+        // Add click tracking for interactive elements
+        if ($element_type === 'widget') {
+            $attributes .= ' onclick="egpTrackClick(' . esc_attr($rule_id) . ', \'' . esc_attr($element_type) . '\')"';
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * Get or create a geo rule for this widget
+     * Note: This is now primarily handled by the automatic tracking system
+     */
+    private function get_or_create_rule($settings) {
+        // Only create rules if geo targeting is enabled
+        if ($settings['geo_targeting_enabled'] !== 'yes') {
+            return 0;
+        }
+
+        // Check if a rule already exists for this widget (both old and new formats)
+        $widget_id = $this->get_id();
+        $existing_rules = get_posts(array(
+            'post_type' => 'geo_rule',
+            'meta_query' => array(
+                'relation' => 'OR',
+                array(
+                    'key' => 'egp_widget_id',
+                    'value' => $widget_id,
+                    'compare' => '='
+                ),
+                array(
+                    'key' => 'egp_element_id',
+                    'value' => $widget_id,
+                    'compare' => '='
+                )
+            ),
+            'posts_per_page' => 1
+        ));
+
+        if (!empty($existing_rules)) {
+            return $existing_rules[0]->ID;
+        }
+
+        // Create a new rule for this widget
+        $rule_data = array(
+            'post_title' => 'Widget: ' . $this->get_title() . ' (ID: ' . $widget_id . ')',
+            'post_type' => 'geo_rule',
+            'post_status' => 'publish',
+            'meta_input' => array(
+                'egp_target_type' => 'widget',
+                'egp_widget_id' => $widget_id,
+                'egp_element_id' => $widget_id,
+                'egp_element_type' => 'widget',
+                'egp_countries' => $settings['target_countries'],
+                'egp_active' => '1',
+                'egp_clicks' => 0,
+                'egp_views' => 0,
+                'egp_impressions' => 0
+            )
+        );
+
+        $rule_id = wp_insert_post($rule_data);
+
+        if ($rule_id && !is_wp_error($rule_id)) {
+            // Log rule creation for debugging
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("EGP Widget: Created rule ID {$rule_id} for widget {$widget_id}");
+            }
+            return $rule_id;
+        }
+
+        return 0;
     }
 
     /**

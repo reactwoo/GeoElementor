@@ -667,17 +667,17 @@ class ElementorGeoPopup {
                 )
             );
 
-            // Country selector using Elementor's native SELECT control (avoids deprecated onReady)
+            // Country selector using Elementor's CHOOSE control (best UX for multi-selection)
             $widget->add_control(
                 'egp_countries',
                 array(
                     'label'       => __('Target Countries', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::SELECT,
+                    'type'        => \Elementor\Controls_Manager::CHOOSE,
                     'multiple'    => true,
-                    'options'     => $this->get_country_options(),
-                    'default'     => '',
+                    'options'     => $this->get_country_options_choose(),
+                    'default'     => array(),
                     'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'description' => __('Select countries to target. Hold Ctrl/Cmd to select multiple.', 'elementor-geo-popup'),
+                    'description' => __('Select countries to target. Click to select/deselect multiple countries.', 'elementor-geo-popup'),
                 )
             );
 
@@ -835,17 +835,17 @@ class ElementorGeoPopup {
                 )
             );
 
-            // Country selector using Elementor's native SELECT control (avoids deprecated onReady)
+            // Country selector using Elementor's CHOOSE control (best UX for multi-selection)
             $container->add_control(
                 'egp_countries',
                 array(
                     'label'       => __('Target Countries', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::SELECT,
+                    'type'        => \Elementor\Controls_Manager::CHOOSE,
                     'multiple'    => true,
-                    'options'     => $this->get_country_options(),
-                    'default'     => '',
+                    'options'     => $this->get_country_options_choose(),
+                    'default'     => array(),
                     'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'description' => __('Select countries to target. Hold Ctrl/Cmd to select multiple.', 'elementor-geo-popup'),
+                    'description' => __('Select countries to target. Click to select/deselect multiple countries.', 'elementor-geo-popup'),
                 )
             );
 

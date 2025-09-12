@@ -209,19 +209,33 @@ class EGP_Dashboard_API {
         
         // Get total clicks across all rules
         $total_clicks = $wpdb->get_var("
-            SELECT SUM(CAST(meta_value AS UNSIGNED)) 
-            FROM {$wpdb->postmeta} 
+            SELECT SUM(CAST(meta_value AS UNSIGNED))
+            FROM {$wpdb->postmeta}
             WHERE meta_key = 'egp_clicks'
         ");
-        
+
+        // Get total impressions across all rules
+        $total_impressions = $wpdb->get_var("
+            SELECT SUM(CAST(meta_value AS UNSIGNED))
+            FROM {$wpdb->postmeta}
+            WHERE meta_key = 'egp_impressions'
+        ");
+
+        // Get total form submissions
+        $total_form_submissions = $wpdb->get_var("
+            SELECT SUM(CAST(meta_value AS UNSIGNED))
+            FROM {$wpdb->postmeta}
+            WHERE meta_key = 'egp_form_submissions'
+        ");
+
         // Get unique countries targeted
         $countries_meta = $wpdb->get_results("
-            SELECT meta_value 
-            FROM {$wpdb->postmeta} 
-            WHERE meta_key = 'egp_countries' 
+            SELECT meta_value
+            FROM {$wpdb->postmeta}
+            WHERE meta_key = 'egp_countries'
             AND meta_value != ''
         ");
-        
+
         $unique_countries = array();
         foreach ($countries_meta as $meta) {
             $countries = maybe_unserialize($meta->meta_value);
@@ -230,7 +244,7 @@ class EGP_Dashboard_API {
             }
         }
         $unique_countries = array_unique($unique_countries);
-        
+
         // Get today's clicks
         $today_clicks = $this->get_today_clicks();
         
@@ -246,9 +260,13 @@ class EGP_Dashboard_API {
             'totalRules' => intval($total_rules->publish),
             'activeRules' => count($active_rules),
             'totalClicks' => intval($total_clicks ?: 0),
+            'totalImpressions' => intval($total_impressions ?: 0),
+            'totalFormSubmissions' => intval($total_form_submissions ?: 0),
             'todayClicks' => $today_clicks,
             'countriesTargeted' => count($unique_countries),
             'variantGroups' => $variant_groups,
+            'clickThroughRate' => $this->get_ctr($total_clicks, $total_impressions),
+            'formConversionRate' => $this->get_form_conversion_rate($total_form_submissions, $total_clicks),
             'conversionRate' => $this->get_conversion_rate(),
             'topCountry' => $this->get_top_country()
         );
@@ -518,6 +536,26 @@ class EGP_Dashboard_API {
     private function get_top_country() {
         $country_analytics = $this->get_country_analytics();
         return !empty($country_analytics) ? $country_analytics[0] : null;
+    }
+
+    /**
+     * Calculate Click-Through Rate (CTR)
+     */
+    private function get_ctr($clicks, $impressions) {
+        if ($impressions > 0) {
+            return round(($clicks / $impressions) * 100, 2);
+        }
+        return 0;
+    }
+
+    /**
+     * Calculate Form Conversion Rate
+     */
+    private function get_form_conversion_rate($submissions, $clicks) {
+        if ($clicks > 0) {
+            return round(($submissions / $clicks) * 100, 2);
+        }
+        return 0;
     }
     
     /**

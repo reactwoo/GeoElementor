@@ -125,9 +125,12 @@ class GeoElementorDashboard {
     const cards = [
       { title: 'Total Rules', value: overview.totalRules, icon: this.icon('target') },
       { title: 'Active Rules', value: overview.activeRules, icon: this.icon('check') },
+      { title: 'Impressions', value: this.formatNumber(overview.totalImpressions), icon: this.icon('eye') },
       { title: 'Total Clicks', value: this.formatNumber(overview.totalClicks), icon: this.icon('mouse') },
+      { title: 'Form Submissions', value: this.formatNumber(overview.totalFormSubmissions), icon: this.icon('file-text') },
       { title: 'Countries', value: overview.countriesTargeted, icon: this.icon('globe') },
-      { title: 'Conversion', value: `${overview.conversionRate}%`, icon: this.icon('chart') },
+      { title: 'CTR', value: `${overview.clickThroughRate}%`, icon: this.icon('chart') },
+      { title: 'Form Conv.', value: `${overview.formConversionRate}%`, icon: this.icon('trending-up') },
       { title: 'Groups', value: overview.variantGroups, icon: this.icon('users') }
     ];
 
@@ -342,6 +345,9 @@ class GeoElementorDashboard {
       case 'users': return `<svg ${attrs}><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
       case 'refresh': return `<svg ${attrs}><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>`;
       case 'flag': return `<svg ${attrs}><path d="M4 22V6a2 2 0 0 1 2-2h0l2 1l2-1h6a2 2 0 0 1 2 2v9h-8l-2 1l-2-1H4z"/></svg>`;
+      case 'eye': return `<svg ${attrs}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+      case 'file-text': return `<svg ${attrs}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>`;
+      case 'trending-up': return `<svg ${attrs}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`;
       default: return `<svg ${attrs}></svg>`;
     }
   }
