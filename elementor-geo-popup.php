@@ -667,20 +667,17 @@ class ElementorGeoPopup {
                 )
             );
 
-            // Country selector using Elementor's future-proof approach
+            // Country selector using Elementor's SELECT2 control (official docs approach)
             $widget->add_control(
                 'egp_countries',
                 array(
                     'label'       => __('Target Countries', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::TEXT,
-                    'input_type'  => 'text',
-                    'placeholder' => __('Enter country codes (e.g., US, GB, DE)', 'elementor-geo-popup'),
-                    'description' => __('Enter country codes separated by commas (e.g., US, GB, DE). Use ISO 3166-1 alpha-2 codes.', 'elementor-geo-popup'),
-                    'default'     => '',
+                    'type'        => \Elementor\Controls_Manager::SELECT2,
+                    'multiple'    => true,
+                    'options'     => $this->get_country_options(),
+                    'default'     => array(),
                     'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'dynamic'     => array(
-                        'active' => true,
-                    ),
+                    'description' => __('Select countries to target. Hold Ctrl/Cmd to select multiple.', 'elementor-geo-popup'),
                 )
             );
 
@@ -838,20 +835,17 @@ class ElementorGeoPopup {
                 )
             );
 
-            // Country selector using Elementor's future-proof approach
+            // Country selector using Elementor's SELECT2 control (official docs approach)
             $container->add_control(
                 'egp_countries',
                 array(
                     'label'       => __('Target Countries', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::TEXT,
-                    'input_type'  => 'text',
-                    'placeholder' => __('Enter country codes (e.g., US, GB, DE)', 'elementor-geo-popup'),
-                    'description' => __('Enter country codes separated by commas (e.g., US, GB, DE). Use ISO 3166-1 alpha-2 codes.', 'elementor-geo-popup'),
-                    'default'     => '',
+                    'type'        => \Elementor\Controls_Manager::SELECT2,
+                    'multiple'    => true,
+                    'options'     => $this->get_country_options(),
+                    'default'     => array(),
                     'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'dynamic'     => array(
-                        'active' => true,
-                    ),
+                    'description' => __('Select countries to target. Hold Ctrl/Cmd to select multiple.', 'elementor-geo-popup'),
                 )
             );
 

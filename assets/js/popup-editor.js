@@ -196,9 +196,9 @@
                         var $container = panel.$el.find('#egp_countries_container');
                         if (!$container.length) { return; }
 
-                        // For TEXT control, we don't need to populate the container
+                        // For Elementor SELECT2 control, we don't need to populate the container
                         // The control is handled by Elementor itself
-                        console.log('[EGP] Countries data loaded for TEXT control:', Object.keys(map || {}).length + ' countries');
+                        console.log('[EGP] Countries data loaded for SELECT2 control:', Object.keys(map || {}).length + ' countries');
 
                     } catch (e) { console.log('[EGP] Error setting up countries selector:', e); }
                 };
@@ -243,14 +243,11 @@
                     panel.$el.find('#egp_enable_geo').prop('checked', true);
                     panel.$el.find('#egp_geo_options').show();
                     if (Array.isArray(data.countries)) {
-                        // Set countries in TEXT control (comma-separated)
+                        // Set countries in Elementor SELECT2 control
                         var countriesControl = panel.$el.find('#egp_countries_select, [data-setting="egp_countries"]');
                         if (countriesControl.length) {
-                            if (countriesControl.is('[data-setting="egp_countries"]')) {
-                                // TEXT control - join countries with commas
-                                countriesControl.val(data.countries.join(', ')).trigger('input');
-                            } else if (countriesControl.hasClass('select2-hidden-accessible')) {
-                                // Select2 control
+                            if (countriesControl.hasClass('select2-hidden-accessible') || countriesControl.is('[data-setting="egp_countries"]')) {
+                            // Elementor SELECT2 control
                                 countriesControl.val(data.countries).trigger('change');
                             } else {
                                 // Fallback to native select
@@ -292,7 +289,7 @@
             });
 
             // Save geo settings when popup is saved
-            panel.$el.on('input change', 'input, select, [data-setting]', function () {
+            panel.$el.on('change', 'input, select, [data-setting]', function () {
                 EGP_Popup_Editor_JS.saveGeoSettings(panel, model);
             });
 
@@ -311,25 +308,14 @@
 
             settings.egp_geo_enabled = panel.$el.find('#egp_enable_geo').is(':checked');
 
-            // Get countries from TEXT control (comma-separated) or Select2 control
+            // Get countries from Elementor SELECT2 control
             var countriesControl = panel.$el.find('#egp_countries_select, [data-setting="egp_countries"]');
             if (countriesControl.length) {
-                var controlValue = countriesControl.val() || '';
-                if (controlValue) {
-                    // Parse comma-separated values for TEXT control
-                    if (countriesControl.is('[data-setting="egp_countries"]')) {
-                        settings.egp_countries = controlValue.split(',')
-                            .map(function (country) { return country.trim().toUpperCase(); })
-                            .filter(function (country) { return country.length === 2; });
-                    }
-                    // Handle Select2 or native select
-                    else if (countriesControl.hasClass('select2-hidden-accessible')) {
-                        settings.egp_countries = countriesControl.val() || [];
-                    } else {
-                        var selectedOptions = countriesControl.find('option:selected');
-                        settings.egp_countries = selectedOptions.length > 0 ?
-                            selectedOptions.map(function () { return $(this).val(); }).get() : [];
-                    }
+                var controlValue = countriesControl.val() || [];
+                if (Array.isArray(controlValue)) {
+                    settings.egp_countries = controlValue;
+                } else if (typeof controlValue === 'string' && controlValue) {
+                    settings.egp_countries = [controlValue];
                 } else {
                     settings.egp_countries = [];
                 }

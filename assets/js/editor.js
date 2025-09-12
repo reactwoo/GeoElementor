@@ -72,27 +72,22 @@
         return { panel: null, settings: null };
     }
 
-    // Handle Elementor controls synchronization - unified approach for TEXT controls
-    $(document).on('input change', '[data-setting="egp_countries"], #egp_countries_native', function () {
+    // Handle Elementor controls synchronization - unified approach for SELECT2 controls
+    $(document).on('change', '[data-setting="egp_countries"], #egp_countries_native', function () {
         var selectedCountries = [];
-        var inputValue = $(this).val() || '';
 
-        // Handle Elementor TEXT control (comma-separated values)
-        if ($(this).is('[data-setting="egp_countries"]') || $(this).attr('data-setting') === 'egp_countries') {
-            // Parse comma-separated values, trim whitespace, and filter empty values
-            selectedCountries = inputValue.split(',')
-                .map(function (country) { return country.trim().toUpperCase(); })
-                .filter(function (country) { return country.length === 2; }); // Only 2-letter codes
+        // Handle Elementor SELECT2 control (Elementor handles initialization internally)
+        if ($(this).hasClass('select2-hidden-accessible') || $(this).is('[data-setting="egp_countries"]')) {
+            selectedCountries = $(this).val() || [];
+            if (typeof selectedCountries === 'string') {
+                selectedCountries = selectedCountries ? [selectedCountries] : [];
+            }
         }
         // Handle native HTML select (fallback)
         else if ($(this).is('select')) {
-            if ($(this).hasClass('select2-hidden-accessible')) {
-                selectedCountries = $(this).val() || [];
-            } else {
-                $(this).find('option:selected').each(function () {
-                    selectedCountries.push($(this).val());
-                });
-            }
+            $(this).find('option:selected').each(function () {
+                selectedCountries.push($(this).val());
+            });
         }
 
         // Get current context
@@ -288,14 +283,14 @@
         if (!countries.length) {
             var panelEl = panel.$el || null;
             if (panelEl) {
-                // Try Elementor TEXT control (comma-separated)
-                var textControl = panelEl.find('[data-setting="egp_countries"]');
-                if (textControl.length) {
-                    var textValue = textControl.val() || '';
-                    if (textValue) {
-                        countries = textValue.split(',')
-                            .map(function (country) { return country.trim().toUpperCase(); })
-                            .filter(function (country) { return country.length === 2; });
+                // Try Elementor SELECT2 control
+                var select2Control = panelEl.find('[data-setting="egp_countries"]');
+                if (select2Control.length) {
+                    var select2Value = select2Control.val() || [];
+                    if (Array.isArray(select2Value)) {
+                        countries = select2Value;
+                    } else if (typeof select2Value === 'string' && select2Value) {
+                        countries = [select2Value];
                     }
                 }
                 // Try native HTML select (fallback)
