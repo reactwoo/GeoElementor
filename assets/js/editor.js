@@ -72,15 +72,16 @@
         return { panel: null, settings: null };
     }
 
-    // Handle Elementor controls synchronization - unified approach for SELECT2 controls
+    // Handle Elementor controls synchronization - unified approach for native SELECT controls
     $(document).on('change', '[data-setting="egp_countries"], #egp_countries_native', function () {
         var selectedCountries = [];
 
-        // Handle Elementor SELECT2 control (Elementor handles initialization internally)
-        if ($(this).hasClass('select2-hidden-accessible') || $(this).is('[data-setting="egp_countries"]')) {
-            selectedCountries = $(this).val() || [];
-            if (typeof selectedCountries === 'string') {
-                selectedCountries = selectedCountries ? [selectedCountries] : [];
+        // Handle Elementor SELECT control (multiple=true creates array)
+        if ($(this).is('[data-setting="egp_countries"]')) {
+            var val = $(this).val();
+            if (val) {
+                // Multiple select returns array, single select returns string
+                selectedCountries = Array.isArray(val) ? val : [val];
             }
         }
         // Handle native HTML select (fallback)
@@ -283,14 +284,12 @@
         if (!countries.length) {
             var panelEl = panel.$el || null;
             if (panelEl) {
-                // Try Elementor SELECT2 control
-                var select2Control = panelEl.find('[data-setting="egp_countries"]');
-                if (select2Control.length) {
-                    var select2Value = select2Control.val() || [];
-                    if (Array.isArray(select2Value)) {
-                        countries = select2Value;
-                    } else if (typeof select2Value === 'string' && select2Value) {
-                        countries = [select2Value];
+                // Try Elementor SELECT control (multiple=true)
+                var selectControl = panelEl.find('[data-setting="egp_countries"]');
+                if (selectControl.length) {
+                    var selectValue = selectControl.val();
+                    if (selectValue) {
+                        countries = Array.isArray(selectValue) ? selectValue : [selectValue];
                     }
                 }
                 // Try native HTML select (fallback)

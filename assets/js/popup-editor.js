@@ -243,16 +243,10 @@
                     panel.$el.find('#egp_enable_geo').prop('checked', true);
                     panel.$el.find('#egp_geo_options').show();
                     if (Array.isArray(data.countries)) {
-                        // Set countries in Elementor SELECT2 control
+                        // Set countries in Elementor SELECT control (multiple=true)
                         var countriesControl = panel.$el.find('#egp_countries_select, [data-setting="egp_countries"]');
                         if (countriesControl.length) {
-                            if (countriesControl.hasClass('select2-hidden-accessible') || countriesControl.is('[data-setting="egp_countries"]')) {
-                            // Elementor SELECT2 control
-                                countriesControl.val(data.countries).trigger('change');
-                            } else {
-                                // Fallback to native select
-                                countriesControl.val(data.countries);
-                            }
+                            countriesControl.val(data.countries).trigger('change');
                         }
                     }
                     var summary = $('<div class="elementor-panel-field"><p class="description">Rule: ' + data.title + ' (Priority ' + (data.priority || 0) + ')</p></div>');
@@ -308,14 +302,12 @@
 
             settings.egp_geo_enabled = panel.$el.find('#egp_enable_geo').is(':checked');
 
-            // Get countries from Elementor SELECT2 control
+            // Get countries from Elementor SELECT control (multiple=true)
             var countriesControl = panel.$el.find('#egp_countries_select, [data-setting="egp_countries"]');
             if (countriesControl.length) {
-                var controlValue = countriesControl.val() || [];
-                if (Array.isArray(controlValue)) {
-                    settings.egp_countries = controlValue;
-                } else if (typeof controlValue === 'string' && controlValue) {
-                    settings.egp_countries = [controlValue];
+                var controlValue = countriesControl.val();
+                if (controlValue) {
+                    settings.egp_countries = Array.isArray(controlValue) ? controlValue : [controlValue];
                 } else {
                     settings.egp_countries = [];
                 }

@@ -667,15 +667,15 @@ class ElementorGeoPopup {
                 )
             );
 
-            // Country selector using Elementor's SELECT2 control (official docs approach)
+            // Country selector using Elementor's native SELECT control (avoids deprecated onReady)
             $widget->add_control(
                 'egp_countries',
                 array(
                     'label'       => __('Target Countries', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::SELECT2,
+                    'type'        => \Elementor\Controls_Manager::SELECT,
                     'multiple'    => true,
                     'options'     => $this->get_country_options(),
-                    'default'     => array(),
+                    'default'     => '',
                     'condition'   => array('egp_geo_enabled' => 'yes'),
                     'description' => __('Select countries to target. Hold Ctrl/Cmd to select multiple.', 'elementor-geo-popup'),
                 )
@@ -835,15 +835,15 @@ class ElementorGeoPopup {
                 )
             );
 
-            // Country selector using Elementor's SELECT2 control (official docs approach)
+            // Country selector using Elementor's native SELECT control (avoids deprecated onReady)
             $container->add_control(
                 'egp_countries',
                 array(
                     'label'       => __('Target Countries', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::SELECT2,
+                    'type'        => \Elementor\Controls_Manager::SELECT,
                     'multiple'    => true,
                     'options'     => $this->get_country_options(),
-                    'default'     => array(),
+                    'default'     => '',
                     'condition'   => array('egp_geo_enabled' => 'yes'),
                     'description' => __('Select countries to target. Hold Ctrl/Cmd to select multiple.', 'elementor-geo-popup'),
                 )
