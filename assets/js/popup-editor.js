@@ -196,31 +196,9 @@
                         var $container = panel.$el.find('#egp_countries_container');
                         if (!$container.length) { return; }
 
-                        // Create Elementor SELECT2 control
-                        var options = [];
-                        var codes = Object.keys(map || {});
-                        codes.sort(function (a, b) { return String(map[a]).localeCompare(String(map[b])); });
-                        codes.forEach(function (code) {
-                            options.push({ id: code, text: map[code] });
-                        });
-
-                        // Initialize Select2 on the container
-                        $container.html('<select id="egp_countries_select" multiple="multiple" style="width: 100%;"></select>');
-                        var $select = $container.find('#egp_countries_select');
-
-                        // Initialize with Select2 if available, otherwise use native select
-                        if (typeof jQuery !== 'undefined' && jQuery.fn.select2) {
-                            $select.select2({
-                                data: options,
-                                placeholder: 'Select countries...',
-                                allowClear: true
-                            });
-                        } else {
-                            // Fallback to native select
-                            options.forEach(function (option) {
-                                $select.append('<option value="' + option.id + '">' + option.text + '</option>');
-                            });
-                        }
+                        // For TEXT control, we don't need to populate the container
+                        // The control is handled by Elementor itself
+                        console.log('[EGP] Countries data loaded for TEXT control:', Object.keys(map || {}).length + ' countries');
 
                     } catch (e) { console.log('[EGP] Error setting up countries selector:', e); }
                 };
@@ -265,15 +243,18 @@
                     panel.$el.find('#egp_enable_geo').prop('checked', true);
                     panel.$el.find('#egp_geo_options').show();
                     if (Array.isArray(data.countries)) {
-                        // Set countries in Select2 control
-                        var countriesSelect = panel.$el.find('#egp_countries_select');
-                        if (countriesSelect.length) {
-                            if (countriesSelect.hasClass('select2-hidden-accessible')) {
+                        // Set countries in TEXT control (comma-separated)
+                        var countriesControl = panel.$el.find('#egp_countries_select, [data-setting="egp_countries"]');
+                        if (countriesControl.length) {
+                            if (countriesControl.is('[data-setting="egp_countries"]')) {
+                                // TEXT control - join countries with commas
+                                countriesControl.val(data.countries.join(', ')).trigger('input');
+                            } else if (countriesControl.hasClass('select2-hidden-accessible')) {
                                 // Select2 control
-                                countriesSelect.val(data.countries).trigger('change');
+                                countriesControl.val(data.countries).trigger('change');
                             } else {
                                 // Fallback to native select
-                                countriesSelect.val(data.countries);
+                                countriesControl.val(data.countries);
                             }
                         }
                     }
@@ -311,7 +292,7 @@
             });
 
             // Save geo settings when popup is saved
-            panel.$el.on('change', 'input, select', function () {
+            panel.$el.on('input change', 'input, select, [data-setting]', function () {
                 EGP_Popup_Editor_JS.saveGeoSettings(panel, model);
             });
 
@@ -330,17 +311,27 @@
 
             settings.egp_geo_enabled = panel.$el.find('#egp_enable_geo').is(':checked');
 
-            // Get countries from Select2 control
-            var countriesSelect = panel.$el.find('#egp_countries_select');
-            if (countriesSelect.length) {
-                if (countriesSelect.hasClass('select2-hidden-accessible')) {
-                    // Select2 control
-                    settings.egp_countries = countriesSelect.val() || [];
+            // Get countries from TEXT control (comma-separated) or Select2 control
+            var countriesControl = panel.$el.find('#egp_countries_select, [data-setting="egp_countries"]');
+            if (countriesControl.length) {
+                var controlValue = countriesControl.val() || '';
+                if (controlValue) {
+                    // Parse comma-separated values for TEXT control
+                    if (countriesControl.is('[data-setting="egp_countries"]')) {
+                        settings.egp_countries = controlValue.split(',')
+                            .map(function (country) { return country.trim().toUpperCase(); })
+                            .filter(function (country) { return country.length === 2; });
+                    }
+                    // Handle Select2 or native select
+                    else if (countriesControl.hasClass('select2-hidden-accessible')) {
+                        settings.egp_countries = countriesControl.val() || [];
+                    } else {
+                        var selectedOptions = countriesControl.find('option:selected');
+                        settings.egp_countries = selectedOptions.length > 0 ?
+                            selectedOptions.map(function () { return $(this).val(); }).get() : [];
+                    }
                 } else {
-                    // Fallback to native select
-                    var selectedOptions = countriesSelect.find('option:selected');
-                    settings.egp_countries = selectedOptions.length > 0 ?
-                        selectedOptions.map(function () { return $(this).val(); }).get() : [];
+                    settings.egp_countries = [];
                 }
             } else {
                 settings.egp_countries = [];

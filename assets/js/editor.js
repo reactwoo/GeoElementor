@@ -72,19 +72,27 @@
         return { panel: null, settings: null };
     }
 
-    // Handle Elementor controls synchronization - unified approach for all controls
-    $(document).on('change', '[data-setting="egp_countries"], #egp_countries_native', function () {
+    // Handle Elementor controls synchronization - unified approach for TEXT controls
+    $(document).on('input change', '[data-setting="egp_countries"], #egp_countries_native', function () {
         var selectedCountries = [];
+        var inputValue = $(this).val() || '';
 
-        // Handle Elementor SELECT2 control
-        if ($(this).hasClass('select2-hidden-accessible')) {
-            selectedCountries = $(this).val() || [];
+        // Handle Elementor TEXT control (comma-separated values)
+        if ($(this).is('[data-setting="egp_countries"]') || $(this).attr('data-setting') === 'egp_countries') {
+            // Parse comma-separated values, trim whitespace, and filter empty values
+            selectedCountries = inputValue.split(',')
+                .map(function (country) { return country.trim().toUpperCase(); })
+                .filter(function (country) { return country.length === 2; }); // Only 2-letter codes
         }
         // Handle native HTML select (fallback)
-        else {
-            $(this).find('option:selected').each(function () {
-                selectedCountries.push($(this).val());
-            });
+        else if ($(this).is('select')) {
+            if ($(this).hasClass('select2-hidden-accessible')) {
+                selectedCountries = $(this).val() || [];
+            } else {
+                $(this).find('option:selected').each(function () {
+                    selectedCountries.push($(this).val());
+                });
+            }
         }
 
         // Get current context
@@ -245,6 +253,9 @@
         var elType = panel.model.get('elType') || '';
         var targetType = (elType === 'widget') ? 'widget' : 'section';
 
+        // Debug logging to understand elType
+        console.log('[EGP] Rule creation - elType:', elType, 'targetType:', targetType, 'panel ID:', panel.model.get('id'));
+
         // Read from Elementor model settings
         var settings = (panel.model && typeof panel.model.get === 'function') ? panel.model.get('settings') : null;
         var enabled = false;
@@ -277,10 +288,15 @@
         if (!countries.length) {
             var panelEl = panel.$el || null;
             if (panelEl) {
-                // Try Elementor SELECT2 control
-                var select2Val = panelEl.find('[data-setting="egp_countries"]').val();
-                if (select2Val) {
-                    countries = Array.isArray(select2Val) ? select2Val : [select2Val];
+                // Try Elementor TEXT control (comma-separated)
+                var textControl = panelEl.find('[data-setting="egp_countries"]');
+                if (textControl.length) {
+                    var textValue = textControl.val() || '';
+                    if (textValue) {
+                        countries = textValue.split(',')
+                            .map(function (country) { return country.trim().toUpperCase(); })
+                            .filter(function (country) { return country.length === 2; });
+                    }
                 }
                 // Try native HTML select (fallback)
                 else {
