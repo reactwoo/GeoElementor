@@ -300,8 +300,8 @@
 /* Elementor CHOOSE Control Styling for Geo Targeting */
 .elementor-control-egp_countries .elementor-choices {
     display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
-    gap: 8px !important;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+        gap: 10px !important;
     margin-top: 8px !important;
 }
 
@@ -310,13 +310,13 @@
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 12px 8px !important;
+    padding: 16px 12px !important;
     border: 1px solid #d5d8dc !important;
     border-radius: 4px !important;
     background: #fff !important;
     cursor: pointer !important;
     transition: all 0.2s ease !important;
-    min-height: 60px !important;
+    min-height: 90px !important;
     text-align: center !important;
 }
 
@@ -332,8 +332,8 @@
 }
 
 .elementor-control-egp_countries .elementor-choices .elementor-choice .elementor-choice-icon {
-    font-size: 20px !important;
-    margin-bottom: 4px !important;
+    font-size: 24px !important;
+        margin-bottom: 6px !important;
     color: #6c757d !important;
 }
 
@@ -342,11 +342,12 @@
 }
 
 .elementor-control-egp_countries .elementor-choices .elementor-choice .elementor-choice-title {
-    font-size: 11px !important;
-    line-height: 1.2 !important;
+    font-size: 13px !important;
+        line-height: 1.3 !important;
     color: #495057 !important;
     word-wrap: break-word !important;
     hyphens: auto !important;
+    max-width: 140px !important;
 }
 
 .elementor-control-egp_countries .elementor-choices .elementor-choice.elementor-choice-selected .elementor-choice-title {
