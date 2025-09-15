@@ -72,12 +72,19 @@
         return { panel: null, settings: null };
     }
 
-    // Handle Elementor controls synchronization - unified approach for native SELECT controls
-    $(document).on('change', '[data-setting="egp_countries"], #egp_countries_native', function () {
+    // Handle Elementor controls synchronization - unified approach for CHOOSE controls
+    $(document).on('change', '[data-setting="egp_countries"], #egp_countries_native, input[name*="elementor-choose-egp_countries"]', function () {
         var selectedCountries = [];
 
+        // Handle Elementor CHOOSE control (radio buttons or checkboxes)
+        if ($(this).is('input[name*="elementor-choose-egp_countries"]')) {
+            // Find all checked radio buttons in the same group
+            $('input[name="' + $(this).attr('name') + '"]:checked').each(function () {
+                selectedCountries.push($(this).val());
+            });
+        }
         // Handle Elementor SELECT control (multiple=true creates array)
-        if ($(this).is('[data-setting="egp_countries"]')) {
+        else if ($(this).is('[data-setting="egp_countries"]')) {
             var val = $(this).val();
             if (val) {
                 // Multiple select returns array, single select returns string
@@ -284,16 +291,26 @@
         if (!countries.length) {
             var panelEl = panel.$el || null;
             if (panelEl) {
+                // Try Elementor CHOOSE control (radio buttons/checkboxes)
+                var chooseInputs = panelEl.find('input[name*="elementor-choose-egp_countries"]:checked');
+                if (chooseInputs.length) {
+                    countries = [];
+                    chooseInputs.each(function () {
+                        countries.push($(this).val());
+                    });
+                }
                 // Try Elementor SELECT control (multiple=true)
-                var selectControl = panelEl.find('[data-setting="egp_countries"]');
-                if (selectControl.length) {
-                    var selectValue = selectControl.val();
-                    if (selectValue) {
-                        countries = Array.isArray(selectValue) ? selectValue : [selectValue];
+                else {
+                    var selectControl = panelEl.find('[data-setting="egp_countries"]');
+                    if (selectControl.length) {
+                        var selectValue = selectControl.val();
+                        if (selectValue) {
+                            countries = Array.isArray(selectValue) ? selectValue : [selectValue];
+                        }
                     }
                 }
                 // Try native HTML select (fallback)
-                else {
+                if (!countries.length) {
                     var selectVals = panelEl.find('#egp_countries_native').val();
                     if (Array.isArray(selectVals)) { countries = selectVals; }
                 }
