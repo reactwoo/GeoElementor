@@ -422,10 +422,49 @@ class ElementorGeoPopup {
         $countries = $this->get_country_options();
         $choose_options = array();
 
+        // Map regions to Elementor icons for better visual organization
+        $region_icons = array(
+            // Europe
+            'GB' => 'eicon-flag', 'DE' => 'eicon-flag', 'FR' => 'eicon-flag', 'IT' => 'eicon-flag',
+            'ES' => 'eicon-flag', 'NL' => 'eicon-flag', 'BE' => 'eicon-flag', 'CH' => 'eicon-flag',
+            'AT' => 'eicon-flag', 'SE' => 'eicon-flag', 'NO' => 'eicon-flag', 'DK' => 'eicon-flag',
+            'FI' => 'eicon-flag', 'IE' => 'eicon-flag', 'PT' => 'eicon-flag', 'GR' => 'eicon-flag',
+            'PL' => 'eicon-flag', 'CZ' => 'eicon-flag', 'HU' => 'eicon-flag', 'SK' => 'eicon-flag',
+            'SI' => 'eicon-flag', 'HR' => 'eicon-flag', 'BA' => 'eicon-flag', 'RS' => 'eicon-flag',
+            'ME' => 'eicon-flag', 'MK' => 'eicon-flag', 'AL' => 'eicon-flag', 'BG' => 'eicon-flag',
+            'RO' => 'eicon-flag', 'MD' => 'eicon-flag', 'UA' => 'eicon-flag', 'BY' => 'eicon-flag',
+
+            // North America
+            'US' => 'eicon-star', 'CA' => 'eicon-star', 'MX' => 'eicon-star',
+
+            // Asia
+            'JP' => 'eicon-star-o', 'CN' => 'eicon-star-o', 'KR' => 'eicon-star-o', 'IN' => 'eicon-star-o',
+            'TH' => 'eicon-star-o', 'VN' => 'eicon-star-o', 'MY' => 'eicon-star-o', 'SG' => 'eicon-star-o',
+
+            // Oceania
+            'AU' => 'eicon-star', 'NZ' => 'eicon-star',
+
+            // South America
+            'BR' => 'eicon-heart', 'AR' => 'eicon-heart', 'CL' => 'eicon-heart', 'CO' => 'eicon-heart',
+            'PE' => 'eicon-heart', 'VE' => 'eicon-heart', 'EC' => 'eicon-heart', 'UY' => 'eicon-heart',
+            'PY' => 'eicon-heart', 'BO' => 'eicon-heart',
+
+            // Africa
+            'ZA' => 'eicon-star-o', 'NG' => 'eicon-star-o', 'EG' => 'eicon-star-o', 'KE' => 'eicon-star-o',
+            'MA' => 'eicon-star-o', 'TN' => 'eicon-star-o', 'GH' => 'eicon-star-o', 'ET' => 'eicon-star-o',
+
+            // Middle East
+            'AE' => 'eicon-star-o', 'SA' => 'eicon-star-o', 'IL' => 'eicon-star-o', 'TR' => 'eicon-star-o',
+            'IR' => 'eicon-star-o', 'IQ' => 'eicon-star-o', 'JO' => 'eicon-star-o', 'LB' => 'eicon-star-o',
+        );
+
         foreach ($countries as $code => $name) {
+            // Use region-specific icon or fallback to a generic one
+            $icon = isset($region_icons[$code]) ? $region_icons[$code] : 'eicon-map-marker';
+
             $choose_options[$code] = array(
                 'title' => $name,
-                'icon' => 'eicon-globe', // Use globe icon for all countries
+                'icon' => $icon,
             );
         }
 
