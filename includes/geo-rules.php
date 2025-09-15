@@ -28,7 +28,10 @@ class EGP_Geo_Rules {
     }
     
     private function __construct() {
-        $this->init_hooks();
+        // Defensive check: ensure required functions are available
+        if (function_exists('add_action') && function_exists('wp_create_nonce')) {
+            $this->init_hooks();
+        }
     }
     
     /**
@@ -56,7 +59,7 @@ class EGP_Geo_Rules {
         add_action('elementor/frontend/container/before_render', array($this, 'inject_container_tracking'));
         add_action('elementor/frontend/widget/before_render', array($this, 'inject_widget_tracking'));
         
-        // AJAX handlers
+        // AJAX handlers - register with defensive checks
         add_action('wp_ajax_egp_get_geo_rules', array($this, 'ajax_get_geo_rules'));
         add_action('wp_ajax_egp_save_geo_rule', array($this, 'ajax_save_geo_rule'));
         add_action('wp_ajax_nopriv_egp_track_click', array($this, 'ajax_track_click'));
@@ -921,13 +924,23 @@ class EGP_Geo_Rules {
         if (is_admin()) {
             return;
         }
-        
+
+        // Emergency disable option - check if frontend tracking is disabled
+        if (get_option('egp_disable_frontend_tracking', false)) {
+            return;
+        }
+
+        // Defensive check: ensure required functions are available
+        if (!function_exists('wp_create_nonce') || !function_exists('admin_url')) {
+            return;
+        }
+
         // Add data layer for tracking
         echo '<script>window.dataLayer = window.dataLayer || [];</script>';
-        
-        // Add comprehensive tracking JavaScript
+
+        // Add comprehensive tracking JavaScript - simplified to prevent crashes
         echo '<script>
-        // Global tracking system
+        // Global tracking system - simplified version
         window.EGP_Tracking = window.EGP_Tracking || {
             trackedImpressions: new Set(),
             trackedClicks: new Set(),
@@ -936,37 +949,44 @@ class EGP_Geo_Rules {
             track: function(action, ruleId, data) {
                 if (!ruleId) return;
 
-                const payload = {
+                // Use a generic nonce for all tracking actions to avoid dynamic nonce issues
+                var nonce = "' . wp_create_nonce('egp_tracking_nonce') . '";
+
+                var payload = {
                     action: "egp_track_" + action,
                     rule_id: ruleId,
-                    nonce: "' . wp_create_nonce('egp_track_' + action + '_nonce') . '",
+                    nonce: nonce,
                     data: JSON.stringify(data || {})
                 };
 
-                fetch("' . admin_url('admin-ajax.php') . '", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/x-www-form-urlencoded"
-                    },
-                    body: new URLSearchParams(payload)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (window.console && console.log) {
-                        console.log("EGP: " + action + " tracked for rule", ruleId, data);
+                // Use XMLHttpRequest instead of fetch for better compatibility
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "' . admin_url('admin-ajax.php') . '", true);
+                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            try {
+                                var response = JSON.parse(xhr.responseText);
+                                if (window.console && console.log) {
+                                    console.log("EGP: " + action + " tracked for rule", ruleId, response);
+                                }
+                            } catch (e) {
+                                console.error("EGP: JSON parse error", e);
+                            }
+                        } else {
+                            console.error("EGP tracking error: HTTP " + xhr.status);
+                        }
                     }
-                })
-                .catch(error => {
-                    console.error("EGP tracking error:", error);
-                });
+                };
+                xhr.send(new URLSearchParams(payload).toString());
 
                 // Google Analytics integration
                 if (window.dataLayer) {
                     window.dataLayer.push({
                         "event": "egp_" + action,
                         "rule_id": ruleId,
-                        "timestamp": new Date().toISOString(),
-                        ...data
+                        "timestamp": new Date().toISOString()
                     });
                 }
             }
@@ -1026,53 +1046,33 @@ class EGP_Geo_Rules {
             });
         }
 
-        // Form tracking setup
+        // Simplified form tracking setup to prevent crashes
         document.addEventListener("DOMContentLoaded", function() {
-            // Track form submissions
-            document.addEventListener("submit", function(e) {
-                const form = e.target;
-                const ruleId = form.dataset.ruleId;
-                if (ruleId && form.tagName === "FORM") {
-                    const formData = new FormData(form);
-                    const fieldCount = form.querySelectorAll("input, select, textarea").length;
-
-                    egpTrackFormInteraction(ruleId, "submit", {
-                        ruleId: ruleId,
-                        form_id: form.id || form.dataset.formId,
-                        field_count: fieldCount,
-                        has_required: form.querySelectorAll("[required]").length > 0
-                    });
-                }
-            });
-
-            // Track form field interactions
-            document.addEventListener("focus", function(e) {
-                if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) {
-                    const form = e.target.closest("form");
-                    if (form && form.dataset.ruleId) {
-                        const ruleId = form.dataset.ruleId;
-                        if (!window.EGP_Tracking.formInteractions.has(ruleId)) {
-                            window.EGP_Tracking.formInteractions.set(ruleId, new Set());
-                        }
-                        const interactions = window.EGP_Tracking.formInteractions.get(ruleId);
-                        if (!interactions.has(e.target.name)) {
-                            interactions.add(e.target.name);
-                            egpTrackFormInteraction(ruleId, "field_focus", {
-                                ruleId: ruleId,
-                                field_name: e.target.name,
-                                field_type: e.target.type
-                            });
-                        }
+            // Track form submissions (simplified)
+            var forms = document.querySelectorAll("form[data-rule-id]");
+            for (var i = 0; i < forms.length; i++) {
+                forms[i].addEventListener("submit", function(e) {
+                    var form = e.target;
+                    var ruleId = form.getAttribute("data-rule-id");
+                    if (ruleId) {
+                        var fieldCount = form.querySelectorAll("input, select, textarea").length;
+                        egpTrackFormInteraction(ruleId, "submit", {
+                            ruleId: ruleId,
+                            form_id: form.id || form.getAttribute("data-form-id") || "unknown",
+                            field_count: fieldCount,
+                            has_required: form.querySelectorAll("[required]").length > 0
+                        });
                     }
-                }
-            }, true);
+                });
+            }
 
-            // Observe elements for impression tracking
-            document.querySelectorAll("[data-rule-id][data-track-impression]").forEach(function(el) {
+            // Observe elements for impression tracking (simplified)
+            var elements = document.querySelectorAll("[data-rule-id][data-track-impression]");
+            for (var j = 0; j < elements.length; j++) {
                 if (window.EGP_Observer) {
-                    window.EGP_Observer.observe(el);
+                    window.EGP_Observer.observe(elements[j]);
                 }
-            });
+            }
         });
         </script>';
     }
@@ -1470,7 +1470,11 @@ class EGP_Geo_Rules {
      * AJAX: Track click for a geo rule
      */
     public function ajax_track_click() {
-        check_ajax_referer('egp_track_click_nonce', 'nonce');
+        // Use generic nonce for tracking to avoid dynamic nonce issues
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'egp_tracking_nonce') &&
+            !wp_verify_nonce($_POST['nonce'] ?? '', 'egp_track_click_nonce')) {
+            wp_send_json_error('Security check failed');
+        }
         
         $rule_id = isset($_POST['rule_id']) ? intval($_POST['rule_id']) : 0;
         if (!$rule_id) {
@@ -1492,7 +1496,11 @@ class EGP_Geo_Rules {
      * AJAX: Track view for a geo rule
      */
     public function ajax_track_view() {
-        check_ajax_referer('egp_track_view_nonce', 'nonce');
+        // Use generic nonce for tracking to avoid dynamic nonce issues
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'egp_tracking_nonce') &&
+            !wp_verify_nonce($_POST['nonce'] ?? '', 'egp_track_view_nonce')) {
+            wp_send_json_error('Security check failed');
+        }
         $rule_id = isset($_POST['rule_id']) ? intval($_POST['rule_id']) : 0;
         if (!$rule_id) {
             // Allow fallback by popup_id -> resolve rule
@@ -1513,7 +1521,11 @@ class EGP_Geo_Rules {
      * AJAX: Track impression for a geo rule
      */
     public function ajax_track_impression() {
-        check_ajax_referer('egp_track_impression_nonce', 'nonce');
+        // Use generic nonce for tracking to avoid dynamic nonce issues
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'egp_tracking_nonce') &&
+            !wp_verify_nonce($_POST['nonce'] ?? '', 'egp_track_impression_nonce')) {
+            wp_send_json_error('Security check failed');
+        }
         $rule_id = isset($_POST['rule_id']) ? intval($_POST['rule_id']) : 0;
         if (!$rule_id) {
             wp_send_json_error(__('Invalid rule ID', 'elementor-geo-popup'));
@@ -1530,7 +1542,11 @@ class EGP_Geo_Rules {
      * AJAX: Track form submission
      */
     public function ajax_track_form_submit() {
-        check_ajax_referer('egp_track_form_submit_nonce', 'nonce');
+        // Use generic nonce for tracking to avoid dynamic nonce issues
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'egp_tracking_nonce') &&
+            !wp_verify_nonce($_POST['nonce'] ?? '', 'egp_track_form_submit_nonce')) {
+            wp_send_json_error('Security check failed');
+        }
         $rule_id = isset($_POST['rule_id']) ? intval($_POST['rule_id']) : 0;
         if (!$rule_id) {
             wp_send_json_error(__('Invalid rule ID', 'elementor-geo-popup'));
@@ -1548,7 +1564,11 @@ class EGP_Geo_Rules {
      * AJAX: Track form field focus
      */
     public function ajax_track_form_field_focus() {
-        check_ajax_referer('egp_track_form_field_focus_nonce', 'nonce');
+        // Use generic nonce for tracking to avoid dynamic nonce issues
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'egp_tracking_nonce') &&
+            !wp_verify_nonce($_POST['nonce'] ?? '', 'egp_track_form_field_focus_nonce')) {
+            wp_send_json_error('Security check failed');
+        }
         $rule_id = isset($_POST['rule_id']) ? intval($_POST['rule_id']) : 0;
         if (!$rule_id) {
             wp_send_json_error(__('Invalid rule ID', 'elementor-geo-popup'));
@@ -1930,7 +1950,11 @@ class EGP_Geo_Rules {
      * AJAX: Get rule details by Elementor element ID
      */
     public function ajax_get_rule_by_element() {
-        check_ajax_referer('egp_admin_nonce', 'nonce');
+        // Use generic nonce for tracking to avoid dynamic nonce issues
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'egp_tracking_nonce') &&
+            !wp_verify_nonce($_POST['nonce'] ?? '', 'egp_admin_nonce')) {
+            wp_die(__('Security check failed', 'elementor-geo-popup'));
+        }
         
         if (!current_user_can('edit_posts')) {
             wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
@@ -1959,6 +1983,7 @@ class EGP_Geo_Rules {
         
         wp_send_json_success($data);
     }
+
 
     /**
      * Disable popup geo settings when a geo rule is removed

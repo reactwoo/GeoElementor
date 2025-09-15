@@ -70,7 +70,7 @@ class ElementorGeoPopup {
      * Initialize hooks
      */
     private function init_hooks() {
-        add_action('plugins_loaded', array($this, 'init'));
+        add_action('plugins_loaded', array($this, 'init'), 20); // Increased priority to load after other plugins
         register_activation_hook(EGP_PLUGIN_FILE, array($this, 'activate'));
         register_deactivation_hook(EGP_PLUGIN_FILE, array($this, 'deactivate'));
     }
@@ -79,6 +79,11 @@ class ElementorGeoPopup {
      * Initialize plugin
      */
     public function init() {
+        // Defensive check: ensure WordPress is properly initialized
+        if (!function_exists('wp_get_current_user') || !function_exists('add_action')) {
+            return;
+        }
+
         error_log('[EGP] Plugin init() called');
         add_action('admin_footer', function() {
             echo '<script>console.log("[EGP] Plugin init() called");</script>';
@@ -167,7 +172,15 @@ class ElementorGeoPopup {
         require_once EGP_PLUGIN_DIR . 'includes/widget-registration.php';
         require_once EGP_PLUGIN_DIR . 'includes/global-settings.php';
         require_once EGP_PLUGIN_DIR . 'includes/dashboard-api.php';
-        require_once EGP_PLUGIN_DIR . 'includes/geo-rules.php';
+
+        // Load geo-rules with defensive check to prevent early loading conflicts
+        if (did_action('init')) {
+            require_once EGP_PLUGIN_DIR . 'includes/geo-rules.php';
+        } else {
+            add_action('init', function() {
+                require_once EGP_PLUGIN_DIR . 'includes/geo-rules.php';
+            }, 5);
+        }
     }
     
     /**
