@@ -1707,6 +1707,7 @@ class EGP_Geo_Rules {
         $title = sanitize_text_field($_POST['title'] ?? '');
         $element_type = sanitize_text_field($_POST['element_type'] ?? '');
         $tracking_id = sanitize_text_field($_POST['tracking_id'] ?? '');
+        $document_id = intval($_POST['document_id'] ?? 0); // Get document ID from frontend
 
         error_log('[EGP Debug] Processed data: target_type=' . $target_type . ', target_id=' . $target_id . ', countries=' . implode(',', $countries));
 
@@ -1748,7 +1749,9 @@ class EGP_Geo_Rules {
             // Store additional metadata for "Edit in Elementor" functionality
             $post_id = intval($result['rule_id']);
             update_post_meta($post_id, $this->meta_prefix.'created_in_elementor', '1');
-            update_post_meta($post_id, $this->meta_prefix.'elementor_document_id', get_the_ID()); // Current document being edited
+            if ($document_id > 0) {
+                update_post_meta($post_id, $this->meta_prefix.'elementor_document_id', $document_id);
+            }
             
             error_log('[EGP Debug] Elementor rule saved successfully: ' . $result['rule_id']);
             wp_send_json_success($result);

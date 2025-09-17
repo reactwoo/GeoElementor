@@ -90,19 +90,38 @@
         var ctx = getCurrentSettings();
         if (!ctx.settings || !ctx.panel) { return; }
 
-        // Use unified approach - set entire settings object
-        var settings = ctx.panel.model.get('settings') || {};
-        settings.egp_countries = selectedCountries;
-        settings.egp_geo_countries_store = JSON.stringify(selectedCountries);
+        // Use unified approach - set individual settings to ensure proper model updates
+        var settings = ctx.panel.model.get('settings');
+        if (settings && typeof settings.set === 'function') {
+            // For Backbone models, use set method
+            settings.set('egp_countries', selectedCountries);
+            settings.set('egp_geo_countries_store', JSON.stringify(selectedCountries));
+        } else {
+            // Fallback: set entire settings object
+            settings = settings || {};
+            settings.egp_countries = selectedCountries;
+            settings.egp_geo_countries_store = JSON.stringify(selectedCountries);
+            ctx.panel.model.set('settings', settings);
+        }
 
-        // Set the entire settings object (this triggers Elementor save state)
-        ctx.panel.model.set('settings', settings);
+        // Also update the model directly to ensure persistence
+        if (ctx.panel.model && typeof ctx.panel.model.setSetting === 'function') {
+            ctx.panel.model.setSetting('egp_countries', selectedCountries);
+            ctx.panel.model.setSetting('egp_geo_countries_store', JSON.stringify(selectedCountries));
+        }
 
         console.log('[EGP] Countries saved to model:', selectedCountries);
 
-        // Force Elementor to recognize the change and enable save
-        if (typeof elementor !== 'undefined' && elementor.saver) {
-            elementor.saver.setFlagEditorChange(true);
+        // Force Elementor to recognize the change and enable save (using modern API)
+        if (typeof elementor !== 'undefined' && elementor.$e) {
+            try {
+                elementor.$e.internal('document/save/set-is-modified', { status: true });
+            } catch (e) {
+                // Fallback to older method if new API fails
+                if (elementor.saver && elementor.saver.setFlagEditorChange) {
+                    elementor.saver.setFlagEditorChange(true);
+                }
+            }
         }
 
         // Save to database after a short delay to ensure UI updates
@@ -170,6 +189,9 @@
             }
         }
 
+        // Restore checkbox-based country selection from model
+        restoreCountrySelection();
+
         // Initialize element ID display
         var $display = $('#egp-element-id-display');
         if ($display.length && $display.text() === '—') {
@@ -183,6 +205,43 @@
                     }
                 }
             }
+        }
+    }
+
+    // Restore country selection from Elementor model
+    function restoreCountrySelection() {
+        var ctx = getCurrentSettings();
+        if (!ctx.settings || !ctx.panel) { return; }
+
+        var settings = ctx.panel.model.get('settings');
+        var selectedCountries = [];
+
+        // Try to get countries from different sources
+        if (settings && typeof settings.get === 'function') {
+            var rawCountries = settings.get('egp_countries');
+            if (Array.isArray(rawCountries) && rawCountries.length > 0) {
+                selectedCountries = rawCountries;
+            } else {
+                var rawStore = settings.get('egp_geo_countries_store');
+                if (rawStore) {
+                    try { selectedCountries = JSON.parse(rawStore); } catch (e) { }
+                }
+            }
+        }
+
+        // Update checkboxes based on selected countries
+        if (selectedCountries.length > 0) {
+            $('.egp-country-checkbox').each(function () {
+                var countryCode = $(this).val();
+                if (selectedCountries.indexOf(countryCode) !== -1) {
+                    $(this).prop('checked', true);
+                }
+            });
+
+            // Update hidden field
+            $('.egp-countries-hidden').val(JSON.stringify(selectedCountries));
+
+            console.log('[EGP] Restored country selection:', selectedCountries);
         }
     }
 
@@ -210,6 +269,8 @@
                             initializeGeoControls();
                             // Auto-generate Element ID after controls are initialized
                             setTimeout(autoGenerateElementId, 300);
+                            // Restore country selection after a delay to ensure controls are rendered
+                            setTimeout(restoreCountrySelection, 500);
                             // Bind save on toggle change
                             $(document).off('change.egp', 'input[name*="egp_geo_enabled"]').on('change.egp', 'input[name*="egp_geo_enabled"]', function () {
                                 // Use popup approach for enable toggle
@@ -336,6 +397,15 @@
         if (!countries.length) { return; }
         if (!targetId) { return; }
 
+        // Get current document ID from Elementor
+        var documentId = 0;
+        if (typeof elementor !== 'undefined' && elementor.documents && elementor.documents.getCurrent) {
+            var currentDoc = elementor.documents.getCurrent();
+            if (currentDoc && currentDoc.id) {
+                documentId = currentDoc.id;
+            }
+        }
+
         var data = {
             action: 'egp_save_elementor_geo_rule',
             nonce: (window.egpEditor && egpEditor.nonce) || '',
@@ -346,7 +416,8 @@
             active: true,
             title: (targetType.charAt(0).toUpperCase() + targetType.slice(1)) + ' ' + targetId,
             element_type: targetType,
-            element_ref_id: (panel.model && panel.model.get('id')) ? panel.model.get('id') : ''
+            element_ref_id: (panel.model && panel.model.get('id')) ? panel.model.get('id') : '',
+            document_id: documentId
         };
         var url = (window.egpEditor && egpEditor.ajaxUrl) || (typeof ajaxurl !== 'undefined' ? ajaxurl : null);
         if (!url) { return; }
