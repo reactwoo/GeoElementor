@@ -72,18 +72,19 @@
         return { panel: null, settings: null };
     }
 
-    // Handle Elementor controls synchronization - modern SELECT control with multiple support
-    $(document).on('change', '[data-setting="egp_countries"]', function () {
+    // Handle custom multi-select checkbox controls
+    $(document).on('change', '.egp-country-checkbox', function () {
+        var $container = $(this).closest('.egp-countries-control');
+        var $hiddenInput = $container.find('.egp-countries-hidden');
         var selectedCountries = [];
 
-        // Handle Elementor modern SELECT control (with multiple=true)
-        if ($(this).is('[data-setting="egp_countries"]')) {
-            var val = $(this).val();
-            if (val) {
-                // Multiple select returns array, single select returns string
-                selectedCountries = Array.isArray(val) ? val : [val];
-            }
-        }
+        // Collect all checked countries
+        $container.find('.egp-country-checkbox:checked').each(function () {
+            selectedCountries.push($(this).val());
+        });
+
+        // Update hidden input
+        $hiddenInput.val(JSON.stringify(selectedCountries));
 
         // Get current context
         var ctx = getCurrentSettings();
@@ -101,6 +102,18 @@
 
         // Save to database
         try { saveGeoRuleFromPanel(); } catch (e) { }
+    });
+
+    // Handle Select All button
+    $(document).on('click', '.egp-select-all', function () {
+        var $container = $(this).closest('.egp-countries-control');
+        $container.find('.egp-country-checkbox').prop('checked', true).trigger('change');
+    });
+
+    // Handle Clear All button
+    $(document).on('click', '.egp-clear-all', function () {
+        var $container = $(this).closest('.egp-countries-control');
+        $container.find('.egp-country-checkbox').prop('checked', false).trigger('change');
     });
 
     // Handle copy element ID button
@@ -278,15 +291,22 @@
         if (!countries.length) {
             var panelEl = panel.$el || null;
             if (panelEl) {
-                // Try Elementor modern SELECT control
-                var selectControl = panelEl.find('[data-setting="egp_countries"]');
-                if (selectControl.length) {
-                    var selectValue = selectControl.val();
-                    if (selectValue) {
-                        countries = Array.isArray(selectValue) ? selectValue : [selectValue];
+                // Try custom checkbox multi-select
+                var checkedBoxes = panelEl.find('.egp-country-checkbox:checked');
+                if (checkedBoxes.length) {
+                    countries = [];
+                    checkedBoxes.each(function () {
+                        countries.push($(this).val());
+                    });
+                }
+                // Try hidden input from custom control
+                if (!countries.length) {
+                    var hiddenInput = panelEl.find('.egp-countries-hidden').val();
+                    if (hiddenInput) {
+                        try { countries = JSON.parse(hiddenInput); } catch (e) { }
                     }
                 }
-                // Try hidden input (legacy fallback)
+                // Try legacy hidden input (fallback)
                 if (!countries.length) {
                     var domStore = panelEl.find('input[name*="egp_geo_countries_store"]').val();
                     if (domStore) {
