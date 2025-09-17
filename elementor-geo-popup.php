@@ -741,13 +741,13 @@ class ElementorGeoPopup {
                 )
             );
 
-            // Country selector using Elementor's SELECT2 control (best for many options)
+            // Country selector using Elementor's modern SELECT control with multiple selection
             $country_options = method_exists($this, 'get_country_options') ? $this->get_country_options() : array();
             $widget->add_control(
                 'egp_countries',
                 array(
                     'label'       => __('Target Countries', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::SELECT2,
+                    'type'        => \Elementor\Controls_Manager::SELECT,
                     'multiple'    => true,
                     'options'     => $country_options,
                     'default'     => array(),
@@ -910,13 +910,13 @@ class ElementorGeoPopup {
                 )
             );
 
-            // Country selector using Elementor's SELECT2 control (best for many options)
+            // Country selector using Elementor's modern SELECT control with multiple selection
             $country_options = method_exists($this, 'get_country_options') ? $this->get_country_options() : array();
             $container->add_control(
                 'egp_countries',
                 array(
                     'label'       => __('Target Countries', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::SELECT2,
+                    'type'        => \Elementor\Controls_Manager::SELECT,
                     'multiple'    => true,
                     'options'     => $country_options,
                     'default'     => array(),
@@ -1079,13 +1079,13 @@ class ElementorGeoPopup {
                 )
             );
 
-            // Use the same CHOOSE control method as widgets and containers
+            // Use the same modern SELECT control method as widgets and containers
 
             $element->add_control(
                 'egp_countries',
                 array(
                     'label'       => __('Target Countries', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::SELECT2,
+                    'type'        => \Elementor\Controls_Manager::SELECT,
                     'multiple'    => true,
                     'options'     => method_exists($this, 'get_country_options') ? $this->get_country_options() : array(),
                     'default'     => array(),

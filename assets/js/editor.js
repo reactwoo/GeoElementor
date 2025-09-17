@@ -72,11 +72,11 @@
         return { panel: null, settings: null };
     }
 
-    // Handle Elementor controls synchronization - unified approach for SELECT2 controls
+    // Handle Elementor controls synchronization - modern SELECT control with multiple support
     $(document).on('change', '[data-setting="egp_countries"]', function () {
         var selectedCountries = [];
 
-        // Handle Elementor SELECT2 control (multiple selection)
+        // Handle Elementor modern SELECT control (with multiple=true)
         if ($(this).is('[data-setting="egp_countries"]')) {
             var val = $(this).val();
             if (val) {
@@ -278,7 +278,7 @@
         if (!countries.length) {
             var panelEl = panel.$el || null;
             if (panelEl) {
-                // Try Elementor SELECT2 control
+                // Try Elementor modern SELECT control
                 var selectControl = panelEl.find('[data-setting="egp_countries"]');
                 if (selectControl.length) {
                     var selectValue = selectControl.val();
