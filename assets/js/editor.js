@@ -72,16 +72,17 @@
         return { panel: null, settings: null };
     }
 
-    // Handle Elementor controls synchronization - unified approach for CHOOSE controls
-    $(document).on('change', 'input[name*="elementor-choose-egp_countries"]', function () {
+    // Handle Elementor controls synchronization - unified approach for SELECT2 controls
+    $(document).on('change', '[data-setting="egp_countries"]', function () {
         var selectedCountries = [];
 
-        // Handle Elementor CHOOSE control (radio buttons or checkboxes)
-        if ($(this).is('input[name*="elementor-choose-egp_countries"]')) {
-            // Find all checked inputs in the same group (handles both radio and checkbox implementations)
-            $('input[name="' + $(this).attr('name') + '"]:checked').each(function () {
-                selectedCountries.push($(this).val());
-            });
+        // Handle Elementor SELECT2 control (multiple selection)
+        if ($(this).is('[data-setting="egp_countries"]')) {
+            var val = $(this).val();
+            if (val) {
+                // Multiple select returns array, single select returns string
+                selectedCountries = Array.isArray(val) ? val : [val];
+            }
         }
 
         // Get current context
@@ -277,13 +278,13 @@
         if (!countries.length) {
             var panelEl = panel.$el || null;
             if (panelEl) {
-                // Try Elementor CHOOSE control (radio buttons/checkboxes)
-                var chooseInputs = panelEl.find('input[name*="elementor-choose-egp_countries"]:checked');
-                if (chooseInputs.length) {
-                    countries = [];
-                    chooseInputs.each(function () {
-                        countries.push($(this).val());
-                    });
+                // Try Elementor SELECT2 control
+                var selectControl = panelEl.find('[data-setting="egp_countries"]');
+                if (selectControl.length) {
+                    var selectValue = selectControl.val();
+                    if (selectValue) {
+                        countries = Array.isArray(selectValue) ? selectValue : [selectValue];
+                    }
                 }
                 // Try hidden input (legacy fallback)
                 if (!countries.length) {
