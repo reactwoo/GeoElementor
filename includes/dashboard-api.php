@@ -100,9 +100,21 @@ class EGP_Dashboard_API {
             $target_type = get_post_meta($rule->ID, 'egp_target_type', true);
             $countries = get_post_meta($rule->ID, 'egp_countries', true);
             $active = get_post_meta($rule->ID, 'egp_active', true);
+            $created_in_elementor = get_post_meta($rule->ID, 'egp_created_in_elementor', true);
+            $elementor_document_id = get_post_meta($rule->ID, 'egp_elementor_document_id', true);
+            $element_ref_id = get_post_meta($rule->ID, 'egp_element_ref_id', true);
             
             if (!is_array($countries)) {
                 $countries = array();
+            }
+            
+            // Build edit URL for Elementor if available
+            $edit_in_elementor_url = '';
+            if ($created_in_elementor === '1' && $elementor_document_id) {
+                $edit_in_elementor_url = admin_url('post.php?post=' . $elementor_document_id . '&action=elementor');
+                if ($element_ref_id) {
+                    $edit_in_elementor_url .= '#element-' . $element_ref_id;
+                }
             }
             
             $formatted_rules[] = array(
@@ -110,7 +122,9 @@ class EGP_Dashboard_API {
                 'title' => $rule->post_title,
                 'type' => ucfirst($target_type),
                 'country' => !empty($countries) ? implode(', ', $countries) : 'None',
-                'active' => $active === '1'
+                'active' => $active === '1',
+                'created_in_elementor' => $created_in_elementor === '1',
+                'edit_in_elementor_url' => $edit_in_elementor_url
             );
         }
         

@@ -100,8 +100,17 @@
 
         console.log('[EGP] Countries saved to model:', selectedCountries);
 
-        // Save to database
-        try { saveGeoRuleFromPanel(); } catch (e) { }
+        // Force Elementor to recognize the change and enable save
+        if (typeof elementor !== 'undefined' && elementor.saver) {
+            elementor.saver.setFlagEditorChange(true);
+        }
+
+        // Save to database after a short delay to ensure UI updates
+        setTimeout(function () {
+            try { saveGeoRuleFromPanel(); } catch (e) {
+                console.log('[EGP] Error saving rule:', e);
+            }
+        }, 100);
     });
 
     // Handle Select All button

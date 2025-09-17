@@ -1712,6 +1712,7 @@ class EGP_Geo_Rules {
 
         // If an element_ref_id (stable elementor model id) is provided and target_type is section/widget,
         // try to find an existing rule by that ref and update its target_id instead of creating a duplicate
+        $element_ref_id = sanitize_text_field($_POST['element_ref_id'] ?? '');
         if (in_array($target_type, array('section','widget'), true) && !empty($element_ref_id)) {
             $existing_by_ref = get_posts(array(
                 'post_type' => $this->post_type,
@@ -1744,6 +1745,11 @@ class EGP_Geo_Rules {
             if (!empty($element_ref_id)) {
                 update_post_meta(intval($result['rule_id']), $this->meta_prefix.'element_ref_id', (string) $element_ref_id);
             }
+            // Store additional metadata for "Edit in Elementor" functionality
+            $post_id = intval($result['rule_id']);
+            update_post_meta($post_id, $this->meta_prefix.'created_in_elementor', '1');
+            update_post_meta($post_id, $this->meta_prefix.'elementor_document_id', get_the_ID()); // Current document being edited
+            
             error_log('[EGP Debug] Elementor rule saved successfully: ' . $result['rule_id']);
             wp_send_json_success($result);
         } else {
