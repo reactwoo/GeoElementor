@@ -83,8 +83,19 @@
             selectedCountries.push($(this).val());
         });
 
-        // Update hidden input
+        // Update hidden input (custom control store)
         $hiddenInput.val(JSON.stringify(selectedCountries));
+
+        // Also sync to the Elementor hidden control so the value is saved with the document
+        try {
+            var panel = (typeof elementor !== 'undefined' && elementor.getPanelView) ? elementor.getPanelView().getCurrentPageView() : null;
+            if (panel && panel.$el) {
+                var $elHidden = panel.$el.find('input[data-setting="egp_geo_countries_store"]');
+                if ($elHidden && $elHidden.length) {
+                    $elHidden.val(JSON.stringify(selectedCountries)).trigger('input');
+                }
+            }
+        } catch (e) { }
 
         // Get current context
         var ctx = getCurrentSettings();
@@ -191,6 +202,8 @@
 
         // Restore checkbox-based country selection from model
         restoreCountrySelection();
+        // Also fetch any stored countries from server for this element and apply
+        setTimeout(fetchAndApplyCountries, 300);
 
         // Initialize element ID display
         var $display = $('#egp-element-id-display');
@@ -238,11 +251,79 @@
                 }
             });
 
-            // Update hidden field
+            // Update hidden field (custom control store)
             $('.egp-countries-hidden').val(JSON.stringify(selectedCountries));
+
+            // Also sync Elementor hidden control
+            try {
+                var panel = (typeof elementor !== 'undefined' && elementor.getPanelView) ? elementor.getPanelView().getCurrentPageView() : null;
+                if (panel && panel.$el) {
+                    var $elHidden = panel.$el.find('input[data-setting="egp_geo_countries_store"]');
+                    if ($elHidden && $elHidden.length) {
+                        $elHidden.val(JSON.stringify(selectedCountries)).trigger('input');
+                    }
+                }
+            } catch (e) { }
 
             console.log('[EGP] Restored country selection:', selectedCountries);
         }
+    }
+
+    // Fetch stored rule by element and apply to UI/model so it persists across reloads
+    function fetchAndApplyCountries() {
+        try {
+            if (typeof elementor === 'undefined' || !elementor.getPanelView) { return; }
+            var panel = elementor.getPanelView().getCurrentPageView();
+            if (!panel || !panel.model) { return; }
+            var elementRefId = panel.model.get('id');
+            if (!elementRefId) { return; }
+
+            var url = (window.egpEditor && egpEditor.ajaxUrl) || (typeof ajaxurl !== 'undefined' ? ajaxurl : null);
+            if (!url) { return; }
+
+            var payload = {
+                action: 'egp_get_rule_by_element',
+                nonce: (window.egpEditor && (egpEditor.nonce || egpEditor.trackingNonce)) || '',
+                element_id: elementRefId
+            };
+
+            jQuery.post(url, payload).done(function (res) {
+                if (!res || !res.success || !res.data) { return; }
+                var countries = Array.isArray(res.data.countries) ? res.data.countries : [];
+                if (!countries.length) { return; }
+
+                var $container = jQuery('.egp-countries-control');
+                if ($container.length) {
+                    $container.find('.egp-country-checkbox').prop('checked', false);
+                    countries.forEach(function (code) {
+                        $container.find('.egp-country-checkbox[value="' + code + '"]').prop('checked', true);
+                    });
+                    $container.find('.egp-countries-hidden').val(JSON.stringify(countries));
+                }
+
+                if (panel.$el) {
+                    var $elHidden = panel.$el.find('input[data-setting="egp_geo_countries_store"]');
+                    if ($elHidden && $elHidden.length) {
+                        $elHidden.val(JSON.stringify(countries)).trigger('input');
+                    }
+                }
+
+                var settings = panel.model.get('settings');
+                if (settings && typeof settings.set === 'function') {
+                    settings.set('egp_countries', countries);
+                    settings.set('egp_geo_countries_store', JSON.stringify(countries));
+                } else {
+                    panel.model.set('settings', jQuery.extend({}, settings || {}, {
+                        egp_countries: countries,
+                        egp_geo_countries_store: JSON.stringify(countries)
+                    }));
+                }
+
+                if (elementor.$e) {
+                    try { elementor.$e.internal('document/save/set-is-modified', { status: true }); } catch (e) { }
+                }
+            });
+        } catch (e) { }
     }
 
     // Auto-generate Element ID when field is empty
