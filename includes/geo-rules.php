@@ -310,6 +310,7 @@ class EGP_Geo_Rules {
                         html += '<option value="' + val + '" ' + (selectedValue === val ? 'selected' : '') + '>' + option.title + '</option>';
                     });
                     html += '</select> ';
+                    // Add working Edit in Elementor button for section/container rules when we know document/element refs
                     html += '<a href="#" class="button button-small" id="egp_section_edit_tpl" style="vertical-align:middle;"><?php _e('Edit in Elementor', 'elementor-geo-popup'); ?></a>';
                     html += '<div class="description" style="margin-top:4px;"><a href="<?php echo esc_url( admin_url('edit.php?post_type=elementor_library&tabs_group=library&rw_open_new=1') ); ?>" target="_blank"><?php _e('Create new template in Elementor', 'elementor-geo-popup'); ?></a></div>';
                 } else {
@@ -365,6 +366,23 @@ class EGP_Geo_Rules {
             var widTpl = targetSelection.querySelector('#egp_widget_template');
             var secEditBtn = targetSelection.querySelector('#egp_section_edit_tpl');
             var widEditBtn = targetSelection.querySelector('#egp_widget_edit_tpl');
+            // If the rule was created in Elementor, wire a direct editor link for the document/element
+            var editDocId = <?php echo intval(get_post_meta($post->ID, $this->meta_prefix.'elementor_document_id', true)); ?>;
+            var editElementRef = '<?php echo esc_js((string) get_post_meta($post->ID, $this->meta_prefix.'element_ref_id', true)); ?>';
+            var editInElButton = document.getElementById('egp_edit_in_elementor_direct');
+            if (!editInElButton) {
+                var container = document.getElementById('egp_target_selection');
+                if (container && editDocId) {
+                    var a = document.createElement('a');
+                    a.id = 'egp_edit_in_elementor_direct';
+                    a.className = 'button button-small';
+                    a.style.marginLeft = '8px';
+                    a.textContent = '<?php echo esc_js(__('Edit in Elementor', 'elementor-geo-popup')); ?>';
+                    a.href = '<?php echo admin_url('post.php'); ?>?post=' + editDocId + '&action=elementor' + (editElementRef ? ('#element-' + editElementRef) : '');
+                    a.target = '_blank';
+                    container.appendChild(a);
+                }
+            }
             function openTpl(selectEl){
                 if (!selectEl) return;
                 var v = (selectEl.value || '');
@@ -1692,7 +1710,11 @@ class EGP_Geo_Rules {
      * AJAX: Save geo rule from Elementor
      */
     public function ajax_save_elementor_geo_rule() {
-        check_ajax_referer('egp_admin_nonce', 'nonce');
+        // Accept either admin or tracking nonce (editor context may not have admin nonce)
+        $nonce = isset($_POST['nonce']) ? $_POST['nonce'] : '';
+        if (!wp_verify_nonce($nonce, 'egp_admin_nonce') && !wp_verify_nonce($nonce, 'egp_tracking_nonce')) {
+            wp_die(__('Security check failed', 'elementor-geo-popup'));
+        }
         if (!current_user_can('edit_posts')) {
             wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
         }
