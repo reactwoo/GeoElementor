@@ -72,88 +72,7 @@
         return { panel: null, settings: null };
     }
 
-    // Handle custom multi-select checkbox controls
-    $(document).on('change', '.egp-country-checkbox', function () {
-        var $container = $(this).closest('.egp-countries-control');
-        var $hiddenInput = $container.find('.egp-countries-hidden');
-        var selectedCountries = [];
-
-        // Collect all checked countries
-        $container.find('.egp-country-checkbox:checked').each(function () {
-            selectedCountries.push($(this).val());
-        });
-
-        // Update hidden input (custom control store)
-        $hiddenInput.val(JSON.stringify(selectedCountries));
-
-        // Also sync to the Elementor hidden control so the value is saved with the document
-        try {
-            var panel = (typeof elementor !== 'undefined' && elementor.getPanelView) ? elementor.getPanelView().getCurrentPageView() : null;
-            if (panel && panel.$el) {
-                var $elHidden = panel.$el.find('input[data-setting="egp_geo_countries_store"]');
-                if ($elHidden && $elHidden.length) {
-                    $elHidden.val(JSON.stringify(selectedCountries)).trigger('input');
-                }
-            }
-        } catch (e) { }
-
-        // Get current context
-        var ctx = getCurrentSettings();
-        if (!ctx.settings || !ctx.panel) { return; }
-
-        // Use unified approach - set individual settings to ensure proper model updates
-        var settings = ctx.panel.model.get('settings');
-        if (settings && typeof settings.set === 'function') {
-            // For Backbone models, use set method
-            settings.set('egp_countries', selectedCountries);
-            settings.set('egp_geo_countries_store', JSON.stringify(selectedCountries));
-        } else {
-            // Fallback: set entire settings object
-            settings = settings || {};
-            settings.egp_countries = selectedCountries;
-            settings.egp_geo_countries_store = JSON.stringify(selectedCountries);
-            ctx.panel.model.set('settings', settings);
-        }
-
-        // Also update the model directly to ensure persistence
-        if (ctx.panel.model && typeof ctx.panel.model.setSetting === 'function') {
-            ctx.panel.model.setSetting('egp_countries', selectedCountries);
-            ctx.panel.model.setSetting('egp_geo_countries_store', JSON.stringify(selectedCountries));
-        }
-
-        console.log('[EGP] Countries saved to model:', selectedCountries);
-
-        // Force Elementor to recognize the change and enable save (using modern API)
-        if (typeof elementor !== 'undefined' && elementor.$e) {
-            try {
-                elementor.$e.internal('document/save/set-is-modified', { status: true });
-            } catch (e) {
-                // Fallback to older method if new API fails
-                if (elementor.saver && elementor.saver.setFlagEditorChange) {
-                    elementor.saver.setFlagEditorChange(true);
-                }
-            }
-        }
-
-        // Save to database after a short delay to ensure UI updates
-        setTimeout(function () {
-            try { saveGeoRuleFromPanel(); } catch (e) {
-                console.log('[EGP] Error saving rule:', e);
-            }
-        }, 100);
-    });
-
-    // Handle Select All button
-    $(document).on('click', '.egp-select-all', function () {
-        var $container = $(this).closest('.egp-countries-control');
-        $container.find('.egp-country-checkbox').prop('checked', true).trigger('change');
-    });
-
-    // Handle Clear All button
-    $(document).on('click', '.egp-clear-all', function () {
-        var $container = $(this).closest('.egp-countries-control');
-        $container.find('.egp-country-checkbox').prop('checked', false).trigger('change');
-    });
+    // Legacy checkbox-based country control is deprecated; no JS syncing needed.
 
     // Handle copy element ID button
     $(document).on('click', '#egp-copy-element-id', function (e) {
@@ -200,10 +119,7 @@
             }
         }
 
-        // Restore checkbox-based country selection from model
-        restoreCountrySelection();
-        // Also fetch any stored countries from server for this element and apply
-        setTimeout(fetchAndApplyCountries, 300);
+        // Legacy checkbox UI removed; no restore/fetch needed for countries
 
         // Initialize element ID display
         var $display = $('#egp-element-id-display');
@@ -222,109 +138,10 @@
     }
 
     // Restore country selection from Elementor model
-    function restoreCountrySelection() {
-        var ctx = getCurrentSettings();
-        if (!ctx.settings || !ctx.panel) { return; }
-
-        var settings = ctx.panel.model.get('settings');
-        var selectedCountries = [];
-
-        // Try to get countries from different sources
-        if (settings && typeof settings.get === 'function') {
-            var rawCountries = settings.get('egp_countries');
-            if (Array.isArray(rawCountries) && rawCountries.length > 0) {
-                selectedCountries = rawCountries;
-            } else {
-                var rawStore = settings.get('egp_geo_countries_store');
-                if (rawStore) {
-                    try { selectedCountries = JSON.parse(rawStore); } catch (e) { }
-                }
-            }
-        }
-
-        // Update checkboxes based on selected countries
-        if (selectedCountries.length > 0) {
-            $('.egp-country-checkbox').each(function () {
-                var countryCode = $(this).val();
-                if (selectedCountries.indexOf(countryCode) !== -1) {
-                    $(this).prop('checked', true);
-                }
-            });
-
-            // Update hidden field (custom control store)
-            $('.egp-countries-hidden').val(JSON.stringify(selectedCountries));
-
-            // Also sync Elementor hidden control
-            try {
-                var panel = (typeof elementor !== 'undefined' && elementor.getPanelView) ? elementor.getPanelView().getCurrentPageView() : null;
-                if (panel && panel.$el) {
-                    var $elHidden = panel.$el.find('input[data-setting="egp_geo_countries_store"]');
-                    if ($elHidden && $elHidden.length) {
-                        $elHidden.val(JSON.stringify(selectedCountries)).trigger('input');
-                    }
-                }
-            } catch (e) { }
-
-            console.log('[EGP] Restored country selection:', selectedCountries);
-        }
-    }
+    function restoreCountrySelection() { /* deprecated */ }
 
     // Fetch stored rule by element and apply to UI/model so it persists across reloads
-    function fetchAndApplyCountries() {
-        try {
-            if (typeof elementor === 'undefined' || !elementor.getPanelView) { return; }
-            var panel = elementor.getPanelView().getCurrentPageView();
-            if (!panel || !panel.model) { return; }
-            var elementRefId = panel.model.get('id');
-            if (!elementRefId) { return; }
-
-            var url = (window.egpEditor && egpEditor.ajaxUrl) || (typeof ajaxurl !== 'undefined' ? ajaxurl : null);
-            if (!url) { return; }
-
-            var payload = {
-                action: 'egp_get_rule_by_element',
-                nonce: (window.egpEditor && (egpEditor.nonce || egpEditor.trackingNonce)) || '',
-                element_id: elementRefId
-            };
-
-            jQuery.post(url, payload).done(function (res) {
-                if (!res || !res.success || !res.data) { return; }
-                var countries = Array.isArray(res.data.countries) ? res.data.countries : [];
-                if (!countries.length) { return; }
-
-                var $container = jQuery('.egp-countries-control');
-                if ($container.length) {
-                    $container.find('.egp-country-checkbox').prop('checked', false);
-                    countries.forEach(function (code) {
-                        $container.find('.egp-country-checkbox[value="' + code + '"]').prop('checked', true);
-                    });
-                    $container.find('.egp-countries-hidden').val(JSON.stringify(countries));
-                }
-
-                if (panel.$el) {
-                    var $elHidden = panel.$el.find('input[data-setting="egp_geo_countries_store"]');
-                    if ($elHidden && $elHidden.length) {
-                        $elHidden.val(JSON.stringify(countries)).trigger('input');
-                    }
-                }
-
-                var settings = panel.model.get('settings');
-                if (settings && typeof settings.set === 'function') {
-                    settings.set('egp_countries', countries);
-                    settings.set('egp_geo_countries_store', JSON.stringify(countries));
-                } else {
-                    panel.model.set('settings', jQuery.extend({}, settings || {}, {
-                        egp_countries: countries,
-                        egp_geo_countries_store: JSON.stringify(countries)
-                    }));
-                }
-
-                if (elementor.$e) {
-                    try { elementor.$e.internal('document/save/set-is-modified', { status: true }); } catch (e) { }
-                }
-            });
-        } catch (e) { }
-    }
+    function fetchAndApplyCountries() { /* deprecated */ }
 
     // Auto-generate Element ID when field is empty
     function autoGenerateElementId() {
@@ -350,8 +167,6 @@
                             initializeGeoControls();
                             // Auto-generate Element ID after controls are initialized
                             setTimeout(autoGenerateElementId, 300);
-                            // Restore country selection after a delay to ensure controls are rendered
-                            setTimeout(restoreCountrySelection, 500);
                             // Bind save on toggle change
                             $(document).off('change.egp', 'input[name*="egp_geo_enabled"]').on('change.egp', 'input[name*="egp_geo_enabled"]', function () {
                                 // Use popup approach for enable toggle
@@ -361,7 +176,7 @@
                                     settings.egp_geo_enabled = $(this).is(':checked') ? 'yes' : '';
                                     ctx.panel.model.set('settings', settings);
                                 }
-                                try { saveGeoRuleFromPanel(); } catch (e) { }
+                                // Do not auto-save custom rules here; native settings will be saved
                             });
                             // Bind element ID change
                             $(document).off('input.egp', 'input[name*="egp_element_id"]').on('input.egp', 'input[name*="egp_element_id"]', function () {
@@ -376,8 +191,7 @@
                         }, 200);
                     }
                 });
-                // Also try to save on editor document save
-                elementor.channels.editor.on('saved', function () { try { saveGeoRuleFromPanel(); } catch (e) { } });
+                // No custom save hook; rely on Elementor save
             }
             // Also initialize on panel open
             setTimeout(function () {
@@ -393,119 +207,12 @@
             setTimeout(function () {
                 initializeGeoControls();
                 setTimeout(autoGenerateElementId, 200);
-                try { saveGeoRuleFromPanel(); } catch (e) { }
             }, 100);
         }
     });
 
     // Persist current panel settings as a Geo Rule via AJAX
-    function saveGeoRuleFromPanel() {
-        if (typeof elementor === 'undefined' || !elementor.getPanelView) { return; }
-        var panel = elementor.getPanelView().getCurrentPageView();
-        if (!panel || !panel.model) { return; }
-
-        var elType = panel.model.get('elType') || '';
-        var targetType = (elType === 'widget') ? 'widget' : 'section';
-
-        // Debug logging to understand elType
-        console.log('[EGP] Rule creation - elType:', elType, 'targetType:', targetType, 'panel ID:', panel.model.get('id'));
-
-        // Read from Elementor model settings
-        var settings = (panel.model && typeof panel.model.get === 'function') ? panel.model.get('settings') : null;
-        var enabled = false;
-        var countries = [];
-        var elementIdSetting = '';
-
-        try {
-            if (settings && typeof settings.get === 'function') {
-                var rawEnabled = settings.get('egp_geo_enabled');
-                enabled = (rawEnabled === 'yes' || rawEnabled === '1' || rawEnabled === true);
-
-                // Try to get countries from the Elementor control first
-                var rawCountries = settings.get('egp_countries');
-                if (Array.isArray(rawCountries) && rawCountries.length > 0) {
-                    countries = rawCountries;
-                } else {
-                // Fallback to stored JSON
-                    var rawStore = settings.get('egp_geo_countries_store');
-                    if (rawStore) {
-                        try { countries = JSON.parse(rawStore); } catch (e) { }
-                    }
-                }
-
-                var rawElId = settings.get('egp_element_id');
-                if (rawElId) { elementIdSetting = rawElId; }
-            }
-        } catch (e) { }
-
-        // If still no countries, try DOM fallback for controls
-        if (!countries.length) {
-            var panelEl = panel.$el || null;
-            if (panelEl) {
-                // Try custom checkbox multi-select
-                var checkedBoxes = panelEl.find('.egp-country-checkbox:checked');
-                if (checkedBoxes.length) {
-                    countries = [];
-                    checkedBoxes.each(function () {
-                        countries.push($(this).val());
-                    });
-                }
-                // Try hidden input from custom control
-                if (!countries.length) {
-                    var hiddenInput = panelEl.find('.egp-countries-hidden').val();
-                    if (hiddenInput) {
-                        try { countries = JSON.parse(hiddenInput); } catch (e) { }
-                    }
-                }
-                // Try legacy hidden input (fallback)
-                if (!countries.length) {
-                    var domStore = panelEl.find('input[name*="egp_geo_countries_store"]').val();
-                    if (domStore) {
-                        try { countries = JSON.parse(domStore); } catch (e) { }
-                    }
-                }
-            }
-        }
-        var targetId = '';
-        if (elementIdSetting) {
-            targetId = ('' + elementIdSetting).trim();
-        } else if (panel.$el && panel.$el.find('input[name*="egp_element_id"]').length && panel.$el.find('input[name*="egp_element_id"]').val()) {
-            targetId = panel.$el.find('input[name*="egp_element_id"]').val().trim();
-        } else if (panel.model.get('id')) {
-            targetId = panel.model.get('id');
-        }
-        if (!enabled) { return; }
-        if (!countries.length) { return; }
-        if (!targetId) { return; }
-
-        // Get current document ID from Elementor
-        var documentId = 0;
-        if (typeof elementor !== 'undefined' && elementor.documents && elementor.documents.getCurrent) {
-            var currentDoc = elementor.documents.getCurrent();
-            if (currentDoc && currentDoc.id) {
-                documentId = currentDoc.id;
-            }
-        }
-
-        var data = {
-            action: 'egp_save_elementor_geo_rule',
-            nonce: (window.egpEditor && egpEditor.nonce) || '',
-            target_type: targetType,
-            target_id: targetId,
-            countries: countries,
-            priority: 50,
-            active: true,
-            title: (targetType.charAt(0).toUpperCase() + targetType.slice(1)) + ' ' + targetId,
-            element_type: targetType,
-            element_ref_id: (panel.model && panel.model.get('id')) ? panel.model.get('id') : '',
-            document_id: documentId
-        };
-        var url = (window.egpEditor && egpEditor.ajaxUrl) || (typeof ajaxurl !== 'undefined' ? ajaxurl : null);
-        if (!url) { return; }
-        jQuery.ajax({ url: url, method: 'POST', data: data, dataType: 'json' })
-            .done(function (res) { /* Rule saved */ })
-            .fail(function (xhr) { /* Silent fail */ });
-    }
+    function saveGeoRuleFromPanel() { /* deprecated */ }
 
 })(jQuery);
 

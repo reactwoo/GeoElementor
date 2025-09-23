@@ -732,46 +732,21 @@ class ElementorGeoPopup {
                 )
             );
 
-            $widget->add_control(
-                'egp_geo_countries_store',
-                array(
-                    'type'        => \Elementor\Controls_Manager::HIDDEN,
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'default'     => '[]',
-                )
-            );
-
-            // Country selector using custom multi-select implementation
-            $country_options = method_exists($this, 'get_country_options') ? $this->get_country_options() : array();
-            
-            // Create options HTML for custom multi-select
-            $options_html = '';
-            foreach ($country_options as $code => $name) {
-                $options_html .= '<label style="display:block;margin:2px 0;cursor:pointer;">';
-                $options_html .= '<input type="checkbox" value="' . esc_attr($code) . '" style="margin-right:8px;" class="egp-country-checkbox">';
-                $options_html .= esc_html($name) . '</label>';
-            }
-            
-            $widget->add_control(
-                'egp_countries',
-                array(
-                    'type' => \Elementor\Controls_Manager::RAW_HTML,
-                    'raw'  => '<div style="margin-bottom:10px;">'
-                           . '<label style="display:block;margin-bottom:8px;font-weight:600;">' . esc_html__('Target Countries', 'elementor-geo-popup') . '</label>'
-                           . '<div style="max-height:200px;overflow-y:auto;border:1px solid #d5dadf;border-radius:4px;padding:8px;background:#fff;">'
-                           . '<div style="margin-bottom:8px;">'
-                           . '<button type="button" class="egp-select-all" style="margin-right:8px;padding:4px 8px;font-size:11px;border:1px solid #d5dadf;background:#f1f1f1;cursor:pointer;">Select All</button>'
-                           . '<button type="button" class="egp-clear-all" style="padding:4px 8px;font-size:11px;border:1px solid #d5dadf;background:#f1f1f1;cursor:pointer;">Clear All</button>'
-                           . '</div>'
-                           . $options_html
-                           . '</div>'
-                           . '<input type="hidden" name="egp_countries_selected" class="egp-countries-hidden" data-setting="egp_countries" value="">'
-                           . '<p class="description" style="margin-top:8px;color:#666;font-size:12px;">' . esc_html__('Select countries to target. Click checkboxes to select multiple countries.', 'elementor-geo-popup') . '</p>'
-                           . '</div>',
-                    'content_classes' => 'egp-countries-control',
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                )
-            );
+			// Native Elementor multiple select for countries
+			$country_options = method_exists($this, 'get_country_options') ? $this->get_country_options() : array();
+			$widget->add_control(
+				'egp_countries',
+				array(
+					'label'       => __('Target Countries', 'elementor-geo-popup'),
+					'type'        => \Elementor\Controls_Manager::SELECT,
+					'multiple'    => true,
+					'label_block' => true,
+					'options'     => $country_options,
+					'default'     => array(),
+					'render_type' => 'none',
+					'condition'   => array('egp_geo_enabled' => 'yes'),
+				)
+			);
 
             // Move Priority below Target Countries
             $widget->add_control(
@@ -918,46 +893,21 @@ class ElementorGeoPopup {
                 )
             );
 
-            $container->add_control(
-                'egp_geo_countries_store',
-                array(
-                    'type'        => \Elementor\Controls_Manager::HIDDEN,
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'default'     => '[]',
-                )
-            );
-
-            // Country selector using custom multi-select implementation
-            $country_options = method_exists($this, 'get_country_options') ? $this->get_country_options() : array();
-            
-            // Create options HTML for custom multi-select
-            $options_html = '';
-            foreach ($country_options as $code => $name) {
-                $options_html .= '<label style="display:block;margin:2px 0;cursor:pointer;">';
-                $options_html .= '<input type="checkbox" value="' . esc_attr($code) . '" style="margin-right:8px;" class="egp-country-checkbox">';
-                $options_html .= esc_html($name) . '</label>';
-            }
-            
-            $container->add_control(
-                'egp_countries',
-                array(
-                    'type' => \Elementor\Controls_Manager::RAW_HTML,
-                    'raw'  => '<div style="margin-bottom:10px;">'
-                           . '<label style="display:block;margin-bottom:8px;font-weight:600;">' . esc_html__('Target Countries', 'elementor-geo-popup') . '</label>'
-                           . '<div style="max-height:200px;overflow-y:auto;border:1px solid #d5dadf;border-radius:4px;padding:8px;background:#fff;">'
-                           . '<div style="margin-bottom:8px;">'
-                           . '<button type="button" class="egp-select-all" style="margin-right:8px;padding:4px 8px;font-size:11px;border:1px solid #d5dadf;background:#f1f1f1;cursor:pointer;">Select All</button>'
-                           . '<button type="button" class="egp-clear-all" style="padding:4px 8px;font-size:11px;border:1px solid #d5dadf;background:#f1f1f1;cursor:pointer;">Clear All</button>'
-                           . '</div>'
-                           . $options_html
-                           . '</div>'
-                           . '<input type="hidden" name="egp_countries_selected" class="egp-countries-hidden" data-setting="egp_countries" value="">'
-                           . '<p class="description" style="margin-top:8px;color:#666;font-size:12px;">' . esc_html__('Select countries to target. Click checkboxes to select multiple countries.', 'elementor-geo-popup') . '</p>'
-                           . '</div>',
-                    'content_classes' => 'egp-countries-control',
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                )
-            );
+			// Native Elementor multiple select for countries
+			$country_options = method_exists($this, 'get_country_options') ? $this->get_country_options() : array();
+			$container->add_control(
+				'egp_countries',
+				array(
+					'label'       => __('Target Countries', 'elementor-geo-popup'),
+					'type'        => \Elementor\Controls_Manager::SELECT,
+					'multiple'    => true,
+					'label_block' => true,
+					'options'     => $country_options,
+					'default'     => array(),
+					'render_type' => 'none',
+					'condition'   => array('egp_geo_enabled' => 'yes'),
+				)
+			);
 
             // Priority with tooltip
             $container->add_control(
@@ -1076,15 +1026,21 @@ class ElementorGeoPopup {
                 )
             );
 
-            // Store countries as JSON in hidden field
-            $element->add_control(
-                'egp_geo_countries_store',
-                array(
-                    'type'        => \Elementor\Controls_Manager::HIDDEN,
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'default'     => '[]',
-                )
-            );
+			// Countries control (native multiple select)
+			$country_options = method_exists($this, 'get_country_options') ? $this->get_country_options() : array();
+			$element->add_control(
+				'egp_countries',
+				array(
+					'label'       => __('Target Countries', 'elementor-geo-popup'),
+					'type'        => \Elementor\Controls_Manager::SELECT,
+					'multiple'    => true,
+					'label_block' => true,
+					'options'     => $country_options,
+					'default'     => array(),
+					'render_type' => 'none',
+					'condition'   => array('egp_geo_enabled' => 'yes'),
+				)
+			);
 
             // Priority control
             $element->add_control(
@@ -1113,39 +1069,7 @@ class ElementorGeoPopup {
                 )
             );
 
-            // Use the same modern SELECT control method as widgets and containers
-
-            // Country selector using custom multi-select implementation
-            $country_options = method_exists($this, 'get_country_options') ? $this->get_country_options() : array();
-            
-            // Create options HTML for custom multi-select
-            $options_html = '';
-            foreach ($country_options as $code => $name) {
-                $options_html .= '<label style="display:block;margin:2px 0;cursor:pointer;">';
-                $options_html .= '<input type="checkbox" value="' . esc_attr($code) . '" style="margin-right:8px;" class="egp-country-checkbox">';
-                $options_html .= esc_html($name) . '</label>';
-            }
-            
-            $element->add_control(
-                'egp_countries',
-                array(
-                    'type' => \Elementor\Controls_Manager::RAW_HTML,
-                    'raw'  => '<div style="margin-bottom:10px;">'
-                           . '<label style="display:block;margin-bottom:8px;font-weight:600;">' . esc_html__('Target Countries', 'elementor-geo-popup') . '</label>'
-                           . '<div style="max-height:200px;overflow-y:auto;border:1px solid #d5dadf;border-radius:4px;padding:8px;background:#fff;">'
-                           . '<div style="margin-bottom:8px;">'
-                           . '<button type="button" class="egp-select-all" style="margin-right:8px;padding:4px 8px;font-size:11px;border:1px solid #d5dadf;background:#f1f1f1;cursor:pointer;">Select All</button>'
-                           . '<button type="button" class="egp-clear-all" style="padding:4px 8px;font-size:11px;border:1px solid #d5dadf;background:#f1f1f1;cursor:pointer;">Clear All</button>'
-                           . '</div>'
-                           . $options_html
-                           . '</div>'
-                           . '<input type="hidden" name="egp_countries_selected" class="egp-countries-hidden" data-setting="egp_countries" value="">'
-                           . '<p class="description" style="margin-top:8px;color:#666;font-size:12px;">' . esc_html__('Select countries to target. Click checkboxes to select multiple countries.', 'elementor-geo-popup') . '</p>'
-                           . '</div>',
-                    'content_classes' => 'egp-countries-control',
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                )
-            );
+			// (Legacy UI replaced by native select above)
         } else {
             // Free: show upgrade callout; do not expose controls
             $element->add_control(
