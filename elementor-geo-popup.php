@@ -738,7 +738,7 @@ class ElementorGeoPopup {
 				'egp_countries',
 				array(
 					'label'       => __('Target Countries', 'elementor-geo-popup'),
-					'type'        => \Elementor\Controls_Manager::SELECT2,
+					'type'        => \Elementor\Controls_Manager::SELECT,
 					'multiple'    => true,
 					'label_block' => true,
 					'options'     => $country_options,
@@ -899,7 +899,7 @@ class ElementorGeoPopup {
 				'egp_countries',
 				array(
 					'label'       => __('Target Countries', 'elementor-geo-popup'),
-					'type'        => \Elementor\Controls_Manager::SELECT2,
+					'type'        => \Elementor\Controls_Manager::SELECT,
 					'multiple'    => true,
 					'label_block' => true,
 					'options'     => $country_options,
@@ -1032,7 +1032,7 @@ class ElementorGeoPopup {
 				'egp_countries',
 				array(
 					'label'       => __('Target Countries', 'elementor-geo-popup'),
-					'type'        => \Elementor\Controls_Manager::SELECT2,
+					'type'        => \Elementor\Controls_Manager::SELECT,
 					'multiple'    => true,
 					'label_block' => true,
 					'options'     => $country_options,

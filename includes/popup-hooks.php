@@ -550,7 +550,7 @@ class EGP_Popup_Hooks {
             'egp_countries',
             [
                 'label' => __('Target Countries', 'elementor-geo-popup'),
-                'type' => \Elementor\Controls_Manager::SELECT2,
+                'type' => \Elementor\Controls_Manager::SELECT,
                 'multiple' => true,
                 'label_block' => true,
                 'options' => $this->get_countries_list(),
