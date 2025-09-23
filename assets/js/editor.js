@@ -71,6 +71,67 @@
         console.log('[EGP] No valid panel/settings found');
         return { panel: null, settings: null };
     }
+    // Save rule when native countries select changes or enable toggle changes
+    function saveRuleFromCurrentPanel() {
+        if (typeof elementor === 'undefined' || !elementor.getPanelView) { return; }
+        var panel = elementor.getPanelView().getCurrentPageView();
+        if (!panel || !panel.model) { return; }
+        var settings = (panel.model && typeof panel.model.get === 'function') ? panel.model.get('settings') : null;
+        if (!settings || typeof settings.get !== 'function') { return; }
+
+        var rawEnabled = settings.get('egp_geo_enabled');
+        var enabled = (rawEnabled === 'yes' || rawEnabled === '1' || rawEnabled === true);
+        var countries = settings.get('egp_countries');
+        if (!Array.isArray(countries)) { countries = []; }
+
+        var targetId = settings.get('egp_element_id') || '';
+        if (!targetId && panel.$el) {
+            var $el = panel.$el.find('input[name*="egp_element_id"]');
+            if ($el.length && $el.val()) { targetId = ($el.val() || '').trim(); }
+        }
+        var elementRefId = panel.model.get('id') || '';
+
+        // Ensure an ID exists
+        if (!targetId) { targetId = elementRefId || ''; }
+
+        if (!enabled || !countries.length || !targetId) { return; }
+
+        var elType = panel.model.get('elType') || '';
+        var targetType = (elType === 'widget') ? 'widget' : 'section';
+
+        var documentId = 0;
+        if (elementor.documents && elementor.documents.getCurrent) {
+            var currentDoc = elementor.documents.getCurrent();
+            if (currentDoc && currentDoc.id) { documentId = currentDoc.id; }
+        }
+
+        var url = (window.egpEditor && egpEditor.ajaxUrl) || (typeof ajaxurl !== 'undefined' ? ajaxurl : null);
+        if (!url) { return; }
+        var data = {
+            action: 'egp_save_elementor_geo_rule',
+            nonce: (window.egpEditor && (egpEditor.nonce || egpEditor.trackingNonce)) || '',
+            target_type: targetType,
+            target_id: targetId,
+            countries: countries,
+            priority: 50,
+            active: true,
+            title: (targetType.charAt(0).toUpperCase() + targetType.slice(1)) + ' ' + targetId,
+            element_type: targetType,
+            element_ref_id: elementRefId,
+            document_id: documentId
+        };
+        jQuery.post(url, data);
+    }
+
+    // Bind to native select changes
+    $(document).on('change', 'select[data-setting="egp_countries"]', function () {
+        saveRuleFromCurrentPanel();
+    });
+
+    // Bind to enable toggle
+    $(document).on('change.egp', 'input[name*="egp_geo_enabled"]', function () {
+        saveRuleFromCurrentPanel();
+    });
 
     // Legacy checkbox-based country control is deprecated; no JS syncing needed.
 
@@ -153,6 +214,23 @@
             var elementId = 'geo_' + timestamp + '_' + random;
             $elementIdField.val(elementId);
             console.log('[EGP] Auto-generated Element ID:', elementId);
+            // Persist into Elementor model so server saves use this stable ID
+            try {
+                var panel = (typeof elementor !== 'undefined' && elementor.getPanelView) ? elementor.getPanelView().getCurrentPageView() : null;
+                if (panel && panel.model) {
+                    var settings = panel.model.get('settings') || {};
+                    settings.egp_element_id = elementId;
+                    if (typeof settings.set === 'function') {
+                        settings.set('egp_element_id', elementId);
+                    } else {
+                        panel.model.set('settings', settings);
+                    }
+                    if (typeof panel.model.setSetting === 'function') {
+                        panel.model.setSetting('egp_element_id', elementId);
+                    }
+                    $elementIdField.trigger('input');
+                }
+            } catch (e) { }
         }
     }
 

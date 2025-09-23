@@ -80,7 +80,7 @@ class EGP_Popup_Editor {
             'egp_countries',
             array(
                 'label' => __('Target Countries', 'elementor-geo-popup'),
-                'type' => \Elementor\Controls_Manager::SELECT,
+                'type' => \Elementor\Controls_Manager::SELECT2,
                 'multiple' => true,
                 'label_block' => true,
                 'options' => $this->get_countries_list(),
