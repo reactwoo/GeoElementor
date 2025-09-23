@@ -62,10 +62,12 @@ class EGP_Global_Settings {
             'egp_target_countries',
             [
                 'label' => esc_html__('Target Countries', 'elementor-geo-popup'),
-                'type' => \Elementor\Controls_Manager::SELECT2,
+                'type' => \Elementor\Controls_Manager::SELECT,
                 'multiple' => true,
+                'label_block' => true,
                 'options' => $this->get_countries_list(),
                 'default' => $this->get_preferred_countries(),
+                'render_type' => 'none',
                 'condition' => [
                     'egp_geo_targeting_enabled' => 'yes',
                 ],
@@ -111,10 +113,12 @@ class EGP_Global_Settings {
             'egp_target_countries',
             [
                 'label' => esc_html__('Target Countries', 'elementor-geo-popup'),
-                'type' => \Elementor\Controls_Manager::SELECT2,
+                'type' => \Elementor\Controls_Manager::SELECT,
                 'multiple' => true,
+                'label_block' => true,
                 'options' => $this->get_countries_list(),
                 'default' => $this->get_preferred_countries(),
+                'render_type' => 'none',
                 'condition' => [
                     'egp_geo_targeting_enabled' => 'yes',
                 ],
@@ -154,10 +158,12 @@ class EGP_Global_Settings {
             'egp_target_countries',
             [
                 'label' => esc_html__('Target Countries', 'elementor-geo-popup'),
-                'type' => \Elementor\Controls_Manager::SELECT2,
+                'type' => \Elementor\Controls_Manager::SELECT,
                 'multiple' => true,
+                'label_block' => true,
                 'options' => $this->get_countries_list(),
                 'default' => $this->get_preferred_countries(),
+                'render_type' => 'none',
                 'condition' => [
                     'egp_geo_targeting_enabled' => 'yes',
                 ],
