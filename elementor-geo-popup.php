@@ -493,6 +493,9 @@ class ElementorGeoPopup {
                         settings.set('egp_countries_data', JSON.stringify(selected));
                         updateSelectedDisplay();
                         
+                        // Also update the legacy egp_countries field for compatibility
+                        settings.set('egp_countries', selected);
+                        
                         var enabled = settings.get('egp_geo_enabled') === 'yes';
                         if (enabled && selected.length > 0) {
                             setTimeout(function() {

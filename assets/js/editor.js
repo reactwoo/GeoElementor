@@ -72,7 +72,7 @@
         return { panel: null, settings: null };
     }
     // Save rule when native countries select changes or enable toggle changes
-    function saveRuleFromCurrentPanel() {
+    window.saveRuleFromCurrentPanel = function saveRuleFromCurrentPanel() {
         if (typeof elementor === 'undefined' || !elementor.getPanelView) { return; }
         var panel = elementor.getPanelView().getCurrentPageView();
         if (!panel || !panel.model) { return; }
@@ -82,7 +82,19 @@
         var rawEnabled = settings.get('egp_geo_enabled');
         var enabled = (rawEnabled === 'yes' || rawEnabled === '1' || rawEnabled === true);
         var countries = settings.get('egp_countries');
-        if (!Array.isArray(countries)) { countries = []; }
+        if (!Array.isArray(countries)) {
+            // Try to get from the new data field
+            var countriesData = settings.get('egp_countries_data');
+            if (countriesData) {
+                try {
+                    countries = JSON.parse(countriesData);
+                } catch (e) {
+                    countries = [];
+                }
+            } else {
+                countries = [];
+            }
+        }
 
         var targetId = settings.get('egp_element_id') || '';
         if (!targetId && panel.$el) {
@@ -121,7 +133,7 @@
             document_id: documentId
         };
         jQuery.post(url, data);
-    }
+    };
 
     // Bind to native select changes
     $(document).on('change', 'select[data-setting="egp_countries"]', function () {
