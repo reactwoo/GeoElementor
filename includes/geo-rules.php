@@ -76,6 +76,7 @@ class EGP_Geo_Rules {
         add_action('wp_ajax_egp_track_form_field_focus', array($this, 'ajax_track_form_field_focus'));
         add_action('wp_ajax_egp_get_target_options', array($this, 'ajax_get_target_options'));
         add_action('wp_ajax_egp_save_elementor_geo_rule', array($this, 'ajax_save_elementor_geo_rule'));
+        add_action('wp_ajax_egp_save_elementor_rule_enhanced', array($this, 'ajax_save_elementor_rule_enhanced'));
         add_action('wp_ajax_egp_remove_elementor_geo_rule', array($this, 'ajax_remove_elementor_geo_rule'));
         add_action('wp_ajax_egp_get_rule_by_element', array($this, 'ajax_get_rule_by_element'));
         add_action('wp_ajax_egp_get_rule_by_popup', array($this, 'ajax_get_rule_by_popup'));
@@ -282,6 +283,10 @@ class EGP_Geo_Rules {
                     html += '<option value="' + option.id + '" ' + (selectedValue == option.id ? 'selected' : '') + '>' + option.title + '</option>';
                 });
                 html += '</select>';
+                // Add edit button only for actual popup selections
+                if (selectedValue && selectedValue !== 'all' && selectedValue !== '') {
+                    html += '<br><br><button type="button" class="button" onclick="window.open(\'<?php echo admin_url('post.php'); ?>?post=' + selectedValue + '&action=elementor\', \'_blank\');">Edit Popup in Elementor</button>';
+                }
             } else if (targetType === 'popup') {
                 html = '<select name="egp_target_id_select" id="egp_target_id_select">';
                 html += '<option value=""><?php _e('Select a popup', 'elementor-geo-popup'); ?></option>';
@@ -369,10 +374,11 @@ class EGP_Geo_Rules {
             // If the rule was created in Elementor, wire a direct editor link for the document/element
             var editDocId = <?php echo intval(get_post_meta($post->ID, $this->meta_prefix.'elementor_document_id', true)); ?>;
             var editElementRef = '<?php echo esc_js((string) get_post_meta($post->ID, $this->meta_prefix.'element_ref_id', true)); ?>';
+            // Only show direct edit button for sections/widgets with valid document ID
             var editInElButton = document.getElementById('egp_edit_in_elementor_direct');
-            if (!editInElButton) {
+            if (!editInElButton && editDocId && (targetType === 'section' || targetType === 'widget')) {
                 var container = document.getElementById('egp_target_selection');
-                if (container && editDocId) {
+                if (container) {
                     var a = document.createElement('a');
                     a.id = 'egp_edit_in_elementor_direct';
                     a.className = 'button button-small';

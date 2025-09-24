@@ -120,13 +120,14 @@
         var url = (window.egpEditor && egpEditor.ajaxUrl) || (typeof ajaxurl !== 'undefined' ? ajaxurl : null);
         if (!url) { return; }
         var data = {
-            action: 'egp_save_elementor_geo_rule',
+            action: 'egp_save_elementor_rule_enhanced',
             nonce: (window.egpEditor && (egpEditor.nonce || egpEditor.trackingNonce)) || '',
             target_type: targetType,
             target_id: targetId,
             countries: countries,
             priority: 50,
             active: true,
+            element_type: targetType,
             title: (targetType.charAt(0).toUpperCase() + targetType.slice(1)) + ' ' + targetId,
             element_type: targetType,
             element_ref_id: elementRefId,
