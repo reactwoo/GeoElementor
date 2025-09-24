@@ -133,6 +133,9 @@ class ElementorGeoPopup {
         // Load plugin components
         $this->load_dependencies();
         
+        // Load enhanced fixes
+        $this->load_enhanced_fixes();
+        
         // Initialize add-on manager
         require_once EGP_PLUGIN_DIR . 'includes/addon-manager.php';
         require_once EGP_PLUGIN_DIR . 'includes/addon-base.php';
@@ -150,6 +153,14 @@ class ElementorGeoPopup {
         }
 
         $this->init_components();
+    }
+    
+    /**
+     * Load enhanced fixes
+     */
+    private function load_enhanced_fixes() {
+        // Load the enhanced controls fix
+        require_once EGP_PLUGIN_DIR . 'includes/elementor-controls-fix.php';
     }
     
     /**
@@ -410,6 +421,104 @@ class ElementorGeoPopup {
         );
     }
 
+    /**
+     * Get countries selector HTML for widgets
+     */
+    private function get_countries_selector_widget_html() {
+        $countries = $this->get_country_options();
+        
+        ob_start();
+        ?>
+        <div class="egp-countries-selector" data-element-type="widget">
+            <select id="egp-countries-widget-select" multiple style="width: 100%; min-height: 120px;">
+                <?php foreach ($countries as $code => $name): ?>
+                    <option value="<?php echo esc_attr($code); ?>"><?php echo esc_html($name); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <p class="description"><?php _e('Hold Ctrl/Cmd to select multiple countries. Changes are saved automatically.', 'elementor-geo-popup'); ?></p>
+            <div class="egp-selected-countries" style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; display: none;">
+                <strong><?php _e('Selected:', 'elementor-geo-popup'); ?></strong>
+                <span class="egp-selected-list"></span>
+            </div>
+        </div>
+        
+        <script>
+        jQuery(document).ready(function($) {
+            var $select = $('#egp-countries-widget-select');
+            var $selectedDiv = $select.siblings('.egp-selected-countries');
+            var $selectedList = $selectedDiv.find('.egp-selected-list');
+            
+            function loadExistingSelections() {
+                if (typeof elementor === 'undefined') return;
+                
+                var panel = elementor.getPanelView().getCurrentPageView();
+                if (panel && panel.model) {
+                    var settings = panel.model.get('settings');
+                    if (settings) {
+                        var countriesData = settings.get('egp_countries_data');
+                        if (countriesData) {
+                            try {
+                                var countries = JSON.parse(countriesData);
+                                $select.val(countries);
+                                updateSelectedDisplay();
+                            } catch (e) {
+                                console.log('EGP: Error parsing countries data:', e);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            function updateSelectedDisplay() {
+                var selected = $select.val() || [];
+                if (selected.length > 0) {
+                    var names = selected.map(function(code) {
+                        return $select.find('option[value="' + code + '"]').text();
+                    });
+                    $selectedList.text(names.join(', '));
+                    $selectedDiv.show();
+                } else {
+                    $selectedDiv.hide();
+                }
+            }
+            
+            function saveSelections() {
+                if (typeof elementor === 'undefined') return;
+                
+                var selected = $select.val() || [];
+                var panel = elementor.getPanelView().getCurrentPageView();
+                if (panel && panel.model) {
+                    var settings = panel.model.get('settings');
+                    if (settings && typeof settings.set === 'function') {
+                        settings.set('egp_countries_data', JSON.stringify(selected));
+                        updateSelectedDisplay();
+                        
+                        var enabled = settings.get('egp_geo_enabled') === 'yes';
+                        if (enabled && selected.length > 0) {
+                            setTimeout(function() {
+                                saveRuleFromCurrentPanel();
+                            }, 1000);
+                        }
+                    }
+                }
+            }
+            
+            $select.on('change', saveSelections);
+            setTimeout(loadExistingSelections, 100);
+            
+            if (typeof elementor !== 'undefined' && elementor.channels && elementor.channels.editor) {
+                elementor.channels.editor.on('section:activated', function(sectionName) {
+                    if (sectionName.indexOf('egp_') !== -1) {
+                        setTimeout(loadExistingSelections, 100);
+                    }
+                });
+            }
+        });
+        </script>
+        <?php
+        return ob_get_clean();
+    }
+    
     /**
      * Get country options formatted for Elementor's CHOOSE control
      */
@@ -732,18 +841,23 @@ class ElementorGeoPopup {
                 )
             );
 
-			// Native Elementor multiple select for countries
-			$country_options = method_exists($this, 'get_country_options') ? $this->get_country_options() : array();
+			// Use RAW_HTML control for better country selection persistence
 			$widget->add_control(
 				'egp_countries',
 				array(
 					'label'       => __('Target Countries', 'elementor-geo-popup'),
-					'type'        => \Elementor\Controls_Manager::SELECT,
-					'multiple'    => true,
-					'label_block' => true,
-					'options'     => $country_options,
-					'default'     => array(),
-					'render_type' => 'none',
+					'type'        => \Elementor\Controls_Manager::RAW_HTML,
+					'raw'         => $this->get_countries_selector_widget_html(),
+					'condition'   => array('egp_geo_enabled' => 'yes'),
+				)
+			);
+			
+			// Hidden field to store selected countries
+			$widget->add_control(
+				'egp_countries_data',
+				array(
+					'type'        => \Elementor\Controls_Manager::HIDDEN,
+					'default'     => '',
 					'condition'   => array('egp_geo_enabled' => 'yes'),
 				)
 			);
@@ -893,18 +1007,23 @@ class ElementorGeoPopup {
                 )
             );
 
-			// Native Elementor multiple select for countries
-			$country_options = method_exists($this, 'get_country_options') ? $this->get_country_options() : array();
+			// Use RAW_HTML control for better country selection persistence
 			$container->add_control(
 				'egp_countries',
 				array(
 					'label'       => __('Target Countries', 'elementor-geo-popup'),
-					'type'        => \Elementor\Controls_Manager::SELECT,
-					'multiple'    => true,
-					'label_block' => true,
-					'options'     => $country_options,
-					'default'     => array(),
-					'render_type' => 'none',
+					'type'        => \Elementor\Controls_Manager::RAW_HTML,
+					'raw'         => $this->get_countries_selector_widget_html(),
+					'condition'   => array('egp_geo_enabled' => 'yes'),
+				)
+			);
+			
+			// Hidden field to store selected countries
+			$container->add_control(
+				'egp_countries_data',
+				array(
+					'type'        => \Elementor\Controls_Manager::HIDDEN,
+					'default'     => '',
 					'condition'   => array('egp_geo_enabled' => 'yes'),
 				)
 			);
@@ -1026,18 +1145,23 @@ class ElementorGeoPopup {
                 )
             );
 
-			// Countries control (native multiple select)
-			$country_options = method_exists($this, 'get_country_options') ? $this->get_country_options() : array();
+			// Use RAW_HTML control for better country selection persistence
 			$element->add_control(
 				'egp_countries',
 				array(
 					'label'       => __('Target Countries', 'elementor-geo-popup'),
-					'type'        => \Elementor\Controls_Manager::SELECT,
-					'multiple'    => true,
-					'label_block' => true,
-					'options'     => $country_options,
-					'default'     => array(),
-					'render_type' => 'none',
+					'type'        => \Elementor\Controls_Manager::RAW_HTML,
+					'raw'         => $this->get_countries_selector_widget_html(),
+					'condition'   => array('egp_geo_enabled' => 'yes'),
+				)
+			);
+			
+			// Hidden field to store selected countries
+			$element->add_control(
+				'egp_countries_data',
+				array(
+					'type'        => \Elementor\Controls_Manager::HIDDEN,
+					'default'     => '',
 					'condition'   => array('egp_geo_enabled' => 'yes'),
 				)
 			);

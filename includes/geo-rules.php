@@ -311,7 +311,7 @@ class EGP_Geo_Rules {
                     });
                     html += '</select> ';
                     // Add working Edit in Elementor button for section/container rules when we know document/element refs
-                    html += '<a href="#" class="button button-small" id="egp_section_edit_tpl" style="vertical-align:middle;"><?php _e('Edit in Elementor', 'elementor-geo-popup'); ?></a>';
+                    html += '<a href="#" class="button button-small egp-edit-template" data-template-type="section" style="vertical-align:middle;"><?php _e('Edit Template', 'elementor-geo-popup'); ?></a>';
                     html += '<div class="description" style="margin-top:4px;"><a href="<?php echo esc_url( admin_url('edit.php?post_type=elementor_library&tabs_group=library&rw_open_new=1') ); ?>" target="_blank"><?php _e('Create new template in Elementor', 'elementor-geo-popup'); ?></a></div>';
                 } else {
                     html += '<label style="display:block;font-weight:600;margin-bottom:4px;"><?php _e('Section/Container template', 'elementor-geo-popup'); ?></label>';
@@ -338,7 +338,7 @@ class EGP_Geo_Rules {
                         html += '<option value="' + val + '" ' + (selectedValue === val ? 'selected' : '') + '>' + option.title + '</option>';
                     });
                     html += '</select> ';
-                    html += '<a href="#" class="button button-small" id="egp_widget_edit_tpl" style="vertical-align:middle;"><?php _e('Edit in Elementor', 'elementor-geo-popup'); ?></a>';
+                    html += '<a href="#" class="button button-small egp-edit-template" data-template-type="widget" style="vertical-align:middle;"><?php _e('Edit Template', 'elementor-geo-popup'); ?></a>';
                     html += '<div class="description" style="margin-top:4px;"><a href="<?php echo esc_url( admin_url('edit.php?post_type=elementor_library&tabs_group=library&rw_open_new=1') ); ?>" target="_blank"><?php _e('Create new template in Elementor', 'elementor-geo-popup'); ?></a></div>';
                     html += '</div>';
                 } else {
@@ -391,8 +391,23 @@ class EGP_Geo_Rules {
                     if (id > 0) { window.open('<?php echo admin_url('post.php'); ?>?post=' + id + '&action=elementor', '_blank'); }
                 }
             }
-            if (secEditBtn && secTpl) { secEditBtn.addEventListener('click', function(e){ e.preventDefault(); openTpl(secTpl); }); }
-            if (widEditBtn && widTpl) { widEditBtn.addEventListener('click', function(e){ e.preventDefault(); openTpl(widTpl); }); }
+            // Bind template edit buttons
+            var editBtns = targetSelection.querySelectorAll('.egp-edit-template');
+            editBtns.forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var templateType = this.getAttribute('data-template-type');
+                    var selectEl = null;
+                    if (templateType === 'section') {
+                        selectEl = secTpl;
+                    } else if (templateType === 'widget') {
+                        selectEl = widTpl;
+                    }
+                    if (selectEl) {
+                        openTpl(selectEl);
+                    }
+                });
+            });
             function wireRef(refInput){
                 if (!refInput) { return; }
                 refInput.addEventListener('input', function(){
@@ -1704,6 +1719,154 @@ class EGP_Geo_Rules {
         }
 
         wp_send_json_success($options);
+    }
+    
+    /**
+     * Enhanced AJAX handler for saving Elementor rules with better duplicate prevention
+     */
+    public function ajax_save_elementor_rule_enhanced() {
+        check_ajax_referer('egp_admin_nonce', 'nonce');
+        
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error('Insufficient permissions');
+        }
+        
+        $element_id = sanitize_text_field($_POST['element_id'] ?? '');
+        $element_type = sanitize_text_field($_POST['element_type'] ?? '');
+        $countries = isset($_POST['countries']) ? array_map('sanitize_text_field', $_POST['countries']) : array();
+        $priority = intval($_POST['priority'] ?? 50);
+        $active = !empty($_POST['active']);
+        $title = sanitize_text_field($_POST['title'] ?? '');
+        $document_id = intval($_POST['document_id'] ?? 0);
+        
+        if (empty($element_id) || empty($countries)) {
+            wp_send_json_error('Missing required fields: element_id and countries');
+        }
+        
+        // Check for existing rule by element_id to prevent duplicates
+        $existing_rule = get_posts(array(
+            'post_type' => 'geo_rule',
+            'meta_query' => array(
+                array(
+                    'key' => 'egp_target_id',
+                    'value' => $element_id,
+                    'compare' => '='
+                ),
+                array(
+                    'key' => 'egp_target_type',
+                    'value' => $element_type,
+                    'compare' => '='
+                )
+            ),
+            'posts_per_page' => 1
+        ));
+        
+        if (!empty($existing_rule)) {
+            // Update existing rule
+            $rule_id = $existing_rule[0]->ID;
+            wp_update_post(array(
+                'ID' => $rule_id,
+                'post_title' => $title
+            ));
+            $updated = true;
+        } else {
+            // Create new rule
+            $rule_id = wp_insert_post(array(
+                'post_title' => $title,
+                'post_type' => 'geo_rule',
+                'post_status' => 'publish'
+            ));
+            
+            if (is_wp_error($rule_id)) {
+                wp_send_json_error('Failed to create rule: ' . $rule_id->get_error_message());
+            }
+            $updated = false;
+        }
+        
+        // Update rule metadata
+        update_post_meta($rule_id, 'egp_target_type', $element_type);
+        update_post_meta($rule_id, 'egp_target_id', $element_id);
+        update_post_meta($rule_id, 'egp_element_id', $element_id);
+        update_post_meta($rule_id, 'egp_element_type', $element_type);
+        update_post_meta($rule_id, 'egp_countries', array_map('strtoupper', $countries));
+        update_post_meta($rule_id, 'egp_priority', $priority);
+        update_post_meta($rule_id, 'egp_active', $active ? '1' : '0');
+        update_post_meta($rule_id, 'egp_source', 'elementor_enhanced');
+        
+        if ($document_id > 0) {
+            update_post_meta($rule_id, 'egp_document_id', $document_id);
+        }
+        
+        // Initialize tracking counters
+        if (!$updated) {
+            update_post_meta($rule_id, 'egp_clicks', 0);
+            update_post_meta($rule_id, 'egp_views', 0);
+            update_post_meta($rule_id, 'egp_impressions', 0);
+        }
+        
+        wp_send_json_success(array(
+            'rule_id' => $rule_id,
+            'message' => $updated ? 'Rule updated successfully' : 'Rule created successfully',
+            'updated' => $updated,
+            'countries_count' => count($countries)
+        ));
+    }
+    
+    /**
+     * Get element rule data
+     */
+    public function ajax_get_element_rule() {
+        check_ajax_referer('egp_admin_nonce', 'nonce');
+        
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error('Insufficient permissions');
+        }
+        
+        $element_id = sanitize_text_field($_POST['element_id'] ?? '');
+        if (empty($element_id)) {
+            wp_send_json_error('Missing element_id');
+        }
+        
+        $rule = get_posts(array(
+            'post_type' => 'geo_rule',
+            'meta_query' => array(
+                array(
+                    'key' => 'egp_target_id',
+                    'value' => $element_id,
+                    'compare' => '='
+                )
+            ),
+            'posts_per_page' => 1
+        ));
+        
+        if (empty($rule)) {
+            wp_send_json_success(null);
+        }
+        
+        $rule = $rule[0];
+        $data = array(
+            'id' => $rule->ID,
+            'title' => $rule->post_title,
+            'countries' => get_post_meta($rule->ID, 'egp_countries', true),
+            'priority' => get_post_meta($rule->ID, 'egp_priority', true),
+            'active' => get_post_meta($rule->ID, 'egp_active', true) === '1'
+        );
+        
+        wp_send_json_success($data);
+    }
+    
+    /**
+     * Update element settings
+     */
+    public function ajax_update_element_settings() {
+        check_ajax_referer('egp_admin_nonce', 'nonce');
+        
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error('Insufficient permissions');
+        }
+        
+        // This will be used for syncing settings between Elementor and rules
+        wp_send_json_success('Settings updated');
     }
     
     /**
