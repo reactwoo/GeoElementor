@@ -106,10 +106,10 @@
             '</label>' +
             '</div>' +
             '</div>' +
-            '<div class="elementor-control elementor-control-type-select2" id="egp_countries_wrapper" style="display: none;">' +
+            '<div class="elementor-control elementor-control-type-select" id="egp_countries_wrapper" style="display: none;">' +
             '<label class="elementor-control-title">' + egpGlobalSettings.strings.targetCountries + '</label>' +
             '<div class="elementor-control-input-wrapper">' +
-            '<select id="egp_target_countries" multiple class="elementor-select2">' +
+            '<select id="egp_target_countries" multiple>' +
             generateCountriesOptions() +
             '</select>' +
             '</div>' +
@@ -149,10 +149,10 @@
             '</label>' +
             '</div>' +
             '</div>' +
-            '<div class="elementor-control elementor-control-type-select2" id="egp_countries_wrapper_colors" style="display: none;">' +
+            '<div class="elementor-control elementor-control-type-select" id="egp_countries_wrapper_colors" style="display: none;">' +
             '<label class="elementor-control-title">' + egpGlobalSettings.strings.targetCountries + '</label>' +
             '<div class="elementor-control-input-wrapper">' +
-            '<select id="egp_target_countries_colors" multiple class="elementor-select2">' +
+            '<select id="egp_target_countries_colors" multiple>' +
             generateCountriesOptions() +
             '</select>' +
             '</div>' +
@@ -185,10 +185,10 @@
             '</label>' +
             '</div>' +
             '</div>' +
-            '<div class="elementor-control elementor-control-type-select2" id="egp_countries_wrapper_typography" style="display: none;">' +
+            '<div class="elementor-control elementor-control-type-select" id="egp_countries_wrapper_typography" style="display: none;">' +
             '<label class="elementor-control-title">' + egpGlobalSettings.strings.targetCountries + '</label>' +
             '<div class="elementor-control-input-wrapper">' +
-            '<select id="egp_target_countries_colors" multiple class="elementor-select2">' +
+            '<select id="egp_target_countries_colors" multiple>' +
             generateCountriesOptions() +
             '</select>' +
             '</div>' +

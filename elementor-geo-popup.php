@@ -174,10 +174,8 @@ class ElementorGeoPopup {
         }
         
         // Core functionality - Load in proper order
-        // Frontend geo features only when configured
-        if ($this->geo_ready) {
-            require_once EGP_PLUGIN_DIR . 'includes/geo-detect.php';
-        }
+        // Always load geo-detect to ensure AJAX endpoints and fallbacks are available
+        require_once EGP_PLUGIN_DIR . 'includes/geo-detect.php';
         // Always load popup hooks so editor controls appear even if geo isn't ready
         require_once EGP_PLUGIN_DIR . 'includes/popup-hooks.php';
         require_once EGP_PLUGIN_DIR . 'includes/widget-registration.php';
@@ -241,8 +239,8 @@ class ElementorGeoPopup {
             }
         }, 999);
         
-        // Initialize core components
-        if ($this->geo_ready && class_exists('EGP_Geo_Detect')) {
+        // Initialize core components (always instantiate to register AJAX and safe fallbacks)
+        if (class_exists('EGP_Geo_Detect')) {
             EGP_Geo_Detect::get_instance();
         }
         // Initialize popup hooks in admin/editor regardless of geo readiness so UI controls show
@@ -750,7 +748,7 @@ class ElementorGeoPopup {
                 'egp_countries',
                 array(
                     'label'       => __('Target Countries', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::SELECT2,
+                    'type'        => \Elementor\Controls_Manager::SELECT,
                     'multiple'    => true,
                     'options'     => $this->get_country_options(),
                     'condition'   => array('egp_geo_enabled' => 'yes'),
@@ -908,7 +906,7 @@ class ElementorGeoPopup {
                 'egp_countries',
                 array(
                     'label'       => __('Target Countries', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::SELECT2,
+                    'type'        => \Elementor\Controls_Manager::SELECT,
                     'multiple'    => true,
                     'options'     => $this->get_country_options(),
                     'condition'   => array('egp_geo_enabled' => 'yes'),
@@ -1038,7 +1036,7 @@ class ElementorGeoPopup {
                 'egp_countries',
                 array(
                     'label'       => __('Target Countries', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::SELECT2,
+                    'type'        => \Elementor\Controls_Manager::SELECT,
                     'multiple'    => true,
                     'options'     => $this->get_country_options(),
                     'condition'   => array('egp_geo_enabled' => 'yes'),

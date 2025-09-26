@@ -144,8 +144,14 @@ class EGP_Geo_Detect {
             return false;
         }
         
-        // Look up country using MaxMind database
-        $country = $this->lookup_country($ip);
+        // Prefer Cloudflare header if present
+        $cf = isset($_SERVER['HTTP_CF_IPCOUNTRY']) ? strtoupper(trim((string) $_SERVER['HTTP_CF_IPCOUNTRY'])) : '';
+        if ($cf && strlen($cf) === 2) {
+            $country = $cf;
+        } else {
+            // Look up country using MaxMind database
+            $country = $this->lookup_country($ip);
+        }
         
         if ($country) {
             // Cache the result for 1 hour
