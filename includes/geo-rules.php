@@ -1316,7 +1316,7 @@ class EGP_Geo_Rules {
         echo '<script>';
         echo 'document.addEventListener("DOMContentLoaded",function(){';
         echo 'var targets=' . wp_json_encode($targets) . ';';
-        echo 'function egpHideTargets(country){try{if(!country){return;}var userCountry=(country||"").toUpperCase();var hidden=new Set();targets.forEach(function(t){var allow=(t.countries||[]).map(function(c){return (c||"").toUpperCase()});if(allow.indexOf(userCountry)===-1){try{var el=null;if(t.refType==="css"){el=document.getElementById(t.ref);}else{el=document.querySelector("[data-id=\""+t.ref+"\"]");}if(el && !hidden.has(t.ref)){el.style.display="none";el.classList.add("egp-hidden");hidden.add(t.ref);}}catch(e){}}});}catch(e){}}';
+        echo 'function egpHideTargets(country){try{if(!country){return;}var userCountry=(country||"").toUpperCase();var hidden=new Set();targets.forEach(function(t){var allow=(t.countries||[]).map(function(c){return (c||"").toUpperCase()});if(allow.indexOf(userCountry)===-1){try{if(t.refType==="css"){var id=(t.ref||"").replace(/^#/ , "");var nodes=[];if(id){nodes = document.querySelectorAll("#"+CSS.escape(id)+", [id="+JSON.stringify(id)+"]");}nodes.forEach(function(el){if(el && !hidden.has(t.ref)){el.style.display="none";el.classList.add("egp-hidden");hidden.add(t.ref);}});}else{var els=document.querySelectorAll("[data-id=\""+t.ref+"\"]");els.forEach(function(el){if(el && !hidden.has(t.ref)){el.style.display="none";el.classList.add("egp-hidden");hidden.add(t.ref);}});} }catch(e){}}});}catch(e){}}';
         echo 'var initialCountry=' . wp_json_encode($user_country) . ';';
         echo 'if(initialCountry){ egpHideTargets(initialCountry); } else {';
         echo 'var xhr=new XMLHttpRequest();';
@@ -1506,6 +1506,54 @@ class EGP_Geo_Rules {
         $tracking_id = sanitize_text_field($_POST['tracking_id'] ?? '');
 
         error_log('[EGP Debug] Processed data: target_type=' . $target_type . ', target_id=' . $target_id . ', countries=' . implode(',', $countries));
+
+        // If no title provided for manual rules, generate a descriptive one based on the reference
+        if ($title === '') {
+            if ($target_type === 'section' || $target_type === 'container') {
+                // Prefer explicit ref fields from POST if present
+                $section_ref = sanitize_text_field($_POST['section_ref'] ?? '');
+                $template_val = sanitize_text_field($_POST['section_template'] ?? '');
+                // Normalize template marker like "template:123"
+                if ($template_val && strpos($template_val, 'template:') === 0) {
+                    $tpl_id = intval(preg_replace('/\D+/', '', $template_val));
+                    if ($tpl_id > 0) {
+                        $tpl_title = get_the_title($tpl_id);
+                        $title = $tpl_title ? ('Section Template: ' . $tpl_title . ' (#' . $tpl_id . ')') : ('Section Template #' . $tpl_id);
+                    }
+                }
+                if ($title === '' && $section_ref !== '') {
+                    // Heuristic: CSS ID vs Elementor data-id
+                    $is_css = (bool) preg_match('/^[A-Za-z][A-Za-z0-9_-]*$/', $section_ref);
+                    $title = $is_css ? ('Section #' . $section_ref) : ('Section ID: ' . $section_ref);
+                }
+                if ($title === '') {
+                    $title = 'Section ' . $target_id;
+                }
+            } elseif ($target_type === 'widget') {
+                $widget_ref = sanitize_text_field($_POST['widget_ref'] ?? '');
+                $template_val = sanitize_text_field($_POST['widget_template'] ?? '');
+                if ($template_val && strpos($template_val, 'template:') === 0) {
+                    $tpl_id = intval(preg_replace('/\D+/', '', $template_val));
+                    if ($tpl_id > 0) {
+                        $tpl_title = get_the_title($tpl_id);
+                        $title = $tpl_title ? ('Widget Template: ' . $tpl_title . ' (#' . $tpl_id . ')') : ('Widget Template #' . $tpl_id);
+                    }
+                }
+                if ($title === '' && $widget_ref !== '') {
+                    $is_css = (bool) preg_match('/^[A-Za-z][A-Za-z0-9_-]*$/', $widget_ref);
+                    $title = $is_css ? ('Widget #' . $widget_ref) : ('Widget ID: ' . $widget_ref);
+                }
+                if ($title === '') {
+                    $title = 'Widget ' . $target_id;
+                }
+            } elseif ($target_type === 'page') {
+                $p = get_post(intval($target_id));
+                $title = $p ? ('Page: ' . ($p->post_title ?: ('#' . $p->ID))) : ('Page ' . $target_id);
+            } elseif ($target_type === 'popup') {
+                $p = get_post(intval($target_id));
+                $title = $p ? ('Popup: ' . ($p->post_title ?: ('#' . $p->ID))) : ('Popup ' . $target_id);
+            }
+        }
 
         $result = $this->save_or_update_rule($target_type, $target_id, $countries, $priority, $active, 'admin_rule', $title, $element_type, $tracking_id);
         
