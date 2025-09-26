@@ -82,31 +82,19 @@
         var rawEnabled = settings.get('egp_geo_enabled');
         var enabled = (rawEnabled === 'yes' || rawEnabled === '1' || rawEnabled === true);
         var countries = settings.get('egp_countries');
+        
+        // Ensure countries is an array
         if (!Array.isArray(countries)) {
-            // Try to get from the new data field
-            var countriesData = settings.get('egp_countries_data');
-            if (countriesData) {
-                try {
-                    countries = JSON.parse(countriesData);
-                } catch (e) {
-                    countries = [];
-                }
-            } else {
-                countries = [];
-            }
+            countries = countries ? [countries] : [];
         }
 
-        var targetId = settings.get('egp_element_id') || '';
-        if (!targetId && panel.$el) {
-            var $el = panel.$el.find('input[name*="egp_element_id"]');
-            if ($el.length && $el.val()) { targetId = ($el.val() || '').trim(); }
-        }
+        var targetId = settings.get('egp_element_id') || panel.model.get('id') || '';
         var elementRefId = panel.model.get('id') || '';
 
-        // Ensure an ID exists
-        if (!targetId) { targetId = elementRefId || ''; }
-
-        if (!enabled || !countries.length || !targetId) { return; }
+        if (!enabled || !countries.length || !targetId) { 
+            console.log('[EGP] Not saving rule - enabled:', enabled, 'countries:', countries, 'targetId:', targetId);
+            return; 
+        }
 
         var elType = panel.model.get('elType') || '';
         var targetType = (elType === 'widget') ? 'widget' : 'section';
@@ -119,31 +107,42 @@
 
         var url = (window.egpEditor && egpEditor.ajaxUrl) || (typeof ajaxurl !== 'undefined' ? ajaxurl : null);
         if (!url) { return; }
+        
         var data = {
             action: 'egp_save_elementor_rule_enhanced',
-            nonce: (window.egpEditor && (egpEditor.nonce || egpEditor.trackingNonce)) || '',
-            target_type: targetType,
-            target_id: targetId,
+            nonce: (window.egpEditor && egpEditor.nonce) || '',
+            element_id: targetId,
+            element_type: targetType,
             countries: countries,
             priority: 50,
             active: true,
-            element_type: targetType,
             title: (targetType.charAt(0).toUpperCase() + targetType.slice(1)) + ' ' + targetId,
-            element_type: targetType,
             element_ref_id: elementRefId,
             document_id: documentId
         };
-        jQuery.post(url, data);
+        
+        console.log('[EGP] Saving rule with data:', data);
+        jQuery.post(url, data, function(response) {
+            if (response.success) {
+                console.log('[EGP] Rule saved successfully:', response.data);
+            } else {
+                console.log('[EGP] Rule save failed:', response.data);
+            }
+        }).fail(function() {
+            console.log('[EGP] Rule save network error');
+        });
     };
 
-    // Bind to native select changes
+    // Bind to native select changes (SELECT2 controls)
     $(document).on('change', 'select[data-setting="egp_countries"]', function () {
-        saveRuleFromCurrentPanel();
+        console.log('[EGP] Countries changed:', $(this).val());
+        setTimeout(saveRuleFromCurrentPanel, 500); // Small delay to ensure Elementor model is updated
     });
 
     // Bind to enable toggle
-    $(document).on('change.egp', 'input[name*="egp_geo_enabled"]', function () {
-        saveRuleFromCurrentPanel();
+    $(document).on('change.egp', 'input[data-setting="egp_geo_enabled"]', function () {
+        console.log('[EGP] Geo enabled changed:', $(this).is(':checked'));
+        setTimeout(saveRuleFromCurrentPanel, 500); // Small delay to ensure Elementor model is updated
     });
 
     // Legacy checkbox-based country control is deprecated; no JS syncing needed.
