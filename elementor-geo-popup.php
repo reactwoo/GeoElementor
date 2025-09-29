@@ -752,7 +752,7 @@ class ElementorGeoPopup {
                     'raw'         => (function(){
                         $opts = $this->get_country_options();
                         $html = '<div class="egp-countries-native"><label class="elementor-control-title">'.esc_html__('Target Countries', 'elementor-geo-popup').'</label><div class="elementor-control-input-wrapper">';
-                        $html .= '<select id="egp_countries_native" multiple size="10" style="width:100%;max-width:100%;">';
+                        $html .= '<select id="egp_countries_native" multiple size="12" style="width:100%;max-width:100%;min-height:220px;">';
                         foreach ($opts as $code => $name) { $html .= '<option value="'.esc_attr($code).'">'.esc_html($name).'</option>'; }
                         $html .= '</select><p class="description">'.esc_html__('Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup').'</p></div></div>';
                         return $html;
@@ -923,7 +923,7 @@ class ElementorGeoPopup {
                     'raw'         => (function(){
                         $opts = $this->get_country_options();
                         $html = '<div class="egp-countries-native"><label class="elementor-control-title">'.esc_html__('Target Countries', 'elementor-geo-popup').'</label><div class="elementor-control-input-wrapper">';
-                        $html .= '<select id="egp_countries_native" multiple size="10" style="width:100%;max-width:100%;">';
+                        $html .= '<select id="egp_countries_native" multiple size="12" style="width:100%;max-width:100%;min-height:220px;">';
                         foreach ($opts as $code => $name) { $html .= '<option value="'.esc_attr($code).'">'.esc_html($name).'</option>'; }
                         $html .= '</select><p class="description">'.esc_html__('Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup').'</p></div></div>';
                         return $html;
@@ -1065,7 +1065,7 @@ class ElementorGeoPopup {
                     'raw'         => (function(){
                         $opts = $this->get_country_options();
                         $html = '<div class="egp-countries-native"><label class="elementor-control-title">'.esc_html__('Target Countries', 'elementor-geo-popup').'</label><div class="elementor-control-input-wrapper">';
-                        $html .= '<select id="egp_countries_native" multiple size="10" style="width:100%;max-width:100%;">';
+                        $html .= '<select id="egp_countries_native" multiple size="12" style="width:100%;max-width:100%;min-height:220px;">';
                         foreach ($opts as $code => $name) { $html .= '<option value="'.esc_attr($code).'">'.esc_html($name).'</option>'; }
                         $html .= '</select><p class="description">'.esc_html__('Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup').'</p></div></div>';
                         return $html;

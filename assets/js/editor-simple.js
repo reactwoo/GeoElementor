@@ -30,6 +30,34 @@
             }
         });
 
+        // Also bind change to our native multi-select and mirror into hidden setting
+        $(document).on('change.egp', '#egp_countries_native', function () {
+            try {
+                console.log('[EGP Simple] Native select changed');
+                var panel = elementor.getPanelView().getCurrentPageView();
+                if (!panel || !panel.model) {
+                    console.log('[EGP Simple] No panel or model found');
+                    return;
+                }
+                var settings = panel.model.get('settings');
+                if (!settings) {
+                    console.log('[EGP Simple] No settings found');
+                    return;
+                }
+                var vals = $(this).val();
+                console.log('[EGP Simple] Selected countries:', vals);
+                if (!Array.isArray(vals)) { vals = vals ? [vals] : []; }
+                if (typeof settings.set === 'function') {
+                    settings.set('egp_countries', vals);
+                    console.log('[EGP Simple] Updated settings via set()');
+                } else {
+                    panel.model.set('settings', Object.assign({}, settings, { egp_countries: vals }));
+                    console.log('[EGP Simple] Updated settings via model.set()');
+                }
+                setTimeout(function () { saveRuleIfNeeded(panel); }, 300);
+            } catch (e) { console.log('[EGP Simple] mirror error', e); }
+        });
+
         console.log('[EGP Simple] Event listeners registered');
     }
 
@@ -67,7 +95,13 @@
 
         console.log('[EGP Simple] Saving rule:', data);
 
-        $.post(ajaxurl, data, function(response) {
+        var ajaxUrl = (window.egpEditor && egpEditor.ajaxUrl) || (typeof ajaxurl !== 'undefined' ? ajaxurl : null);
+        if (!ajaxUrl) {
+            console.log('[EGP Simple] No AJAX URL available');
+            return;
+        }
+
+        $.post(ajaxUrl, data, function (response) {
             if (response.success) {
                 console.log('[EGP Simple] Rule saved:', response.data);
             } else {
