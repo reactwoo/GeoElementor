@@ -49,6 +49,7 @@ class EGP_Geo_Rules {
         add_action('wp_head', array($this, 'add_tracking_data'));
         add_action('wp_footer', array($this, 'add_analytics_script'));
         add_action('wp_footer', array($this, 'add_element_geo_filter_script'), 20);
+        add_action('wp_footer', array($this, 'add_popup_geo_filter'), 25);
         
         // Elementor integration
         add_action('elementor/editor/before_enqueue_scripts', array($this, 'enqueue_editor_scripts'));
@@ -1289,15 +1290,27 @@ class EGP_Geo_Rules {
             ),
             'posts_per_page' => -1
         ));
+        
+        error_log('[EGP Debug] Found ' . count($rules) . ' active rules in database');
 
         $targets = array();
         foreach ($rules as $rule) {
             $type = get_post_meta($rule->ID, $this->meta_prefix . 'target_type', true);
-            if ($type !== 'section' && $type !== 'widget') { continue; }
+            error_log('[EGP Debug] Processing rule ' . $rule->ID . ' with type: ' . $type);
+            if ($type !== 'section' && $type !== 'widget' && $type !== 'container') { 
+                error_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - wrong type: ' . $type);
+                continue; 
+            }   
             $target_id = trim((string) get_post_meta($rule->ID, $this->meta_prefix . 'target_id', true));
-            if ($target_id === '' || strpos($target_id, 'template:') === 0) { continue; }
+            if ($target_id === '' || strpos($target_id, 'template:') === 0) { 
+                error_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - invalid target_id: ' . $target_id);
+                continue; 
+            }                                                                  
             $countries = get_post_meta($rule->ID, $this->meta_prefix . 'countries', true);
-            if (!is_array($countries) || empty($countries)) { continue; }
+            if (!is_array($countries) || empty($countries)) { 
+                error_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - no countries');
+                continue; 
+            }  
             $countries = array_values(array_unique(array_map('strtoupper', $countries)));
 
             // Heuristic: alphanumeric with dashes/underscores => CSS ID; otherwise treat as Elementor data-id
@@ -1307,14 +1320,28 @@ class EGP_Geo_Rules {
                 'refType' => $is_css_id ? 'css' : 'element',
                 'countries' => $countries,
             );
+            error_log('[EGP Debug] Added target: ' . $target_id . ' (' . ($is_css_id ? 'css' : 'element') . ') for countries: ' . implode(',', $countries));
         }
 
-        if (empty($targets)) { return; }
+        error_log('[EGP Debug] Frontend script - Found ' . count($targets) . ' targets: ' . wp_json_encode($targets));
+        
+        // Also log all rules for debugging
+        foreach ($rules as $rule) {
+            $type = get_post_meta($rule->ID, $this->meta_prefix . 'target_type', true);
+            $target_id = get_post_meta($rule->ID, $this->meta_prefix . 'target_id', true);
+            $countries = get_post_meta($rule->ID, $this->meta_prefix . 'countries', true);
+            $active = get_post_meta($rule->ID, $this->meta_prefix . 'active', true);
+            error_log('[EGP Debug] Rule ' . $rule->ID . ': ' . $rule->post_title . ' (type: ' . $type . ', target: ' . $target_id . ', countries: ' . implode(',', (array)$countries) . ', active: ' . $active . ')');
+        }
+        if (empty($targets)) { 
+            error_log('[EGP Debug] No targets found, returning early');
+            return; 
+        }
 
         $ajax_url = admin_url('admin-ajax.php');
         $ajax_nonce = wp_create_nonce('egp_geo_nonce');
         echo '<script>';
-        echo 'document.addEventListener("DOMContentLoaded",function(){';   
+        echo 'document.addEventListener("DOMContentLoaded",function(){';
         echo 'var targets=' . wp_json_encode($targets) . ';';
         echo 'console.log("[EGP Frontend] Targets:", targets);';
         echo 'function egpHideTargets(country){console.log("[EGP Frontend] Hiding targets for country:", country);try{if(!country){return;}var userCountry=(country||"").toUpperCase();var hidden=new Set();targets.forEach(function(t){var allow=(t.countries||[]).map(function(c){return (c||"").toUpperCase()});console.log("[EGP Frontend] Checking target", t.ref, "allowed countries:", allow, "user country:", userCountry);if(allow.indexOf(userCountry)===-1){try{if(t.refType==="css"){var id=(t.ref||"").replace(/^#/ , "");var nodes=[];if(id){nodes = document.querySelectorAll("#"+CSS.escape(id)+", [id="+JSON.stringify(id)+"]");console.log("[EGP Frontend] Found CSS nodes:", nodes.length);}nodes.forEach(function(el){if(el && !hidden.has(t.ref)){el.style.display="none";el.classList.add("egp-hidden");hidden.add(t.ref);console.log("[EGP Frontend] Hidden element:", t.ref);}});}else{var els=document.querySelectorAll("[data-id=\""+t.ref+"\"]");console.log("[EGP Frontend] Found data-id nodes:", els.length);els.forEach(function(el){if(el && !hidden.has(t.ref)){el.style.display="none";el.classList.add("egp-hidden");hidden.add(t.ref);console.log("[EGP Frontend] Hidden element:", t.ref);}});} }catch(e){console.log("[EGP Frontend] Error hiding:", e);}}});}catch(e){console.log("[EGP Frontend] Error in egpHideTargets:", e);}}';
@@ -1812,6 +1839,9 @@ class EGP_Geo_Rules {
         $active = !empty($_POST['active']);
         $title = sanitize_text_field($_POST['title'] ?? '');
         $document_id = intval($_POST['document_id'] ?? 0);
+
+        // Debug logging
+        error_log('[EGP Debug] AJAX Save Rule - element_id: ' . $element_id . ', element_type: ' . $element_type . ', countries: ' . implode(',', $countries) . ', title: ' . $title);
         
         if (empty($element_id) || empty($countries)) {
             wp_send_json_error('Missing required fields: element_id and countries');
@@ -2086,14 +2116,18 @@ class EGP_Geo_Rules {
                 wp_update_post(array('ID' => $post_id, 'post_title' => $title));
             }
         } else {
+            $final_title = $title ?: ucfirst($target_type).' '.$target_id;
+            error_log('[EGP Debug] Creating new rule with title: ' . $final_title . ', target_type: ' . $target_type . ', target_id: ' . $target_id);
             $post_id = wp_insert_post(array(
-                'post_title' => $title ?: ucfirst($target_type).' '.$target_id,
+                'post_title' => $final_title,                                                                            
                 'post_type' => $this->post_type,
                 'post_status' => 'publish'
             ));
             if (is_wp_error($post_id)) {
+                error_log('[EGP Debug] Failed to create rule: ' . $post_id->get_error_message());
                 return array('success' => false, 'error' => 'Failed to create rule');
             }
+            error_log('[EGP Debug] Created rule with ID: ' . $post_id);
         }
         
         // Save meta
@@ -2442,12 +2476,13 @@ class EGP_Geo_Rules {
     /**
      * Add popup geo filter script to footer
      */
-    private function add_popup_geo_filter() {
+    public function add_popup_geo_filter() {
         if (is_admin()) {
             return;
         }
 
         $user_country = $this->get_user_country();
+        error_log('[EGP Debug] Popup geo-filter - User country: ' . $user_country);
         
         // Get fallback popup setting
         $fallback_popup_id = get_option('egp_default_popup_id', '');
@@ -2471,11 +2506,14 @@ class EGP_Geo_Rules {
             'posts_per_page' => -1
         ));
         
+        error_log('[EGP Debug] Found ' . count($popups) . ' popups with geo-targeting');
+        
         $popup_data = array();
         foreach ($popups as $popup) {
             $page_settings = get_post_meta($popup->ID, '_elementor_page_settings', true);
             if (is_array($page_settings) && isset($page_settings['egp_enable_geo_targeting']) && $page_settings['egp_enable_geo_targeting'] === 'yes') {
                 $countries = isset($page_settings['egp_countries']) ? $page_settings['egp_countries'] : array();
+                error_log('[EGP Debug] Popup ' . $popup->ID . ' geo-enabled with countries: ' . implode(',', $countries));
                 $popup_data[$popup->ID] = array(
                     'id' => $popup->ID,
                     'title' => $popup->post_title,

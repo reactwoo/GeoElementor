@@ -1032,14 +1032,25 @@ class ElementorGeoPopup {
 
         // Add element ID display for targeting reference
         $element->add_control(
+            'egp_element_id',
+            array(
+                'label'       => __('Element ID', 'elementor-geo-popup'),   
+                'type'        => \Elementor\Controls_Manager::TEXT,
+                'description' => __('Unique ID for this element. Used in Rules/Groups for targeting. Leave empty to auto-generate.', 'elementor-geo-popup'),
+                'placeholder' => __('Leave empty to auto-generate', 'elementor-geo-popup'),                                                                 
+                'default'     => '',
+            )
+        );
+
+        $element->add_control(
             'egp_element_id_display',
             array(
                 'type' => \Elementor\Controls_Manager::RAW_HTML,
-                'raw'  => '<div style="background:#f8f9fa;border:1px solid #dee2e6;padding:8px;border-radius:4px;margin-bottom:10px;">'
-                        . '<strong>' . esc_html__('Element ID:', 'elementor-geo-popup') . '</strong> '
-                        . '<code id="egp-element-id-display" style="background:#e9ecef;padding:2px 6px;border-radius:3px;">—</code> '
-                        . '<button type="button" id="egp-copy-element-id" class="elementor-button elementor-button-default" style="padding:2px 6px;font-size:11px;">' . esc_html__('Copy', 'elementor-geo-popup') . '</button>'
-                        . '<br><small style="color:#6c757d;">' . esc_html__('Use this ID in Rules or Groups when targeting by Elementor element ID.', 'elementor-geo-popup') . '</small></div>',
+                'raw'  => '<div style="background:#f8f9fa;border:1px solid #dee2e6;padding:8px;border-radius:4px;margin-bottom:10px;">'                    
+                        . '<strong>' . esc_html__('Element ID:', 'elementor-geo-popup') . '</strong> '                                                     
+                        . '<code id="egp-element-id-display" style="background:#e9ecef;padding:2px 6px;border-radius:3px;">—</code> '                      
+                        . '<button type="button" id="egp-copy-element-id" class="elementor-button elementor-button-default" style="padding:2px 6px;font-size:11px;">' . esc_html__('Copy', 'elementor-geo-popup') . '</button>'            
+                        . '<br><small style="color:#6c757d;">' . esc_html__('Use this ID in Rules or Groups when targeting by Elementor element ID.', 'elementor-geo-popup') . '</small></div>',                                           
                 'content_classes' => 'egp-element-info',
             )
         );

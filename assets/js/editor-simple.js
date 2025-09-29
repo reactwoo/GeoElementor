@@ -30,6 +30,35 @@
             }
         });
 
+        // Initialize native select values when panel loads
+        function initializeNativeSelect() {
+            var $nativeSelect = $('#egp_countries_native_widget, #egp_countries_native_container, #egp_countries_native_section');
+            if ($nativeSelect.length) {
+                var panel = elementor.getPanelView().getCurrentPageView();
+                if (panel && panel.model) {
+                    var settings = panel.model.get('settings');
+                    if (settings) {
+                        var storedCountries = settings.get('egp_countries');
+                        if (Array.isArray(storedCountries) && storedCountries.length > 0) {
+                            $nativeSelect.val(storedCountries);
+                            console.log('[EGP Simple] Initialized native select with:', storedCountries);
+                        }
+                    }
+                }
+            }
+        }
+
+        $(document).on('elementor/popup/show', function () {
+            setTimeout(initializeNativeSelect, 100);
+        });
+
+        // Also initialize when element is selected
+        elementor.channels.editor.on('change', function (controlView, elementView) {
+            if (controlView && controlView.model && controlView.model.get('name') === 'egp_geo_enabled') {
+                setTimeout(initializeNativeSelect, 200);
+            }
+        });
+
         // Also bind change to our native multi-select and mirror into hidden setting
         $(document).on('change.egp', '#egp_countries_native_widget, #egp_countries_native_container, #egp_countries_native_section', function () {
             try {
@@ -82,15 +111,19 @@
         var elementId = elementView.model.get('id');
         var elementType = elementView.model.get('elType') || 'section';
         
+        // Get the custom Element ID if set, otherwise use the auto-generated one
+        var customElementId = settings.get('egp_element_id') || elementId;
+        var ruleTitle = customElementId ? customElementId : (elementType.charAt(0).toUpperCase() + elementType.slice(1) + ' ' + elementId);
+
         var data = {
             action: 'egp_save_elementor_rule_enhanced',
             nonce: window.egpEditor ? egpEditor.nonce : '',
-            element_id: elementId,
+            element_id: customElementId,
             element_type: elementType,
             countries: countries,
             priority: 50,
             active: true,
-            title: elementType.charAt(0).toUpperCase() + elementType.slice(1) + ' ' + elementId
+            title: ruleTitle
         };
 
         console.log('[EGP Simple] Saving rule:', data);
