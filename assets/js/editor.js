@@ -133,10 +133,21 @@
         });
     };
 
-    // Bind to native select changes (SELECT2 controls)
-    $(document).on('change', 'select[data-setting="egp_countries"]', function () {
-        console.log('[EGP] Countries changed:', $(this).val());
-        setTimeout(saveRuleFromCurrentPanel, 500); // Small delay to ensure Elementor model is updated
+    // Bind to native multi-select (custom RAW_HTML) and write to hidden setting
+    $(document).on('change', '#egp_countries_native, select[data-setting="egp_countries"]', function () {
+        var values = $(this).val();
+        if (!Array.isArray(values)) { values = values ? [values] : []; }
+        // Persist into Elementor model hidden setting
+        try {
+            var panel = elementor.getPanelView().getCurrentPageView();
+            if (panel && panel.model) {
+                var settings = panel.model.get('settings') || {};
+                if (typeof settings.set === 'function') { settings.set('egp_countries', values); }
+                else { settings.egp_countries = values; panel.model.set('settings', settings); }
+            }
+        } catch (e) { }
+        console.log('[EGP] Countries changed:', values);
+        setTimeout(saveRuleFromCurrentPanel, 500);
     });
 
     // Bind to enable toggle

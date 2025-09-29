@@ -744,15 +744,29 @@ class ElementorGeoPopup {
             );
 
             // Use native SELECT control with multiple=true for better persistence
+            // Native HTML multi-select (no Select2). We'll persist to the 'egp_countries' setting via editor.js
+            $widget->add_control(
+                'egp_countries_html',
+                array(
+                    'type'        => \Elementor\Controls_Manager::RAW_HTML,
+                    'raw'         => (function(){
+                        $opts = $this->get_country_options();
+                        $html = '<div class="egp-countries-native"><label class="elementor-control-title">'.esc_html__('Target Countries', 'elementor-geo-popup').'</label><div class="elementor-control-input-wrapper">';
+                        $html .= '<select id="egp_countries_native" multiple size="10" style="width:100%;max-width:100%;">';
+                        foreach ($opts as $code => $name) { $html .= '<option value="'.esc_attr($code).'">'.esc_html($name).'</option>'; }
+                        $html .= '</select><p class="description">'.esc_html__('Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup').'</p></div></div>';
+                        return $html;
+                    })(),
+                    'condition'   => array('egp_geo_enabled' => 'yes'),
+                )
+            );
+            // Hidden setting key to persist array values written by editor.js
             $widget->add_control(
                 'egp_countries',
                 array(
-                    'label'       => __('Target Countries', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::SELECT,
-                    'multiple'    => true,
-                    'options'     => $this->get_country_options(),
+                    'type'        => \Elementor\Controls_Manager::HIDDEN,
+                    'default'     => '',
                     'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'description' => __('Select countries to target with this element', 'elementor-geo-popup'),
                 )
             );
 
@@ -903,14 +917,26 @@ class ElementorGeoPopup {
 
             // Use native SELECT control with multiple=true for better persistence
             $container->add_control(
+                'egp_countries_html',
+                array(
+                    'type'        => \Elementor\Controls_Manager::RAW_HTML,
+                    'raw'         => (function(){
+                        $opts = $this->get_country_options();
+                        $html = '<div class="egp-countries-native"><label class="elementor-control-title">'.esc_html__('Target Countries', 'elementor-geo-popup').'</label><div class="elementor-control-input-wrapper">';
+                        $html .= '<select id="egp_countries_native" multiple size="10" style="width:100%;max-width:100%;">';
+                        foreach ($opts as $code => $name) { $html .= '<option value="'.esc_attr($code).'">'.esc_html($name).'</option>'; }
+                        $html .= '</select><p class="description">'.esc_html__('Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup').'</p></div></div>';
+                        return $html;
+                    })(),
+                    'condition'   => array('egp_geo_enabled' => 'yes'),
+                )
+            );
+            $container->add_control(
                 'egp_countries',
                 array(
-                    'label'       => __('Target Countries', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::SELECT,
-                    'multiple'    => true,
-                    'options'     => $this->get_country_options(),
+                    'type'        => \Elementor\Controls_Manager::HIDDEN,
+                    'default'     => '',
                     'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'description' => __('Select countries to target with this element', 'elementor-geo-popup'),
                 )
             );
 
@@ -1033,14 +1059,26 @@ class ElementorGeoPopup {
 
             // Use native SELECT control with multiple=true for better persistence
             $element->add_control(
+                'egp_countries_html',
+                array(
+                    'type'        => \Elementor\Controls_Manager::RAW_HTML,
+                    'raw'         => (function(){
+                        $opts = $this->get_country_options();
+                        $html = '<div class="egp-countries-native"><label class="elementor-control-title">'.esc_html__('Target Countries', 'elementor-geo-popup').'</label><div class="elementor-control-input-wrapper">';
+                        $html .= '<select id="egp_countries_native" multiple size="10" style="width:100%;max-width:100%;">';
+                        foreach ($opts as $code => $name) { $html .= '<option value="'.esc_attr($code).'">'.esc_html($name).'</option>'; }
+                        $html .= '</select><p class="description">'.esc_html__('Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup').'</p></div></div>';
+                        return $html;
+                    })(),
+                    'condition'   => array('egp_geo_enabled' => 'yes'),
+                )
+            );
+            $element->add_control(
                 'egp_countries',
                 array(
-                    'label'       => __('Target Countries', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::SELECT,
-                    'multiple'    => true,
-                    'options'     => $this->get_country_options(),
+                    'type'        => \Elementor\Controls_Manager::HIDDEN,
+                    'default'     => '',
                     'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'description' => __('Select countries to target with this element', 'elementor-geo-popup'),
                 )
             );
 
