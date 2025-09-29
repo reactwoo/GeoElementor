@@ -31,7 +31,7 @@
         });
 
         // Also bind change to our native multi-select and mirror into hidden setting
-        $(document).on('change.egp', '#egp_countries_native', function () {
+        $(document).on('change.egp', '#egp_countries_native_widget, #egp_countries_native_container, #egp_countries_native_section', function () {
             try {
                 console.log('[EGP Simple] Native select changed');
                 var panel = elementor.getPanelView().getCurrentPageView();
