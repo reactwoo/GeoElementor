@@ -59,6 +59,18 @@
             }
         });
 
+        // Auto-set CSS ID when Element ID is changed
+        elementor.channels.editor.on('change', function (controlView, elementView) {
+            if (controlView && controlView.model && controlView.model.get('name') === 'egp_element_id') {
+                var customElementId = controlView.model.get('value');
+                if (customElementId && customElementId.trim()) {
+                    // Set the CSS ID to match the Element ID
+                    elementView.model.set('css_id', customElementId.trim().replace(/\s+/g, '-').toLowerCase());
+                    console.log('[EGP Simple] Set CSS ID to:', customElementId.trim().replace(/\s+/g, '-').toLowerCase());
+                }
+            }
+        });
+
         // Also bind change to our native multi-select and mirror into hidden setting
         $(document).on('change.egp', '#egp_countries_native_widget, #egp_countries_native_container, #egp_countries_native_section', function () {
             try {
@@ -115,10 +127,13 @@
         var customElementId = settings.get('egp_element_id') || elementId;
         var ruleTitle = customElementId ? customElementId : (elementType.charAt(0).toUpperCase() + elementType.slice(1) + ' ' + elementId);
 
+        // For targeting, use the CSS ID if set, otherwise use the Element ID
+        var targetId = settings.get('css_id') || customElementId || elementId;
+
         var data = {
             action: 'egp_save_elementor_rule_enhanced',
             nonce: window.egpEditor ? egpEditor.nonce : '',
-            element_id: customElementId,
+            element_id: targetId,
             element_type: elementType,
             countries: countries,
             priority: 50,
