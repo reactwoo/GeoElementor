@@ -124,11 +124,14 @@
             return;
         }
 
-        var elementId = settings.get('egp_element_id') || panel.model.get('id');
+        // Use Elementor's internal ID (this matches the data-id attribute in the DOM)
+        var elementId = panel.model.get('id');
         var elementType = panel.model.get('elType') || 'section';
         var priority = settings.get('egp_geo_priority') || 50;
 
-        var title = elementId || (elementType.charAt(0).toUpperCase() + elementType.slice(1) + ' ' + panel.model.get('id'));
+        // Use custom label for display, but save Elementor's ID as the target
+        var customLabel = settings.get('egp_element_id') || '';
+        var title = customLabel || (elementType.charAt(0).toUpperCase() + elementType.slice(1) + ' ' + elementId);
 
         var data = {
             action: 'egp_save_elementor_rule_enhanced',
@@ -142,6 +145,7 @@
         };
 
         console.log('[EGP Sync] Auto-saving rule:', data);
+        console.log('[EGP Sync] Elementor ID (data-id):', elementId, '| Custom Label:', customLabel || '(none)');
 
         var ajaxUrl = (window.egpEditor && egpEditor.ajaxUrl) || ajaxurl;
         if (!ajaxUrl) {
