@@ -333,24 +333,12 @@ class ElementorGeoPopup {
      * Register Elementor hooks when Elementor is initialized
      */
     public function register_elementor_hooks() {
-        // Debug logging - always log this
+        // Debug logging
         error_log('[EGP] register_elementor_hooks() called - Elementor loaded: ' . (did_action('elementor/loaded') ? 'YES' : 'NO'));
-        error_log('[EGP] Elementor Plugin class exists: ' . (class_exists('\Elementor\Plugin') ? 'YES' : 'NO'));
-
-        // Add inline script to console for immediate feedback
-        add_action('admin_footer', function() {
-            echo '<script>console.log("[EGP] PHP: register_elementor_hooks() executed");</script>';
-        });
-
-        // Only register if Elementor is available and loaded
-        if (did_action('elementor/loaded') && class_exists('\Elementor\Plugin')) {
-            error_log('[EGP] Calling register_elementor_geo_controls()');
+        
+        // This is the key: register controls immediately using the proper hooks
+        // Following the if-so pattern which is proven to work
             $this->register_elementor_geo_controls();
-        } else {
-            // Fallback: register on a later hook if Elementor isn't fully loaded yet
-            error_log('[EGP] Setting up fallback hook on elementor/init');
-            add_action('elementor/init', array($this, 'register_elementor_geo_controls'), 20);
-        }
     }
 
     /**
@@ -484,6 +472,7 @@ class ElementorGeoPopup {
 
     /**
      * Register Geo Targeting controls for Elementor elements
+     * Following the if-so pattern which is proven to work with Elementor
      */
     private function register_elementor_geo_controls() {
         // Prevent multiple registrations
@@ -492,535 +481,44 @@ class ElementorGeoPopup {
             return;
         }
 
-        // Use Elementor's proper hook system - register controls for all element types
-        error_log('[EGP] register_elementor_geo_controls() called');
-        add_action('admin_footer', function() {
-            echo '<script>console.log("[EGP] register_elementor_geo_controls() called");</script>';
-        });
+        error_log('[EGP] Registering Elementor geo controls using if-so pattern');
 
-        // Try using Elementor's widget registration method instead of hooks
-        // This is the most reliable way to add controls to all widgets
-        add_action('elementor/widgets/widgets_registered', function($widgets_manager) {
-            error_log('[EGP] Widgets registered hook fired');
+        // KEY FIX: Use 'common/_section_style' hook for ALL widgets (this is what if-so does)
+        // This is the standard way to add controls to all widgets at once
+        add_action('elementor/element/common/_section_style/after_section_end', array($this, 'add_geo_targeting_controls'), 10, 2);
+        
+        // Add controls to Sections
+        add_action('elementor/element/section/section_advanced/after_section_end', array($this, 'add_geo_targeting_controls'), 10, 2);
+        
+        // Add controls to Columns
+        add_action('elementor/element/column/section_advanced/after_section_end', array($this, 'add_geo_targeting_controls'), 10, 2);
+        
+        // Add controls to Containers (Elementor 3.x)
+        add_action('elementor/element/container/section_layout/after_section_end', array($this, 'add_geo_targeting_controls'), 10, 2);
+        
+        // Add controls to Popups (Elementor Pro)
+        add_action('elementor/element/popup/section_advanced/after_section_end', array($this, 'add_geo_targeting_controls'), 10, 2);
 
-            // Get all registered widgets
-            $widget_types = $widgets_manager->get_widget_types();
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('[EGP] Found ' . count($widget_types) . ' widget types');
-            }
+        error_log('[EGP] Geo controls hooks registered successfully');
 
-            // Add controls to each widget type (only log if debug is enabled)
-            $debug_mode = defined('WP_DEBUG') && WP_DEBUG;
-            foreach ($widget_types as $widget_type => $widget) {
-                if ($debug_mode) {
-                    error_log('[EGP] Processing widget: ' . $widget_type);
-                }
-                $this->add_geo_controls_to_widget($widget);
-            }
-        });
-
-        // Add support for containers (Elementor 3.0+)
-        add_action('elementor/elements/elements_registered', function($elements_manager) {
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('[EGP] Elements registered hook fired');
-            }
-
-            // Get container element if it exists
-            if (method_exists($elements_manager, 'get_element_types')) {
-                $element_types = $elements_manager->get_element_types();
-                if (isset($element_types['container'])) {
-                    $container = $element_types['container'];
-                    if (defined('WP_DEBUG') && WP_DEBUG) {
-                        error_log('[EGP] Found container element, adding geo controls');
-                    }
-                    $this->add_geo_controls_to_container($container);
-                }
-            }
-        });
-
-        // Ensure Geo Targeting section appears in Elementor Advanced tab for Sections and Containers
-        // Normalize control registration for Sections
-        add_action('elementor/element/section/section_advanced/after_section_end', function($element, $args = null) {
-            try { $this->add_geo_targeting_controls($element); } catch (\Throwable $e) { if (defined('WP_DEBUG') && WP_DEBUG) error_log('[EGP] Section controls error: ' . $e->getMessage()); }
-        }, 20, 2);
-        // And for Containers (Elementor 3.x)
-        add_action('elementor/element/container/section_advanced/after_section_end', function($element, $args = null) {
-            try { $this->add_geo_targeting_controls($element); } catch (\Throwable $e) { if (defined('WP_DEBUG') && WP_DEBUG) error_log('[EGP] Container controls error: ' . $e->getMessage()); }
-        }, 20, 2);
-
-        error_log('[EGP] Elementor controls registration completed');
-
-        // Test if our hooks are actually registered by checking WordPress action registry
-        global $wp_filter;
-        $test_hooks = array(
-            'elementor/element/common/section_advanced/after_section_end',
-            'elementor/element/section/section_advanced/after_section_end',
-            'elementor/element/container/section_advanced/after_section_end'
-        );
-
-        foreach ($test_hooks as $hook) {
-            $has_hook = isset($wp_filter[$hook]) && !empty($wp_filter[$hook]);
-            error_log('[EGP] Hook registered check - ' . $hook . ': ' . ($has_hook ? 'YES' : 'NO'));
-        }
-
-        // Add a test hook to verify Elementor is working
-        add_action('elementor/editor/after_enqueue_scripts', function() {
-            error_log('[EGP] Elementor editor scripts enqueued - editor is loading');
-        });
-
-        // Add test hook for when elements are initialized
-        add_action('elementor/frontend/element_ready/global', function($element) {
-            error_log('[EGP] Elementor frontend element ready - Elementor is working');
-        });
-
-        // Add console debugging
-        add_action('admin_footer', function() {
-            ?>
-            <script>
-                console.log('[EGP] JavaScript debugging loaded');
-
-                // Check if Elementor is available
-                if (typeof elementor !== 'undefined') {
-                    console.log('[EGP] Elementor is available');
-
-                    // Listen for panel opening
-                    if (elementor.channels && elementor.channels.editor) {
-                        elementor.channels.editor.on('section:activated', function(sectionName, editor) {
-                            console.log('[EGP] Section activated:', sectionName);
-                        });
-
-                        elementor.channels.editor.on('element:clicked', function(model) {
-                            console.log('[EGP] Element clicked:', model.get('elType'));
-                        });
-                    }
-
-                    // Listen for panel opening via hooks
-                    elementor.hooks.addAction('panel/open_editor/widget', function(panel, model) {
-                        console.log('[EGP] Widget editor opened:', model.get('widgetType'));
-                    });
-
-                    elementor.hooks.addAction('panel/open_editor/section', function(panel, model) {
-                        console.log('[EGP] Section editor opened');
-                    });
-
-                    elementor.hooks.addAction('panel/open_editor/container', function(panel, model) {
-                        console.log('[EGP] Container editor opened');
-                    });
-
-                    elementor.hooks.addAction('panel/open_editor/column', function(panel, model) {
-                        console.log('[EGP] Column editor opened');
-                    });
-
-                } else {
-                    console.log('[EGP] Elementor not available');
-                }
-
-                // Listen for any DOM changes that might indicate element panel opening
-                document.addEventListener('DOMNodeInserted', function(e) {
-                    if (e.target.classList && e.target.classList.contains('elementor-panel')) {
-                        console.log('[EGP] Elementor panel inserted');
-                    }
-                });
-
-                // Check for Elementor panel every second for 30 seconds
-                var checkCount = 0;
-                var checkInterval = setInterval(function() {
-                    checkCount++;
-                    var panels = document.querySelectorAll('.elementor-panel');
-                    if (panels.length > 0) {
-                        console.log('[EGP] Found Elementor panels:', panels.length);
-                        clearInterval(checkInterval);
-                    }
-                    if (checkCount >= 30) {
-                        console.log('[EGP] No Elementor panels found after 30 seconds');
-                        clearInterval(checkInterval);
-                    }
-                }, 1000);
-            </script>
-            <?php
-        });
-
-        // Test basic Elementor hooks
-        add_action('elementor/element/after_add_attributes', function($element) {
-            static $logged = false;
-            if (!$logged) {
-                error_log('[EGP] Basic Elementor hook fired - Elementor is working');
-                $logged = true;
-            }
-        });
-
-        // Removed general element hook to prevent infinite loops
-
-        // Mark as registered to prevent future executions
+        // Mark as registered
         $controls_registered = true;
     }
 
-    /**
-     * Add Geo Targeting controls to a widget using Elementor's API
-     */
-    private function add_geo_controls_to_widget($widget) {
-        // Check if widget already has our controls (with static cache)
-        static $processed_widgets = array();
-        $widget_name = $widget->get_name();
-
-        if (isset($processed_widgets[$widget_name])) {
-            return;
-        }
-
-        $controls = $widget->get_controls();
-        if (isset($controls['egp_geo_tools'])) {
-            error_log('[EGP] Widget ' . $widget_name . ' already has geo controls');
-            $processed_widgets[$widget_name] = true;
-            return;
-        }
-
-        error_log('[EGP] Adding geo controls to widget: ' . $widget->get_name());
-
-        // Inject our section at the START of the Advanced tab (Elementor injection API)
-        if (method_exists($widget, 'start_injection')) {
-            $widget->start_injection(array(
-                'type' => 'section',
-                'at'   => 'start',
-                'of'   => 'section_advanced',
-            ));
-        }
-
-        // Add the controls section at the TOP of Advanced tab
-        $widget->start_controls_section(
-            'egp_geo_tools',
-            array(
-                'label' => __('Geo Targeting', 'elementor-geo-popup'),
-                'tab'   => \Elementor\Controls_Manager::TAB_ADVANCED,
-            ),
-            array(
-                'priority' => 1, // High priority to show at top
-            )
-        );
-
-        // If not configured, show setup callout and return
-        if (!$this->geo_ready) {
-            $settings_url = admin_url('admin.php?page=elementor-geo-popup#maxmind');
-            $widget->add_control(
-                'egp_geo_setup_notice',
-                array(
-                    'type' => \Elementor\Controls_Manager::RAW_HTML,
-                    'raw'  => '<div style="background:#fff8e5;border:1px solid #ffe08a;padding:10px;border-radius:4px;">'
-                           . esc_html__('Geo Targeting is inactive until you add your MaxMind license key.', 'elementor-geo-popup')
-                           . ' <a href="' . esc_url($settings_url) . '" target="_blank">' . esc_html__('Open Settings', 'elementor-geo-popup') . '</a>'
-                           . '</div>',
-                )
-            );
-            $widget->end_controls_section();
-            if (method_exists($widget, 'end_injection')) { $widget->end_injection(); }
-            return;
-        }
-
-        // Add element ID control with auto-generated value
-        $widget->add_control(
-            'egp_element_id',
-            array(
-                'label'       => __('Element ID', 'elementor-geo-popup'),
-                'type'        => \Elementor\Controls_Manager::TEXT,
-                'description' => __('Unique ID for this element. Used in Rules/Groups for targeting. Leave empty to auto-generate.', 'elementor-geo-popup'),
-                'placeholder' => __('Leave empty to auto-generate', 'elementor-geo-popup'),
-                'default'     => '',
-            )
-        );
-
-        // Add Pro controls if user has Pro
-        $is_pro = current_user_can('manage_woocommerce') || apply_filters('egp_is_pro_user', false);
-
-        if ($is_pro) {
-            $widget->add_control(
-                'egp_geo_enabled',
-                array(
-                    'label'        => __('Enable Geo Targeting', 'elementor-geo-popup'),
-                    'type'         => \Elementor\Controls_Manager::SWITCHER,
-                    'label_on'     => __('On', 'elementor-geo-popup'),
-                    'label_off'    => __('Off', 'elementor-geo-popup'),
-                    'return_value' => 'yes',
-                    'default'      => '',
-                )
-            );
-
-            // Use native SELECT control with multiple=true for better persistence
-            // Native HTML multi-select (no Select2). We'll persist to the 'egp_countries' setting via editor.js
-            $widget->add_control(
-                'egp_countries_html',
-                array(
-                    'type'        => \Elementor\Controls_Manager::RAW_HTML,
-                    'raw'         => (function(){
-                        $opts = $this->get_country_options();
-                        $html = '<div class="egp-countries-native"><label class="elementor-control-title">'.esc_html__('Target Countries', 'elementor-geo-popup').'</label><div class="elementor-control-input-wrapper">';
-                        $html .= '<select id="egp_countries_native_widget" multiple size="12" style="width:100%;max-width:100%;min-height:220px;">';
-                        foreach ($opts as $code => $name) { $html .= '<option value="'.esc_attr($code).'">'.esc_html($name).'</option>'; }                  
-                        $html .= '</select><p class="description">'.esc_html__('Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup').'</p></div></div>';
-                        return $html;
-                    })(),
-                    'condition'   => array('egp_geo_enabled' => 'yes'),     
-                )
-            );
-            // Hidden setting key to persist array values written by editor.js
-            $widget->add_control(
-                'egp_countries',
-                array(
-                    'type'        => \Elementor\Controls_Manager::HIDDEN,
-                    'default'     => '',
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                )
-            );
-
-            // Move Priority below Target Countries
-            $widget->add_control(
-                'egp_geo_priority',
-                array(
-                    'label'       => __('Priority', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::NUMBER,
-                    'min'         => 1,
-                    'max'         => 100,
-                    'step'        => 1,
-                    'default'     => 50,
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'description' => __('Higher numbers take precedence over lower priority geo rules (1-100).', 'elementor-geo-popup'),
-                )
-            );
-
-            // Move Tracking ID below Priority
-            $widget->add_control(
-                'egp_geo_tracking_id',
-                array(
-                    'label'       => __('Tracking ID', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::TEXT,
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'description' => __('Used for analytics and tracking', 'elementor-geo-popup'),
-                    'placeholder' => __('Auto-generated if empty', 'elementor-geo-popup'),
-                )
-            );
-        } else {
-            $widget->add_control(
-                'egp_geo_upgrade',
-                array(
-                    'type' => \Elementor\Controls_Manager::RAW_HTML,
-                    'raw'  => '<div style="background:#fff3cd;border:1px solid #ffeaa7;color:#856404;padding:12px;border-radius:4px;margin-top:10px;">'
-                            . '<strong>' . esc_html__('Pro Feature', 'elementor-geo-popup') . '</strong><br>'
-                            . esc_html__('Upgrade to Pro to target this widget by country.', 'elementor-geo-popup')
-                            . '</div>',
-                    'content_classes' => 'egp-upgrade-box',
-                )
-            );
-        }
-
-        $widget->end_controls_section();
-
-        error_log('[EGP] Successfully added geo controls to widget: ' . $widget->get_name());
-
-        // Close injection block if opened
-        if (method_exists($widget, 'end_injection')) {
-            $widget->end_injection();
-        }
-
-        // Add console success message
-        add_action('admin_footer', function() use ($widget) {
-            $name = $widget->get_name();
-            echo '<script>console.log("[EGP] ✅ Geo Targeting panel added to widget: ' . esc_js($name) . '");</script>';
-        });
-
-        // Mark widget as processed
-        $processed_widgets[$widget_name] = true;
-    }
 
     /**
-     * Add Geo Targeting controls to a container using Elementor's API
+     * Add Geo Targeting controls to an Elementor element
+     * This method is called by the registered hooks for each element type
      */
-    private function add_geo_controls_to_container($container) {
-        // Check if container already has our controls (with static cache)
-        static $container_processed = false;
-        if ($container_processed) {
-            return;
-        }
-
-        $controls = $container->get_controls();
-        if (isset($controls['egp_geo_tools'])) {
-            error_log('[EGP] Container already has geo controls');
-            $container_processed = true;
-            return;
-        }
-
-        error_log('[EGP] Adding geo controls to container');
-
-        // Inject our section at the START of the Advanced tab for containers
-        if (method_exists($container, 'start_injection')) {
-            $container->start_injection(array(
-                'type' => 'section',
-                'at'   => 'start',
-                'of'   => 'section_advanced',
-            ));
-        }
-
-        // Add the controls section at the TOP of Advanced tab
-        $container->start_controls_section(
-            'egp_geo_tools',
-            array(
-                'label' => __('Geo Targeting', 'elementor-geo-popup'),
-                'tab'   => \Elementor\Controls_Manager::TAB_ADVANCED,
-            ),
-            array(
-                'priority' => 1, // High priority to show at top
-            )
-        );
-
-        // If not configured, show setup callout and return
-        if (!$this->geo_ready) {
-            $settings_url = admin_url('admin.php?page=elementor-geo-popup#maxmind');
-            $container->add_control(
-                'egp_geo_setup_notice',
-                array(
-                    'type' => \Elementor\Controls_Manager::RAW_HTML,
-                    'raw'  => '<div style="background:#fff8e5;border:1px solid #ffe08a;padding:10px;border-radius:4px;">'
-                           . esc_html__('Geo Targeting is inactive until you add your MaxMind license key.', 'elementor-geo-popup')
-                           . ' <a href="' . esc_url($settings_url) . '" target="_blank">' . esc_html__('Open Settings', 'elementor-geo-popup') . '</a>'
-                           . '</div>',
-                )
-            );
-            $container->end_controls_section();
-            if (method_exists($container, 'end_injection')) { $container->end_injection(); }
-            return;
-        }
-
-        // Add element ID control with auto-generated value
-        $container->add_control(
-            'egp_element_id',
-            array(
-                'label'       => __('Element ID', 'elementor-geo-popup'),
-                'type'        => \Elementor\Controls_Manager::TEXT,
-                'description' => __('Unique ID for this container. Used in Rules/Groups for targeting. Leave empty to auto-generate.', 'elementor-geo-popup'),
-                'placeholder' => __('Leave empty to auto-generate', 'elementor-geo-popup'),
-                'default'     => '',
-            )
-        );
-
-        // Add Pro controls if user has Pro
-        $is_pro = current_user_can('manage_woocommerce') || apply_filters('egp_is_pro_user', false);
-
-        if ($is_pro) {
-            $container->add_control(
-                'egp_geo_enabled',
-                array(
-                    'label'        => __('Enable Geo Targeting', 'elementor-geo-popup'),
-                    'type'         => \Elementor\Controls_Manager::SWITCHER,
-                    'label_on'     => __('On', 'elementor-geo-popup'),
-                    'label_off'    => __('Off', 'elementor-geo-popup'),
-                    'return_value' => 'yes',
-                    'default'      => '',
-                )
-            );
-
-            // Use native SELECT control with multiple=true for better persistence
-            $container->add_control(
-                'egp_countries_html',
-                array(
-                    'type'        => \Elementor\Controls_Manager::RAW_HTML,
-                    'raw'         => (function(){
-                        $opts = $this->get_country_options();
-                        $html = '<div class="egp-countries-native"><label class="elementor-control-title">'.esc_html__('Target Countries', 'elementor-geo-popup').'</label><div class="elementor-control-input-wrapper">';
-                        $html .= '<select id="egp_countries_native_container" multiple size="12" style="width:100%;max-width:100%;min-height:220px;">';
-                        foreach ($opts as $code => $name) { $html .= '<option value="'.esc_attr($code).'">'.esc_html($name).'</option>'; }                  
-                        $html .= '</select><p class="description">'.esc_html__('Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup').'</p></div></div>';
-                        return $html;
-                    })(),
-                    'condition'   => array('egp_geo_enabled' => 'yes'),     
-                )
-            );
-            $container->add_control(
-                'egp_countries',
-                array(
-                    'type'        => \Elementor\Controls_Manager::HIDDEN,
-                    'default'     => '',
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                )
-            );
-
-            // Priority with tooltip
-            $container->add_control(
-                'egp_geo_priority',
-                array(
-                    'label'       => __('Priority', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::NUMBER,
-                    'min'         => 1,
-                    'max'         => 100,
-                    'step'        => 1,
-                    'default'     => 50,
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'description' => __('Higher numbers take precedence over lower priority geo rules (1-100).', 'elementor-geo-popup'),
-                )
-            );
-
-            // Tracking ID
-            $container->add_control(
-                'egp_geo_tracking_id',
-                array(
-                    'label'       => __('Tracking ID', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::TEXT,
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'description' => __('Used for analytics and tracking', 'elementor-geo-popup'),
-                    'placeholder' => __('Auto-generated if empty', 'elementor-geo-popup'),
-                )
-            );
-        } else {
-            $container->add_control(
-                'egp_geo_upgrade',
-                array(
-                    'type' => \Elementor\Controls_Manager::RAW_HTML,
-                    'raw'  => '<div style="background:#fff3cd;border:1px solid #ffeaa7;color:#856404;padding:12px;border-radius:4px;margin-top:10px;">'
-                            . '<strong>' . esc_html__('Pro Feature', 'elementor-geo-popup') . '</strong><br>'
-                            . esc_html__('Upgrade to Pro to target this container by country.', 'elementor-geo-popup')
-                            . '</div>',
-                    'content_classes' => 'egp-upgrade-box',
-                )
-            );
-        }
-
-        $container->end_controls_section();
-
-        error_log('[EGP] Successfully added geo controls to container');
-
-        // Close injection block if opened
-        if (method_exists($container, 'end_injection')) {
-            $container->end_injection();
-        }
-
-        // Add console success message
-        add_action('admin_footer', function() {
-            echo '<script>console.log("[EGP] ✅ Geo Targeting panel added to container");</script>';
-        });
-
-        // Mark container as processed
-        $container_processed = true;
-    }
-
-    /**
-     * Add Geo Targeting controls to an Elementor element (legacy method)
-     */
-    private function add_geo_targeting_controls($element) {
-        // Determine Pro gating (same heuristic as elsewhere)
-        $is_pro = current_user_can('manage_woocommerce') || apply_filters('egp_is_pro_user', false);
-
-        // Add debug logging
-        $element_name = method_exists($element, 'get_name') ? $element->get_name() : 'unknown';
-        $element_type = method_exists($element, 'get_type') ? $element->get_type() : 'unknown';
-        error_log('[EGP] Adding geo controls to element: ' . $element_name . ' (type: ' . $element_type . ')');
-
+    public function add_geo_targeting_controls($element, $args = null) {
         // Check if geo controls already exist to prevent duplicates
         $controls = $element->get_controls();
         if (is_array($controls) && isset($controls['egp_geo_tools'])) {
-            error_log('[EGP] Geo controls already exist for element: ' . $element_name . ' - skipping duplicate');
             return;
         }
 
-        // Add inline script for immediate console feedback
-        add_action('admin_footer', function() use ($element_name, $element_type) {
-            echo '<script>console.log("[EGP] Adding geo controls to element: ' . esc_js($element_name) . ' (type: ' . esc_js($element_type) . ')");</script>';
-        });
+        // Determine Pro gating
+        $is_pro = current_user_can('manage_woocommerce') || apply_filters('egp_is_pro_user', false);
 
         $element->start_controls_section(
             'egp_geo_tools',
@@ -1137,13 +635,6 @@ class ElementorGeoPopup {
         }
 
         $element->end_controls_section();
-
-        error_log('[EGP] Geo controls added successfully to element: ' . $element_name);
-
-        // Add success message to console
-        add_action('admin_footer', function() use ($element_name) {
-            echo '<script>console.log("[EGP] ✅ Geo Targeting panel added to ' . esc_js($element_name) . '");</script>';
-        });
     }
 
     /**
