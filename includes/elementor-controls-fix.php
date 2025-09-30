@@ -33,19 +33,16 @@ class EGP_Elementor_Controls_Fix {
      * Initialize hooks
      */
     private function init_hooks() {
-        // Fix Elementor controls registration
-        add_action('elementor/init', array($this, 'register_fixed_controls'), 25);
+        // DISABLED: Main plugin now handles all controls via if-so pattern
+        // The duplicate "enhanced" controls were causing conflicts
         
-        // Enhanced AJAX handlers for better rule management
+        // Keep only the AJAX handlers for enhanced rule management
         add_action('wp_ajax_egp_save_elementor_rule_enhanced', array($this, 'ajax_save_elementor_rule_enhanced'));
         add_action('wp_ajax_egp_get_element_rule', array($this, 'ajax_get_element_rule'));
         add_action('wp_ajax_egp_update_element_settings', array($this, 'ajax_update_element_settings'));
         
         // Fix admin rule editing
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_fix_scripts'));
-        
-        // Enhanced editor scripts
-        add_action('elementor/editor/before_enqueue_scripts', array($this, 'enqueue_enhanced_editor_scripts'));
     }
     
     /**

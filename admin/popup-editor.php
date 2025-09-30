@@ -30,13 +30,11 @@ class EGP_Popup_Editor {
      * Initialize popup editor integration
      */
     public function init_popup_editor() {
-        // Add our section under the Advanced tab for Popup document
-        add_action('elementor/element/popup/section_advanced/after_section_end', array($this, 'add_geo_targeting_section'));
-        // Fallback older section id
-        add_action('elementor/element/popup/section_popup_advanced/after_section_end', array($this, 'add_geo_targeting_section'));
-
-        // Add custom CSS and JS for the popup editor
-        add_action('elementor/editor/before_enqueue_scripts', array($this, 'enqueue_editor_scripts'));
+        // DISABLED: Main plugin now handles all geo controls via if-so pattern
+        // The duplicate controls were causing issues
+        
+        // Add custom CSS and JS for the popup editor (if needed for other features)
+        // add_action('elementor/editor/before_enqueue_scripts', array($this, 'enqueue_editor_scripts'));
     }
     
     /**

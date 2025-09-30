@@ -2383,11 +2383,12 @@ class EGP_Geo_Rules {
      * Enqueue editor scripts
      */
     public function enqueue_editor_scripts() {
+        // Enqueue unified geo sync script
         wp_enqueue_script(
-            'egp-editor-simple',
-            EGP_PLUGIN_URL . 'assets/js/editor-simple.js',
+            'egp-geo-sync',
+            EGP_PLUGIN_URL . 'assets/js/elementor-geo-sync.js',
             array('jquery', 'elementor-editor'),
-            EGP_VERSION,
+            filemtime(EGP_PLUGIN_DIR . 'assets/js/elementor-geo-sync.js'),
             true
         );
         
@@ -2411,7 +2412,7 @@ class EGP_Geo_Rules {
             }
         }
         
-        wp_localize_script('egp-editor-simple', 'egpEditor', array(
+        wp_localize_script('egp-geo-sync', 'egpEditor', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('egp_admin_nonce'),
             'isPro' => $this->is_pro_user(),
