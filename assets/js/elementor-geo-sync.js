@@ -155,6 +155,21 @@
                 
                 // Show brief success indicator
                 showSaveIndicator('success');
+
+                // Store the rule ID for future updates
+                if (response.data && response.data.rule_id) {
+                    settings.set('egp_rule_id', response.data.rule_id);
+                    console.log('[EGP Sync] Stored rule_id:', response.data.rule_id);
+                }
+
+                // Trigger custom event for admin panel refresh
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'egp_rule_saved',
+                        rule_id: response.data && response.data.rule_id,
+                        element_id: elementId
+                    }, '*');
+                }
             } else {
                 console.log('[EGP Sync] Save failed:', response.data);
                 showSaveIndicator('error');

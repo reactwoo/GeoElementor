@@ -1297,7 +1297,9 @@ class EGP_Geo_Rules {
         foreach ($rules as $rule) {
             $type = get_post_meta($rule->ID, $this->meta_prefix . 'target_type', true);
             error_log('[EGP Debug] Processing rule ' . $rule->ID . ' with type: ' . $type);
-            if ($type !== 'section' && $type !== 'widget' && $type !== 'container') { 
+            // Include all valid Elementor element types: section, container, widget, column
+            $valid_types = array('section', 'widget', 'container', 'column');
+            if (!in_array($type, $valid_types, true)) { 
                 error_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - wrong type: ' . $type);
                 continue; 
             }   
@@ -1313,14 +1315,13 @@ class EGP_Geo_Rules {
             }  
             $countries = array_values(array_unique(array_map('strtoupper', $countries)));
 
-            // Heuristic: alphanumeric with dashes/underscores => CSS ID; otherwise treat as Elementor data-id                                             
-            $is_css_id = (bool) preg_match('/^[A-Za-z][A-Za-z0-9_-]*$/', $target_id);
+            // Store both the original ID and potential variations
+            // We'll check multiple possibilities on the frontend
             $targets[] = array(
                 'ref' => $target_id,
-                'refType' => $is_css_id ? 'css' : 'element',
                 'countries' => $countries,
             );
-            error_log('[EGP Debug] Added target: ' . $target_id . ' (' . ($is_css_id ? 'css' : 'element') . ') for countries: ' . implode(',', $countries));
+            error_log('[EGP Debug] Added target: ' . $target_id . ' for countries: ' . implode(',', $countries));
         }
 
         error_log('[EGP Debug] Frontend script - Found ' . count($targets) . ' targets: ' . wp_json_encode($targets));
@@ -1340,27 +1341,161 @@ class EGP_Geo_Rules {
 
         $ajax_url = admin_url('admin-ajax.php');
         $ajax_nonce = wp_create_nonce('egp_geo_nonce');
-        echo '<script>';
-        echo 'document.addEventListener("DOMContentLoaded",function(){';
-        echo 'var targets=' . wp_json_encode($targets) . ';';
-        echo 'console.log("[EGP Frontend] Targets:", targets);';
-        echo 'function egpHideTargets(country){console.log("[EGP Frontend] Hiding targets for country:", country);try{if(!country){return;}var userCountry=(country||"").toUpperCase();var hidden=new Set();targets.forEach(function(t){var allow=(t.countries||[]).map(function(c){return (c||"").toUpperCase()});console.log("[EGP Frontend] Checking target", t.ref, "allowed countries:", allow, "user country:", userCountry);if(allow.indexOf(userCountry)===-1){console.log("[EGP Frontend] Hiding target", t.ref, "- user country", userCountry, "not in allowed list:", allow);try{if(t.refType==="css"){var id=(t.ref||"").replace(/^#/ , "");var nodes=[];if(id){nodes = document.querySelectorAll("#"+CSS.escape(id)+", [id="+JSON.stringify(id)+"]");console.log("[EGP Frontend] Found CSS nodes:", nodes.length, "for ID:", id);}nodes.forEach(function(el){if(el && !hidden.has(t.ref)){el.style.display="none";el.classList.add("egp-hidden");hidden.add(t.ref);console.log("[EGP Frontend] Hidden CSS element:", t.ref);}});}else{var els=document.querySelectorAll("[data-id=\""+t.ref+"\"]");console.log("[EGP Frontend] Found data-id nodes:", els.length, "for data-id:", t.ref);els.forEach(function(el){if(el && !hidden.has(t.ref)){el.style.display="none";el.classList.add("egp-hidden");hidden.add(t.ref);console.log("[EGP Frontend] Hidden data-id element:", t.ref);}});} }catch(e){console.log("[EGP Frontend] Error hiding:", e);}}else{console.log("[EGP Frontend] Showing target", t.ref, "- user country", userCountry, "is in allowed list:", allow);}});}catch(e){console.log("[EGP Frontend] Error in egpHideTargets:", e);}}';
-        echo 'console.log("[EGP Frontend] Available data-id elements:", document.querySelectorAll("[data-id]").length);';
-        echo 'console.log("[EGP Frontend] Available ID elements:", document.querySelectorAll("[id]").length);';
-        echo 'var allDataIds = []; document.querySelectorAll("[data-id]").forEach(function(el){allDataIds.push(el.getAttribute("data-id"));}); console.log("[EGP Frontend] All data-id values:", allDataIds);';
-        echo 'var allIds = []; document.querySelectorAll("[id]").forEach(function(el){allIds.push(el.id);}); console.log("[EGP Frontend] All ID values:", allIds);';
-        echo 'var initialCountry=' . wp_json_encode($user_country) . ';';
-        echo 'console.log("[EGP Frontend] Initial country:", initialCountry);';
-        echo 'if(initialCountry){ egpHideTargets(initialCountry); } else {';
-        echo 'console.log("[EGP Frontend] No initial country, trying AJAX...");';
-        echo 'var xhr=new XMLHttpRequest();';
-        echo 'xhr.open("POST", ' . wp_json_encode($ajax_url) . ', true);'; 
-        echo 'xhr.setRequestHeader("Content-Type","application/x-www-form-urlencoded; charset=UTF-8");';                                                   
-        echo 'xhr.onreadystatechange=function(){ if(xhr.readyState===4){ try { var resp=JSON.parse(xhr.responseText); console.log("[EGP Frontend] AJAX response:", resp); if(resp && resp.success && resp.data && resp.data.country){ egpHideTargets(resp.data.country); } } catch(e){console.log("[EGP Frontend] AJAX error:", e);} } };'; 
-        echo 'xhr.send("action=egp_get_visitor_country&nonce=' . esc_js($ajax_nonce) . '");';                                                              
-        echo '}';
-        echo '});';
-        echo '</script>';
+        ?>
+        <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var targets = <?php echo wp_json_encode($targets); ?>;
+            console.log("[EGP Frontend] Loaded", targets.length, "geo targeting rules:", targets);
+            
+            function egpFindElement(ref) {
+                // Try multiple strategies to find the element
+                var found = [];
+                var cleanRef = (ref || "").trim();
+                
+                if (!cleanRef) return found;
+                
+                console.log("[EGP Frontend] Searching for element:", cleanRef);
+                
+                // Strategy 1: Direct data-id match (Elementor's primary identifier)
+                var byDataId = document.querySelectorAll('[data-id="' + cleanRef + '"]');
+                if (byDataId.length > 0) {
+                    console.log("[EGP Frontend] Found", byDataId.length, "elements by data-id:", cleanRef);
+                    byDataId.forEach(function(el) { found.push(el); });
+                    return found;
+                }
+                
+                // Strategy 2: CSS ID selector
+                var cleanId = cleanRef.replace(/^#/, '');
+                try {
+                    var byId = document.getElementById(cleanId);
+                    if (byId) {
+                        console.log("[EGP Frontend] Found by ID:", cleanId);
+                        found.push(byId);
+                        return found;
+                    }
+                } catch(e) {}
+                
+                // Strategy 3: Try variations of the ID (spaces to dashes, underscores, etc.)
+                var variations = [
+                    cleanRef,
+                    cleanRef.replace(/\s+/g, '-'),
+                    cleanRef.replace(/\s+/g, '_'),
+                    cleanRef.replace(/\s+/g, '').toLowerCase(),
+                    cleanRef.toLowerCase().replace(/\s+/g, '-')
+                ];
+                
+                for (var i = 0; i < variations.length; i++) {
+                    var variant = variations[i];
+                    // Try data-id with variation
+                    var byDataIdVar = document.querySelectorAll('[data-id="' + variant + '"]');
+                    if (byDataIdVar.length > 0) {
+                        console.log("[EGP Frontend] Found by data-id variation:", variant);
+                        byDataIdVar.forEach(function(el) { found.push(el); });
+                        return found;
+                    }
+                    
+                    // Try ID with variation
+                    var byIdVar = document.getElementById(variant);
+                    if (byIdVar) {
+                        console.log("[EGP Frontend] Found by ID variation:", variant);
+                        found.push(byIdVar);
+                        return found;
+                    }
+                }
+                
+                // Strategy 4: Try as class name (last resort)
+                try {
+                    var byClass = document.getElementsByClassName(cleanId);
+                    if (byClass.length > 0) {
+                        console.log("[EGP Frontend] Found by class:", cleanId);
+                        Array.from(byClass).forEach(function(el) { found.push(el); });
+                        return found;
+                    }
+                } catch(e) {}
+                
+                console.log("[EGP Frontend] Could not find element:", cleanRef);
+                return found;
+            }
+            
+            function egpHideTargets(country) {
+                console.log("[EGP Frontend] Processing geo rules for country:", country);
+                
+                if (!country) {
+                    console.log("[EGP Frontend] No country provided, skipping");
+                    return;
+                }
+                
+                var userCountry = (country || "").toUpperCase();
+                var hidden = new Set();
+                
+                targets.forEach(function(target) {
+                    var allowedCountries = (target.countries || []).map(function(c) {
+                        return (c || "").toUpperCase();
+                    });
+                    
+                    console.log("[EGP Frontend] Checking rule for:", target.ref, "| Allowed:", allowedCountries, "| User:", userCountry);
+                    
+                    // If user's country is NOT in the allowed list, hide the element
+                    if (allowedCountries.indexOf(userCountry) === -1) {
+                        console.log("[EGP Frontend] ❌ User country NOT allowed - HIDING:", target.ref);
+                        
+                        var elements = egpFindElement(target.ref);
+                        if (elements.length === 0) {
+                            console.log("[EGP Frontend] ⚠️ Element not found to hide:", target.ref);
+                        }
+                        
+                        elements.forEach(function(el) {
+                            if (el && !hidden.has(target.ref)) {
+                                el.style.display = "none";
+                                el.classList.add("egp-geo-hidden");
+                                hidden.add(target.ref);
+                                console.log("[EGP Frontend] ✓ Hidden element:", target.ref, el);
+                            }
+                        });
+                    } else {
+                        console.log("[EGP Frontend] ✓ User country allowed - SHOWING:", target.ref);
+                    }
+                });
+                
+                console.log("[EGP Frontend] Completed. Hidden", hidden.size, "elements");
+            }
+            
+            // Debug: List all available elements
+            var allDataIds = [];
+            document.querySelectorAll("[data-id]").forEach(function(el) {
+                allDataIds.push(el.getAttribute("data-id"));
+            });
+            console.log("[EGP Frontend] Available Elementor elements (data-id):", allDataIds);
+            
+            // Run geo targeting
+            var initialCountry = <?php echo wp_json_encode($user_country); ?>;
+            console.log("[EGP Frontend] User country:", initialCountry);
+            
+            if (initialCountry) {
+                egpHideTargets(initialCountry);
+            } else {
+                console.log("[EGP Frontend] No initial country, trying AJAX detection...");
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", <?php echo wp_json_encode($ajax_url); ?>, true);
+                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        try {
+                            var resp = JSON.parse(xhr.responseText);
+                            console.log("[EGP Frontend] AJAX country detection response:", resp);
+                            if (resp && resp.success && resp.data && resp.data.country) {
+                                egpHideTargets(resp.data.country);
+                            }
+                        } catch(e) {
+                            console.log("[EGP Frontend] AJAX error:", e);
+                        }
+                    }
+                };
+                xhr.send("action=egp_get_visitor_country&nonce=<?php echo esc_js($ajax_nonce); ?>");
+            }
+        });
+        </script>
+        <?php
     }
     
     /**
@@ -1851,8 +1986,11 @@ class EGP_Geo_Rules {
             wp_send_json_error('Missing required fields: element_id and countries');
         }
         
+        // Determine the appropriate target type based on element type
+        $target_type = in_array($element_type, array('section', 'container', 'widget', 'column')) ? $element_type : 'section';
+        
         // Use the existing save_or_update_rule method for consistency
-        $result = $this->save_or_update_rule($element_type, $element_id, $countries, $priority, $active, 'elementor_enhanced', $title, $element_type);
+        $result = $this->save_or_update_rule($target_type, $element_id, $countries, $priority, $active, 'elementor_enhanced', $title, $element_type);
         
         if ($result['success']) {
             $rule_id = $result['rule_id'];
@@ -1865,10 +2003,14 @@ class EGP_Geo_Rules {
                 update_post_meta($rule_id, 'egp_document_id', $document_id);
             }
             
+            error_log('[EGP Debug] Rule saved successfully - ID: ' . $rule_id . ', target_type: ' . $target_type . ', target_id: ' . $element_id);
+            
             wp_send_json_success(array(
                 'rule_id' => $rule_id,
                 'message' => 'Rule saved successfully',
-                'countries_count' => count($countries)
+                'countries_count' => count($countries),
+                'target_id' => $element_id,
+                'target_type' => $target_type
             ));
         } else {
             wp_send_json_error($result['error']);

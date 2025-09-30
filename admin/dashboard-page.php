@@ -49,6 +49,25 @@ class EGP_Admin_Dashboard {
 			$inline_js = 'document.getElementById("geo-el-admin-app").innerHTML = "<div style=\\"text-align:center;padding:2rem;\\"><h3>Dashboard Loading...</h3><p>Please run <code>npm run build</code> to build the dashboard.</p></div>";';
 			wp_add_inline_script('jquery', $inline_js, 'after');
 		}
+		
+		// Add auto-refresh listener for when rules are saved from Elementor editor
+		$refresh_script = "
+		window.addEventListener('message', function(event) {
+			if (event.data && event.data.type === 'egp_rule_saved') {
+				console.log('[EGP Admin] Rule saved from editor, refreshing dashboard...', event.data);
+				// Trigger dashboard reload if it has a reload method
+				if (window.egpDashboard && typeof window.egpDashboard.reload === 'function') {
+					window.egpDashboard.reload();
+				} else {
+					// Fallback: reload the entire page
+					setTimeout(function() {
+						location.reload();
+					}, 500);
+				}
+			}
+		});
+		";
+		wp_add_inline_script('jquery', $refresh_script, 'after');
 	}
 }
 
