@@ -194,6 +194,11 @@ class ElementorGeoPopup {
         
         // Load native Elementor template integration (hybrid architecture)
         require_once EGP_PLUGIN_DIR . 'includes/elementor-template-integration.php';
+        
+        // Load Elementor library columns integration (adds geo columns to native library)
+        if (is_admin()) {
+            require_once EGP_PLUGIN_DIR . 'includes/elementor-library-columns.php';
+        }
     }
     
     /**
