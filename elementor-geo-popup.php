@@ -198,7 +198,11 @@ class ElementorGeoPopup {
         // Load Elementor library columns integration (adds geo columns to native library)
         if (is_admin()) {
             require_once EGP_PLUGIN_DIR . 'includes/elementor-library-columns.php';
+            require_once EGP_PLUGIN_DIR . 'includes/page-columns-integration.php';
         }
+        
+        // Load homepage variant group support (allows groups for homepage/blog settings)
+        require_once EGP_PLUGIN_DIR . 'includes/homepage-variant-group.php';
     }
     
     /**

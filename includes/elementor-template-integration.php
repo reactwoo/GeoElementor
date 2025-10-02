@@ -62,7 +62,7 @@ class EGP_Elementor_Template_Integration {
         $document->start_controls_section(
             'egp_geo_targeting_section',
             [
-                'label' => __('🌍 Geo Targeting', 'elementor-geo-popup'),
+                'label' => __('Geo Targeting', 'elementor-geo-popup'),
                 'tab' => \Elementor\Controls_Manager::TAB_SETTINGS,
             ]
         );

@@ -74,7 +74,7 @@ class EGP_Geo_Content_Dashboard {
             <h1><?php _e('Geo Content Management', 'elementor-geo-popup'); ?></h1>
             
             <div class="egp-help-box">
-                <h3>ℹ️ <?php _e('How It Works', 'elementor-geo-popup'); ?></h3>
+                <h3><span class="dashicons dashicons-info" style="vertical-align: middle;"></span> <?php _e('How It Works', 'elementor-geo-popup'); ?></h3>
                 <div class="egp-workflow-guide">
                     <div class="egp-workflow-item">
                         <strong><?php _e('Reusable Content:', 'elementor-geo-popup'); ?></strong>
@@ -91,14 +91,14 @@ class EGP_Geo_Content_Dashboard {
             </div>
             
             <!-- Reusable Geo Content (Elementor Templates) -->
-            <h2><?php _e('📄 Reusable Geo Content', 'elementor-geo-popup'); ?></h2>
+            <h2><span class="dashicons dashicons-location-alt" style="vertical-align: middle;"></span> <?php _e('Reusable Geo Content', 'elementor-geo-popup'); ?></h2>
             <p class="description">
                 <?php _e('Elementor templates with geo-targeting enabled. Manage these in Elementor → Templates.', 'elementor-geo-popup'); ?>
             </p>
             
             <?php if (empty($geo_templates)): ?>
                 <div class="egp-empty-state">
-                    <div class="egp-empty-icon">📄</div>
+                    <div class="egp-empty-icon"><span class="dashicons dashicons-location-alt" style="font-size: 48px;"></span></div>
                     <h3><?php _e('No geo templates yet', 'elementor-geo-popup'); ?></h3>
                     <p><?php _e('Create a template in Elementor and enable Geo Targeting in its settings.', 'elementor-geo-popup'); ?></p>
                     <a href="<?php echo admin_url('post-new.php?post_type=elementor_library&elementor_library_type=page'); ?>" class="button button-primary">
@@ -162,14 +162,14 @@ class EGP_Geo_Content_Dashboard {
             <br><br>
             
             <!-- Element Visibility Rules -->
-            <h2><?php _e('🎯 Element Visibility Rules', 'elementor-geo-popup'); ?></h2>
+            <h2><span class="dashicons dashicons-visibility" style="vertical-align: middle;"></span> <?php _e('Element Visibility Rules', 'elementor-geo-popup'); ?></h2>
             <p class="description">
                 <?php _e('Page-specific rules that hide/show elements based on visitor country.', 'elementor-geo-popup'); ?>
             </p>
             
             <?php if (empty($element_rules)): ?>
                 <div class="egp-empty-state">
-                    <div class="egp-empty-icon">🎯</div>
+                    <div class="egp-empty-icon"><span class="dashicons dashicons-visibility" style="font-size: 48px;"></span></div>
                     <h3><?php _e('No element rules yet', 'elementor-geo-popup'); ?></h3>
                     <p><?php _e('Open a page in Elementor, click any element, then go to Advanced → Geo Targeting.', 'elementor-geo-popup'); ?></p>
                 </div>

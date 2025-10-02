@@ -55,17 +55,21 @@ class EGP_Elementor_Library_Columns {
      * Add custom columns
      */
     public function add_columns($columns) {
-        // Insert geo column after title (countries column includes status)
+        // Add geo columns after title
         $new_columns = array();
         
         foreach ($columns as $key => $value) {
             $new_columns[$key] = $value;
             
-            // Add single geo/countries column after title
+            // Add geo columns after title
             if ($key === 'title') {
-                $new_columns['egp_geo_countries'] = '<span class="dashicons dashicons-admin-site" title="Geo Targeting"></span> ' . __('Geo Countries', 'elementor-geo-popup');
+                $new_columns['egp_geo'] = '<span class="dashicons dashicons-location-alt" title="Geo Targeting"></span> ' . __('Geo', 'elementor-geo-popup');
+                $new_columns['egp_countries'] = __('Countries', 'elementor-geo-popup');
             }
         }
+        
+        // Note: Shortcode column remains (Elementor Pro standard)
+        // We only add our geo columns, don't remove existing columns
         
         return $new_columns;
     }
@@ -74,30 +78,34 @@ class EGP_Elementor_Library_Columns {
      * Render custom columns
      */
     public function render_column($column, $post_id) {
-        if ($column !== 'egp_geo_countries') {
-            return;
-        }
-        
         $page_settings = get_post_meta($post_id, '_elementor_page_settings', true);
         $geo_enabled = isset($page_settings['egp_geo_enabled']) && $page_settings['egp_geo_enabled'] === 'yes';
         $countries = isset($page_settings['egp_countries']) ? $page_settings['egp_countries'] : array();
         
-        if (!$geo_enabled || empty($countries)) {
-            echo '<span class="egp-status-badge egp-disabled">—</span>';
-            return;
-        }
-        
-        // Show status badge + countries
-        echo '<span class="egp-status-badge egp-enabled">🌍</span> ';
-        
-        if (is_array($countries) && !empty($countries)) {
-            $display_countries = array_slice($countries, 0, 3);
-            echo '<span class="egp-countries-list">';
-            echo esc_html(implode(', ', $display_countries));
-            if (count($countries) > 3) {
-                echo ' <span class="egp-more-countries" title="' . esc_attr(implode(', ', $countries)) . '">+' . (count($countries) - 3) . '</span>';
-            }
-            echo '</span>';
+        switch ($column) {
+            case 'egp_geo':
+                // Show enabled/disabled status
+                if ($geo_enabled) {
+                    echo '<span class="egp-status-badge egp-enabled">✓ Enabled</span>';
+                } else {
+                    echo '<span class="egp-status-badge egp-disabled">Disabled</span>';
+                }
+                break;
+                
+            case 'egp_countries':
+                // Show countries list
+                if ($geo_enabled && is_array($countries) && !empty($countries)) {
+                    $display_countries = array_slice($countries, 0, 3);
+                    echo '<span class="egp-countries-list">';
+                    echo esc_html(implode(', ', $display_countries));
+                    if (count($countries) > 3) {
+                        echo ' <span class="egp-more-countries" title="' . esc_attr(implode(', ', $countries)) . '">+' . (count($countries) - 3) . '</span>';
+                    }
+                    echo '</span>';
+                } else {
+                    echo '<span class="egp-no-countries">—</span>';
+                }
+                break;
         }
     }
     
@@ -105,7 +113,7 @@ class EGP_Elementor_Library_Columns {
      * Make columns sortable
      */
     public function sortable_columns($columns) {
-        $columns['egp_geo_countries'] = 'egp_geo_countries';
+        $columns['egp_geo'] = 'egp_geo';
         return $columns;
     }
     
@@ -127,10 +135,10 @@ class EGP_Elementor_Library_Columns {
         $class = (isset($_GET['geo_view']) && $_GET['geo_view'] === 'enabled') ? 'current' : '';
         
         $views['geo'] = sprintf(
-            '<a href="%s" class="%s">%s <span class="count">(%d)</span></a>',
+            '<a href="%s" class="%s"><span class="dashicons dashicons-location-alt" style="vertical-align: middle;"></span> %s <span class="count">(%d)</span></a>',
             admin_url('edit.php?post_type=elementor_library&geo_view=enabled'),
             $class,
-            '🌍 ' . __('Geo Enabled', 'elementor-geo-popup'),
+            __('Geo Enabled', 'elementor-geo-popup'),
             count($count)
         );
         
@@ -160,7 +168,7 @@ class EGP_Elementor_Library_Columns {
      * Add quick edit box
      */
     public function quick_edit_box($column_name, $post_type) {
-        if ($post_type !== 'elementor_library' || $column_name !== 'egp_geo_countries') {
+        if ($post_type !== 'elementor_library' || $column_name !== 'egp_geo') {
             return;
         }
         
@@ -168,7 +176,7 @@ class EGP_Elementor_Library_Columns {
         <fieldset class="inline-edit-col-right inline-edit-egp-geo">
             <div class="inline-edit-col">
                 <label class="inline-edit-group">
-                    <span class="title">🌍 <?php _e('Geo Targeting', 'elementor-geo-popup'); ?></span>
+                    <span class="title"><span class="dashicons dashicons-location-alt" style="vertical-align: middle;"></span> <?php _e('Geo Targeting', 'elementor-geo-popup'); ?></span>
                     <select name="egp_geo_enabled" class="egp-geo-toggle">
                         <option value="">— <?php _e('No Change', 'elementor-geo-popup'); ?> —</option>
                         <option value="yes"><?php _e('Enable', 'elementor-geo-popup'); ?></option>

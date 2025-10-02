@@ -1,0 +1,53 @@
+/**
+ * WordPress Pages Geo Columns Styling
+ */
+
+/* Geo Column */
+.column-egp_geo {
+    width: 100px;
+}
+
+/* Group Column */
+.column-egp_group {
+    width: 150px;
+}
+
+.egp-group-link {
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.egp-group-link:hover {
+    text-decoration: underline;
+}
+
+.egp-group-countries {
+    font-size: 11px;
+    color: #646970;
+    display: block;
+    margin-top: 3px;
+}
+
+.egp-no-group {
+    color: #d0d0d0;
+}
+
+/* Reuse status badges from library columns */
+.egp-status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.egp-status-badge.egp-enabled {
+    background: #d4edda;
+    color: #155724;
+}
+
+.egp-status-badge.egp-disabled {
+    background: #f8f9fa;
+    color: #6c757d;
+}
+
