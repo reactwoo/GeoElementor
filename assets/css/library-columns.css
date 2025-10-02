@@ -42,8 +42,12 @@
 }
 
 .egp-no-countries {
-    color: #d63638;
-    font-style: italic;
+    color: #d0d0d0;
+    }
+    
+    .egp-all-countries {
+        font-weight: 600;
+        color: #2271b1;
 }
 
 /* Quick Edit */

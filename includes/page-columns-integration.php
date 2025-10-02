@@ -132,8 +132,17 @@ class EGP_Page_Columns_Integration {
             return null;
         }
         
-        $variant_crud = new RW_Geo_Variant_CRUD();
-        $all_groups = $variant_crud->get_all();
+        try {
+            $variant_crud = new RW_Geo_Variant_CRUD();
+            $all_groups = $variant_crud->get_all();
+        } catch (Exception $e) {
+            error_log('[EGP] Error getting variant groups: ' . $e->getMessage());
+            return null;
+        }
+        
+        if (!is_array($all_groups)) {
+            return null;
+        }
         
         foreach ($all_groups as $group) {
             $mappings = isset($group['mappings']) ? $group['mappings'] : array();

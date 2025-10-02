@@ -94,14 +94,19 @@ class EGP_Elementor_Library_Columns {
                 
             case 'egp_countries':
                 // Show countries list
-                if ($geo_enabled && is_array($countries) && !empty($countries)) {
-                    $display_countries = array_slice($countries, 0, 3);
-                    echo '<span class="egp-countries-list">';
-                    echo esc_html(implode(', ', $display_countries));
-                    if (count($countries) > 3) {
-                        echo ' <span class="egp-more-countries" title="' . esc_attr(implode(', ', $countries)) . '">+' . (count($countries) - 3) . '</span>';
+                if ($geo_enabled) {
+                    if (is_array($countries) && !empty($countries)) {
+                        $display_countries = array_slice($countries, 0, 3);
+                        echo '<span class="egp-countries-list">';
+                        echo esc_html(implode(', ', $display_countries));
+                        if (count($countries) > 3) {
+                            echo ' <span class="egp-more-countries" title="' . esc_attr(implode(', ', $countries)) . '">+' . (count($countries) - 3) . '</span>';
+                        }
+                        echo '</span>';
+                    } else {
+                        // Geo enabled but no countries specified = show to all
+                        echo '<span class="egp-all-countries">All</span>';
                     }
-                    echo '</span>';
                 } else {
                     echo '<span class="egp-no-countries">—</span>';
                 }
