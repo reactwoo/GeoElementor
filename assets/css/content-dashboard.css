@@ -1,0 +1,148 @@
+/**
+ * Geo Content Dashboard Styles
+ */
+
+.egp-content-dashboard {
+    max-width: 1400px;
+}
+
+/* Help Box */
+.egp-help-box {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-left: 4px solid #2271b1;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.egp-help-box h3 {
+    margin-top: 0;
+}
+
+.egp-workflow-guide {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.egp-workflow-item {
+    padding: 15px;
+    background: #f6f7f7;
+    border-radius: 4px;
+}
+
+.egp-workflow-item strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #1d2327;
+}
+
+.egp-workflow-item p {
+    margin: 0 0 10px;
+    color: #646970;
+}
+
+/* Empty States */
+.egp-empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    margin: 20px 0;
+}
+
+.egp-empty-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.6;
+}
+
+.egp-empty-state h3 {
+    margin: 0 0 10px;
+    font-size: 18px;
+}
+
+.egp-empty-state p {
+    color: #646970;
+    margin-bottom: 15px;
+}
+
+/* Type Badges */
+.egp-type-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.egp-type-page {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.egp-type-section {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.egp-type-popup {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.egp-type-header,
+.egp-type-footer {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.egp-type-single,
+.egp-type-archive {
+    background: #fce4ec;
+    color: #c2185b;
+}
+
+/* Status Badges */
+.egp-status-active {
+    color: #00a32a;
+    font-weight: 600;
+}
+
+.egp-status-inactive {
+    color: #646970;
+}
+
+/* Countries Display */
+.egp-more {
+    color: #646970;
+    font-size: 11px;
+    font-style: italic;
+}
+
+.egp-no-countries {
+    color: #d63638;
+    font-style: italic;
+}
+
+/* Tables */
+.egp-content-dashboard table {
+    margin-top: 10px;
+    background: #fff;
+}
+
+.egp-content-dashboard h2 {
+    margin-top: 40px;
+    margin-bottom: 10px;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+    .egp-workflow-guide {
+        grid-template-columns: 1fr;
+    }
+}
+

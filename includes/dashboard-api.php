@@ -137,38 +137,61 @@ class EGP_Dashboard_API {
     }
     
     /**
-     * Get geo templates data for dashboard
+     * Get geo templates data for dashboard (from Elementor Library)
      */
     private function get_geo_templates_data() {
+        // Get Elementor templates with geo enabled
         $args = array(
-            'post_type' => 'geo_template',
+            'post_type' => 'elementor_library',
             'post_status' => 'publish',
             'posts_per_page' => -1,
             'orderby' => 'title',
-            'order' => 'ASC'
+            'order' => 'ASC',
+            'meta_query' => array(
+                array(
+                    'key' => 'egp_geo_enabled',
+                    'value' => 'yes',
+                    'compare' => '='
+                )
+            )
         );
         
         $templates = get_posts($args);
         $result = array();
         
         foreach ($templates as $template) {
-            $template_type = get_post_meta($template->ID, 'egp_template_type', true) ?: 'section';
-            $countries = get_post_meta($template->ID, 'egp_countries', true) ?: array();
-            $usage_count = get_post_meta($template->ID, 'egp_usage_count', true) ?: 0;
-            $fallback = get_post_meta($template->ID, 'egp_fallback_mode', true) ?: 'hide';
+            // Get Elementor template type (page, section, popup, etc.)
+            $elementor_type = get_post_meta($template->ID, '_elementor_template_type', true) ?: 'page';
+            
+            // Get geo settings from Elementor page settings
+            $page_settings = get_post_meta($template->ID, '_elementor_page_settings', true);
+            if (!is_array($page_settings)) {
+                $page_settings = array();
+            }
+            
+            $countries = isset($page_settings['egp_countries']) ? $page_settings['egp_countries'] : array();
+            if (!is_array($countries)) {
+                $countries = get_post_meta($template->ID, 'egp_countries', true) ?: array();
+            }
+            
+            $fallback = isset($page_settings['egp_fallback_mode']) ? $page_settings['egp_fallback_mode'] : 'hide';
+            
+            // Get usage count (how many times template is used)
+            $usage_count = $this->count_template_usage($template->ID);
             
             $result[] = array(
                 'id' => $template->ID,
                 'name' => $template->post_title,
-                'type' => 'Template (' . ucfirst($template_type) . ')',
+                'type' => 'Template (' . ucfirst($elementor_type) . ')',
                 'countries' => is_array($countries) ? $countries : array(),
                 'status' => 'active',
-                'clicks' => 0, // Templates don't track clicks yet
-                'views' => intval($usage_count), // Use usage count as views
+                'clicks' => 0,
+                'views' => intval($usage_count),
                 'conversion' => 0,
                 'isTemplate' => true,
-                'templateType' => $template_type,
+                'elementorType' => $elementor_type,
                 'fallbackMode' => $fallback,
+                'editUrl' => admin_url('post.php?post=' . $template->ID . '&action=elementor'),
             );
         }
         
@@ -176,48 +199,61 @@ class EGP_Dashboard_API {
     }
     
     /**
-     * Get template statistics
+     * Count how many times a template is used across the site
+     */
+    private function count_template_usage($template_id) {
+        global $wpdb;
+        
+        // Search in all Elementor pages for template usage
+        $count = $wpdb->get_var($wpdb->prepare("
+            SELECT COUNT(DISTINCT post_id)
+            FROM {$wpdb->postmeta}
+            WHERE meta_key = '_elementor_data'
+            AND meta_value LIKE %s
+        ", '%"template_id":"' . $template_id . '"%'));
+        
+        return intval($count);
+    }
+    
+    /**
+     * Get template statistics (from Elementor Library)
      */
     private function get_template_stats() {
-        $template_count = wp_count_posts('geo_template');
-        
-        // Count by type
-        $section_count = 0;
-        $container_count = 0;
-        $form_count = 0;
-        
+        // Get Elementor templates with geo enabled
         $templates = get_posts(array(
-            'post_type' => 'geo_template',
+            'post_type' => 'elementor_library',
             'post_status' => 'publish',
             'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => 'egp_geo_enabled',
+                    'value' => 'yes',
+                    'compare' => '='
+                )
+            )
         ));
         
+        // Count by Elementor type
+        $type_counts = array();
         $total_usage = 0;
+        
         foreach ($templates as $template) {
-            $type = get_post_meta($template->ID, 'egp_template_type', true);
-            $usage = intval(get_post_meta($template->ID, 'egp_usage_count', true));
-            $total_usage += $usage;
+            // Get Elementor's native template type
+            $elementor_type = get_post_meta($template->ID, '_elementor_template_type', true) ?: 'page';
             
-            switch ($type) {
-                case 'section':
-                    $section_count++;
-                    break;
-                case 'container':
-                    $container_count++;
-                    break;
-                case 'form':
-                    $form_count++;
-                    break;
+            if (!isset($type_counts[$elementor_type])) {
+                $type_counts[$elementor_type] = 0;
             }
+            $type_counts[$elementor_type]++;
+            
+            // Count usage
+            $usage = $this->count_template_usage($template->ID);
+            $total_usage += $usage;
         }
         
         return array(
-            'total' => intval($template_count->publish),
-            'byType' => array(
-                'section' => $section_count,
-                'container' => $container_count,
-                'form' => $form_count,
-            ),
+            'total' => count($templates),
+            'byType' => $type_counts,
             'totalUsage' => $total_usage,
             'avgUsagePerTemplate' => count($templates) > 0 ? round($total_usage / count($templates), 1) : 0,
         );
