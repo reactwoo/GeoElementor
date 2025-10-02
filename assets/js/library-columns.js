@@ -28,17 +28,38 @@
             
             // Get countries from column
             var $countriesCol = $row.find('.egp-countries-list');
-            var countries = '';
+            var countriesArray = [];
+
             if ($countriesCol.length) {
                 var countriesText = $countriesCol.text().trim();
                 // Remove the "+X" part if present
-                countries = countriesText.replace(/\s*\+\d+\s*$/, '');
+                countriesText = countriesText.replace(/\s*\+\d+\s*$/, '');
+                // Split by comma and trim
+                if (countriesText && countriesText !== '—') {
+                    countriesArray = countriesText.split(',').map(function (c) {
+                        return c.trim().toUpperCase();
+                    });
+                }
+            }
+
+            // Also check title attribute for full list if truncated
+            var $moreCountries = $row.find('.egp-more-countries');
+            if ($moreCountries.length && $moreCountries.attr('title')) {
+                var fullList = $moreCountries.attr('title');
+                countriesArray = fullList.split(',').map(function (c) {
+                    return c.trim().toUpperCase();
+                });
             }
             
             // Set quick edit values
             var $editRow = $('#edit-' + post_id);
-            $editRow.find('select[name="egp_geo_enabled"]').val(isEnabled ? 'yes' : 'no');
-            $editRow.find('input[name="egp_countries"]').val(countries);
+            $editRow.find('select[name="egp_geo_enabled"]').val(isEnabled ? 'yes' : '');
+
+            // Select countries in multi-select
+            var $countrySelect = $editRow.find('select[name="egp_countries[]"]');
+            $countrySelect.val(countriesArray);
+
+            console.log('[EGP] Quick edit opened for post', post_id, 'Countries:', countriesArray);
         }
     };
     

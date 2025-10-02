@@ -55,16 +55,15 @@ class EGP_Elementor_Library_Columns {
      * Add custom columns
      */
     public function add_columns($columns) {
-        // Insert geo columns after title
+        // Insert geo column after title (countries column includes status)
         $new_columns = array();
         
         foreach ($columns as $key => $value) {
             $new_columns[$key] = $value;
             
-            // Add geo columns after title
+            // Add single geo/countries column after title
             if ($key === 'title') {
-                $new_columns['egp_geo_status'] = '<span class="dashicons dashicons-admin-site" title="Geo Targeting"></span> ' . __('Geo', 'elementor-geo-popup');
-                $new_columns['egp_countries'] = __('Countries', 'elementor-geo-popup');
+                $new_columns['egp_geo_countries'] = '<span class="dashicons dashicons-admin-site" title="Geo Targeting"></span> ' . __('Geo Countries', 'elementor-geo-popup');
             }
         }
         
@@ -75,34 +74,30 @@ class EGP_Elementor_Library_Columns {
      * Render custom columns
      */
     public function render_column($column, $post_id) {
-        switch ($column) {
-            case 'egp_geo_status':
-                $page_settings = get_post_meta($post_id, '_elementor_page_settings', true);
-                $geo_enabled = isset($page_settings['egp_geo_enabled']) && $page_settings['egp_geo_enabled'] === 'yes';
-                
-                if ($geo_enabled) {
-                    echo '<span class="egp-status-badge egp-enabled" title="Geo targeting enabled">✓ ON</span>';
-                } else {
-                    echo '<span class="egp-status-badge egp-disabled" title="Geo targeting disabled">○ OFF</span>';
-                }
-                break;
-                
-            case 'egp_countries':
-                $page_settings = get_post_meta($post_id, '_elementor_page_settings', true);
-                $countries = isset($page_settings['egp_countries']) ? $page_settings['egp_countries'] : array();
-                
-                if (is_array($countries) && !empty($countries)) {
-                    $display_countries = array_slice($countries, 0, 3);
-                    echo '<span class="egp-countries-list">';
-                    echo esc_html(implode(', ', $display_countries));
-                    if (count($countries) > 3) {
-                        echo ' <span class="egp-more-countries" title="' . esc_attr(implode(', ', $countries)) . '">+' . (count($countries) - 3) . '</span>';
-                    }
-                    echo '</span>';
-                } else {
-                    echo '<span class="egp-no-countries">—</span>';
-                }
-                break;
+        if ($column !== 'egp_geo_countries') {
+            return;
+        }
+        
+        $page_settings = get_post_meta($post_id, '_elementor_page_settings', true);
+        $geo_enabled = isset($page_settings['egp_geo_enabled']) && $page_settings['egp_geo_enabled'] === 'yes';
+        $countries = isset($page_settings['egp_countries']) ? $page_settings['egp_countries'] : array();
+        
+        if (!$geo_enabled || empty($countries)) {
+            echo '<span class="egp-status-badge egp-disabled">—</span>';
+            return;
+        }
+        
+        // Show status badge + countries
+        echo '<span class="egp-status-badge egp-enabled">🌍</span> ';
+        
+        if (is_array($countries) && !empty($countries)) {
+            $display_countries = array_slice($countries, 0, 3);
+            echo '<span class="egp-countries-list">';
+            echo esc_html(implode(', ', $display_countries));
+            if (count($countries) > 3) {
+                echo ' <span class="egp-more-countries" title="' . esc_attr(implode(', ', $countries)) . '">+' . (count($countries) - 3) . '</span>';
+            }
+            echo '</span>';
         }
     }
     
@@ -110,7 +105,7 @@ class EGP_Elementor_Library_Columns {
      * Make columns sortable
      */
     public function sortable_columns($columns) {
-        $columns['egp_geo_status'] = 'egp_geo_status';
+        $columns['egp_geo_countries'] = 'egp_geo_countries';
         return $columns;
     }
     
@@ -165,7 +160,7 @@ class EGP_Elementor_Library_Columns {
      * Add quick edit box
      */
     public function quick_edit_box($column_name, $post_type) {
-        if ($post_type !== 'elementor_library' || $column_name !== 'egp_geo_status') {
+        if ($post_type !== 'elementor_library' || $column_name !== 'egp_geo_countries') {
             return;
         }
         
@@ -174,21 +169,73 @@ class EGP_Elementor_Library_Columns {
             <div class="inline-edit-col">
                 <label class="inline-edit-group">
                     <span class="title">🌍 <?php _e('Geo Targeting', 'elementor-geo-popup'); ?></span>
-                    <select name="egp_geo_enabled">
+                    <select name="egp_geo_enabled" class="egp-geo-toggle">
                         <option value="">— <?php _e('No Change', 'elementor-geo-popup'); ?> —</option>
                         <option value="yes"><?php _e('Enable', 'elementor-geo-popup'); ?></option>
                         <option value="no"><?php _e('Disable', 'elementor-geo-popup'); ?></option>
                     </select>
                 </label>
-                <label class="inline-edit-group">
-                    <span class="title"><?php _e('Countries', 'elementor-geo-popup'); ?></span>
-                    <input type="text" name="egp_countries" class="egp-countries-input" 
-                           placeholder="<?php _e('e.g., US, GB, JP (comma separated)', 'elementor-geo-popup'); ?>" />
-                    <span class="description"><?php _e('Leave empty to keep existing, or enter country codes separated by commas', 'elementor-geo-popup'); ?></span>
+                <label class="inline-edit-group egp-countries-group">
+                    <span class="title"><?php _e('Target Countries', 'elementor-geo-popup'); ?></span>
+                    <span class="description" style="display: block; margin-bottom: 5px;">
+                        <?php _e('Hold Ctrl (Cmd on Mac) to select multiple countries', 'elementor-geo-popup'); ?>
+                    </span>
+                    <select name="egp_countries[]" multiple="multiple" size="8" class="egp-countries-select" style="width: 100%; max-width: 300px;">
+                        <?php foreach ($this->get_countries_list() as $code => $name): ?>
+                            <option value="<?php echo esc_attr($code); ?>">
+                                <?php echo esc_html($code . ' - ' . $name); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span class="description"><?php _e('Leave unselected to keep existing countries', 'elementor-geo-popup'); ?></span>
                 </label>
             </div>
         </fieldset>
         <?php
+    }
+    
+    /**
+     * Get countries list
+     */
+    private function get_countries_list() {
+        // Try JSON file first
+        $json_path = plugin_dir_path(__FILE__) . '../assets/data/countries.json';
+        $json_path = realpath($json_path);
+        if ($json_path && file_exists($json_path)) {
+            $contents = file_get_contents($json_path);
+            $decoded = json_decode($contents, true);
+            if (is_array($decoded) && !empty($decoded)) {
+                $countries = array();
+                foreach ($decoded as $country) {
+                    if (isset($country['code']) && isset($country['name'])) {
+                        $countries[$country['code']] = $country['name'];
+                    }
+                }
+                if (!empty($countries)) {
+                    return $countries;
+                }
+            }
+        }
+        
+        // Fallback list (abbreviated for quick edit - full list in template settings)
+        return array(
+            'US' => 'United States', 'GB' => 'United Kingdom', 'CA' => 'Canada',
+            'AU' => 'Australia', 'DE' => 'Germany', 'FR' => 'France', 'IT' => 'Italy',
+            'ES' => 'Spain', 'NL' => 'Netherlands', 'BE' => 'Belgium', 'SE' => 'Sweden',
+            'NO' => 'Norway', 'DK' => 'Denmark', 'FI' => 'Finland', 'CH' => 'Switzerland',
+            'AT' => 'Austria', 'IE' => 'Ireland', 'NZ' => 'New Zealand', 'JP' => 'Japan',
+            'KR' => 'South Korea', 'CN' => 'China', 'IN' => 'India', 'BR' => 'Brazil',
+            'MX' => 'Mexico', 'AR' => 'Argentina', 'CL' => 'Chile', 'CO' => 'Colombia',
+            'PE' => 'Peru', 'VE' => 'Venezuela', 'ZA' => 'South Africa', 'EG' => 'Egypt',
+            'NG' => 'Nigeria', 'KE' => 'Kenya', 'MA' => 'Morocco', 'SA' => 'Saudi Arabia',
+            'AE' => 'United Arab Emirates', 'IL' => 'Israel', 'TR' => 'Turkey',
+            'RU' => 'Russia', 'PL' => 'Poland', 'CZ' => 'Czech Republic', 'HU' => 'Hungary',
+            'RO' => 'Romania', 'BG' => 'Bulgaria', 'HR' => 'Croatia', 'SI' => 'Slovenia',
+            'SK' => 'Slovakia', 'LT' => 'Lithuania', 'LV' => 'Latvia', 'EE' => 'Estonia',
+            'MT' => 'Malta', 'CY' => 'Cyprus', 'GR' => 'Greece', 'PT' => 'Portugal',
+            'SG' => 'Singapore', 'MY' => 'Malaysia', 'TH' => 'Thailand', 'ID' => 'Indonesia',
+            'PH' => 'Philippines', 'VN' => 'Vietnam', 'PK' => 'Pakistan', 'BD' => 'Bangladesh',
+        );
     }
     
     /**
@@ -216,10 +263,9 @@ class EGP_Elementor_Library_Columns {
             update_post_meta($post_id, 'egp_geo_enabled', $_POST['egp_geo_enabled']);
         }
         
-        // Update countries
-        if (isset($_POST['egp_countries']) && !empty($_POST['egp_countries'])) {
-            $countries_input = sanitize_text_field($_POST['egp_countries']);
-            $countries = array_map('trim', explode(',', $countries_input));
+        // Update countries (from multi-select array)
+        if (isset($_POST['egp_countries']) && is_array($_POST['egp_countries']) && !empty($_POST['egp_countries'])) {
+            $countries = array_map('sanitize_text_field', $_POST['egp_countries']);
             $countries = array_map('strtoupper', $countries);
             $countries = array_filter($countries);
             
