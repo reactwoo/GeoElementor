@@ -48,20 +48,34 @@ class EGP_Geo_Templates {
     public function register_post_type() {
         $args = array(
             'label' => __('Geo Templates', 'elementor-geo-popup'),
-            'public' => false,
-            'publicly_queryable' => false,
-            'show_ui' => false,
-            'show_in_menu' => false,
-            'show_in_rest' => true, // For Elementor editor
+            'public' => true, // MUST be true for Elementor editor
+            'publicly_queryable' => true, // Allow Elementor to query
+            'show_ui' => true, // Show in admin (but we hide from menu)
+            'show_in_menu' => false, // Hide default menu (we have custom page)
+            'show_in_rest' => true, // Required for Elementor editor
             'capability_type' => 'post',
             'hierarchical' => false,
-            'supports' => array('title', 'editor', 'elementor'),
+            'supports' => array('title', 'editor', 'elementor', 'custom-fields'),
             'has_archive' => false,
             'rewrite' => false,
-            'query_var' => false,
+            'query_var' => true, // Allow queries
+            'can_export' => true,
+            'exclude_from_search' => true, // Don't show in site search
         );
         
         register_post_type($this->post_type, $args);
+        
+        // Tell Elementor this post type is supported
+        add_filter('elementor/documents/register', array($this, 'register_elementor_document_type'));
+    }
+    
+    /**
+     * Register Elementor document type for templates
+     */
+    public function register_elementor_document_type($documents_manager) {
+        // Make sure Elementor can edit geo_template posts
+        add_post_type_support('geo_template', 'elementor');
+        return $documents_manager;
     }
     
     /**
@@ -348,6 +362,32 @@ class EGP_Geo_Templates {
         update_post_meta($template_id, $this->meta_prefix . 'fallback_mode', $fallback);
         update_post_meta($template_id, $this->meta_prefix . 'content_type', 'elementor');
         
+        // Initialize Elementor data for new templates
+        if (!get_post_meta($template_id, '_elementor_edit_mode', true)) {
+            update_post_meta($template_id, '_elementor_edit_mode', 'builder');
+            update_post_meta($template_id, '_elementor_template_type', 'page');
+            
+            // Set Elementor version (with fallback)
+            $elementor_version = defined('ELEMENTOR_VERSION') ? ELEMENTOR_VERSION : '3.0.0';
+            update_post_meta($template_id, '_elementor_version', $elementor_version);
+            
+            // Add empty Elementor data structure
+            $initial_data = json_encode(array());
+            update_post_meta($template_id, '_elementor_data', $initial_data);
+            
+            // Add basic page settings
+            $page_settings = array(
+                'post_status' => 'publish',
+                'template' => 'elementor_canvas', // Use canvas template
+            );
+            update_post_meta($template_id, '_elementor_page_settings', $page_settings);
+            
+            // Trigger Elementor to recognize this as editable
+            if (class_exists('\Elementor\Plugin')) {
+                \Elementor\Plugin::$instance->db->set_is_elementor_page($template_id, true);
+            }
+        }
+        
         wp_send_json_success(array(
             'template_id' => $template_id,
             'message' => 'Template saved successfully',
@@ -438,10 +478,29 @@ class EGP_Geo_Templates {
     }
     
     /**
-     * Get countries list
+     * Get countries list - Complete ISO-3166 list
      */
     private function get_countries_list() {
-        // Basic list for now - can be expanded
+        // Try to load from JSON file first
+        $json_path = plugin_dir_path(__FILE__) . '../assets/data/countries.json';
+        $json_path = realpath($json_path);
+        if ($json_path && file_exists($json_path)) {
+            $contents = file_get_contents($json_path);
+            $decoded = json_decode($contents, true);
+            if (is_array($decoded) && !empty($decoded)) {
+                $countries = array();
+                foreach ($decoded as $country) {
+                    if (isset($country['code']) && isset($country['name'])) {
+                        $countries[$country['code']] = $country['name'];
+                    }
+                }
+                if (!empty($countries)) {
+                    return $countries;
+                }
+            }
+        }
+        
+        // Fallback comprehensive list (same as geo-rules.php)
         return array(
             'US' => 'United States',
             'GB' => 'United Kingdom',
@@ -451,28 +510,60 @@ class EGP_Geo_Templates {
             'FR' => 'France',
             'IT' => 'Italy',
             'ES' => 'Spain',
-            'JP' => 'Japan',
-            'CN' => 'China',
-            'IN' => 'India',
-            'BR' => 'Brazil',
-            'MX' => 'Mexico',
             'NL' => 'Netherlands',
+            'BE' => 'Belgium',
             'SE' => 'Sweden',
             'NO' => 'Norway',
             'DK' => 'Denmark',
             'FI' => 'Finland',
-            'PL' => 'Poland',
-            'BE' => 'Belgium',
-            'AT' => 'Austria',
             'CH' => 'Switzerland',
+            'AT' => 'Austria',
             'IE' => 'Ireland',
             'NZ' => 'New Zealand',
-            'SG' => 'Singapore',
+            'JP' => 'Japan',
             'KR' => 'South Korea',
-            'ZA' => 'South Africa',
+            'CN' => 'China',
+            'IN' => 'India',
+            'BR' => 'Brazil',
+            'MX' => 'Mexico',
             'AR' => 'Argentina',
             'CL' => 'Chile',
             'CO' => 'Colombia',
+            'PE' => 'Peru',
+            'VE' => 'Venezuela',
+            'ZA' => 'South Africa',
+            'EG' => 'Egypt',
+            'NG' => 'Nigeria',
+            'KE' => 'Kenya',
+            'MA' => 'Morocco',
+            'SA' => 'Saudi Arabia',
+            'AE' => 'United Arab Emirates',
+            'IL' => 'Israel',
+            'TR' => 'Turkey',
+            'RU' => 'Russia',
+            'PL' => 'Poland',
+            'CZ' => 'Czech Republic',
+            'HU' => 'Hungary',
+            'RO' => 'Romania',
+            'BG' => 'Bulgaria',
+            'HR' => 'Croatia',
+            'SI' => 'Slovenia',
+            'SK' => 'Slovakia',
+            'LT' => 'Lithuania',
+            'LV' => 'Latvia',
+            'EE' => 'Estonia',
+            'MT' => 'Malta',
+            'CY' => 'Cyprus',
+            'GR' => 'Greece',
+            'PT' => 'Portugal',
+            'SG' => 'Singapore',
+            'MY' => 'Malaysia',
+            'TH' => 'Thailand',
+            'ID' => 'Indonesia',
+            'PH' => 'Philippines',
+            'VN' => 'Vietnam',
+            'PK' => 'Pakistan',
+            'BD' => 'Bangladesh',
         );
     }
 }
