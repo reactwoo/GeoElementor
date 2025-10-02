@@ -86,7 +86,7 @@ class EGP_Elementor_Library_Columns {
             case 'egp_geo':
                 // Show enabled/disabled status
                 if ($geo_enabled) {
-                    echo '<span class="egp-status-badge egp-enabled">✓ Enabled</span>';
+                    echo '<span class="egp-status-badge egp-enabled">Enabled</span>';
                 } else {
                     echo '<span class="egp-status-badge egp-disabled">Disabled</span>';
                 }

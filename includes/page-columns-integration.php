@@ -77,7 +77,7 @@ class EGP_Page_Columns_Integration {
                 $elementor_geo = isset($page_settings['egp_geo_enabled']) && $page_settings['egp_geo_enabled'] === 'yes';
                 
                 if ($has_geo_rule || $elementor_geo) {
-                    echo '<span class="egp-status-badge egp-enabled">✓ Enabled</span>';
+                    echo '<span class="egp-status-badge egp-enabled">Enabled</span>';
                 } else {
                     echo '<span class="egp-status-badge egp-disabled">Disabled</span>';
                 }
@@ -145,24 +145,45 @@ class EGP_Page_Columns_Integration {
         }
         
         foreach ($all_groups as $group) {
+            // Convert object to array if needed
+            if (is_object($group)) {
+                $group = (array) $group;
+            }
+            
+            if (!is_array($group)) {
+                continue;
+            }
+            
             $mappings = isset($group['mappings']) ? $group['mappings'] : array();
             
+            // Convert mappings to array if needed
+            if (is_object($mappings)) {
+                $mappings = (array) $mappings;
+            }
+            
             // Check if this page is in any mapping
-            foreach ($mappings as $mapping) {
-                if (isset($mapping['target_id']) && intval($mapping['target_id']) === intval($page_id)) {
-                    return array(
-                        'id' => $group['id'],
-                        'name' => $group['name'],
-                        'countries' => isset($mapping['countries']) ? $mapping['countries'] : array(),
-                    );
+            if (is_array($mappings)) {
+                foreach ($mappings as $mapping) {
+                    // Convert mapping to array if needed
+                    if (is_object($mapping)) {
+                        $mapping = (array) $mapping;
+                    }
+                    
+                    if (isset($mapping['target_id']) && intval($mapping['target_id']) === intval($page_id)) {
+                        return array(
+                            'id' => isset($group['id']) ? $group['id'] : '',
+                            'name' => isset($group['name']) ? $group['name'] : 'Unknown Group',
+                            'countries' => isset($mapping['countries']) ? $mapping['countries'] : array(),
+                        );
+                    }
                 }
             }
             
             // Check default target
             if (isset($group['default_target_id']) && intval($group['default_target_id']) === intval($page_id)) {
                 return array(
-                    'id' => $group['id'],
-                    'name' => $group['name'] . ' (Default)',
+                    'id' => isset($group['id']) ? $group['id'] : '',
+                    'name' => (isset($group['name']) ? $group['name'] : 'Unknown Group') . ' (Default)',
                     'countries' => array(),
                 );
             }

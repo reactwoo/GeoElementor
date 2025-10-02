@@ -154,6 +154,9 @@
             formData.append('action', 'rw_geo_save_variant');
             formData.append('nonce', rwGeoVariants.nonce);
 
+            // Check if this is create or update
+            var isCreate = !$form.find('input[name="variant_id"]').val();
+
             // Submit via AJAX
             $.ajax({
                 url: rwGeoVariants.ajaxurl,
@@ -166,23 +169,24 @@
                         // Show success message
                         RW_Geo_Variants_Admin.showNotice(response.data.message, 'success');
 
-                        // If this was a new variant, redirect to edit page
-                        if (!formData.get('variant_id')) {
+                        // If this was a new variant, redirect to edit page immediately
+                        if (isCreate && response.data.variant_id) {
+                            $submitButton.val('Redirecting...');
+                            // Immediate redirect to edit page with country mapping fields
+                            window.location.href = 'admin.php?page=geo-elementor-variants&action=edit&id=' + response.data.variant_id;
+                        } else {
+                            // Update - just reload to show changes
                             setTimeout(function () {
-                                window.location.href = 'admin.php?page=geo-elementor-variants&action=edit&id=' + response.data.variant_id;
-
-                            }, 1500);
+                                window.location.reload();
+                            }, 1000);
                         }
                     } else {
                         RW_Geo_Variants_Admin.showNotice(response.data || rwGeoVariants.strings.error, 'error');
-
+                        $submitButton.prop('disabled', false).val(originalText);
                     }
                 },
                 error: function () {
                     RW_Geo_Variants_Admin.showNotice(rwGeoVariants.strings.error, 'error');
-                },
-                complete: function () {
-                    // Re-enable submit button
                     $submitButton.prop('disabled', false).val(originalText);
                 }
             });
@@ -308,12 +312,16 @@
             var mappingId = $button.data('id');
             var $row = $button.closest('.mapping-row');
 
+            // Get selected countries from multi-select
+            var selectedCountries = $row.find('.country-select').val();
+
             // Collect mapping data
             var mappingData = {
                 action: 'rw_geo_save_mapping',
                 nonce: rwGeoVariants.nonce,
                 variant_id: $('input[name="variant_id"]').val(),
-                country_iso2: $row.find('.country-select').val(),
+                countries: selectedCountries || [], // Array of countries
+                country_iso2: selectedCountries && selectedCountries[0] ? selectedCountries[0] : '', // Backwards compat
                 page_id: $row.find('.page-select').val() || '',
                 popup_id: $row.find('.popup-select').val() || '',
                 section_ref: ($row.find('.section-ref').val() || '').replace(/^#/, ''),
@@ -321,12 +329,13 @@
             };
 
             // Validate required fields
-            if (!mappingData.country_iso2) {
-                RW_Geo_Variants_Admin.showNotice('Country is required', 'error');
+            if (!mappingData.countries || mappingData.countries.length === 0) {
+                RW_Geo_Variants_Admin.showNotice('At least one country is required', 'error');
                 return;
             }
 
             // Disable button and show loading
+            var originalText = $button.text();
             $button.prop('disabled', true).text(rwGeoVariants.strings.saving);
 
             $.ajax({
@@ -335,22 +344,16 @@
                 data: mappingData,
                 success: function (response) {
                     if (response.success) {
-                        // Update row ID if this was a new mapping
-                        if (mappingId.toString().startsWith('new_')) {
-                            $row.attr('id', 'mapping-row-' + response.data.mapping_id);
-                            $button.data('id', response.data.mapping_id);
-                        }
-
                         RW_Geo_Variants_Admin.showNotice(response.data.message, 'success');
                         $button.text('Saved!').addClass('button-primary');
 
-                        // Reset button after delay
+                        // Reload page to show updated data
                         setTimeout(function () {
-                            $button.text('Save Mapping').removeClass('button-primary');
-                        }, 2000);
+                            window.location.reload();
+                        }, 1000);
                     } else {
                         RW_Geo_Variants_Admin.showNotice(response.data || rwGeoVariants.strings.error, 'error');
-
+                        $button.prop('disabled', false).text(originalText);
                     }
                 },
                 error: function () {

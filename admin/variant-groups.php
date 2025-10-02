@@ -520,19 +520,31 @@ class RW_Geo_Variant_Groups_Admin {
         
         echo '<table class="form-table">';
         
-        // Country
+        // Countries (Multi-select)
         echo '<tr>';
-        echo '<th scope="row"><label>' . __('Country', 'elementor-geo-popup') . '</label></th>';
+        echo '<th scope="row"><label>' . __('Countries', 'elementor-geo-popup') . '</label></th>';
         echo '<td>';
-        echo '<select name="mappings[' . $mapping_id . '][country_iso2]" class="country-select" required>';
-        echo '<option value="">' . __('Select Country', 'elementor-geo-popup') . '</option>';
+        echo '<span class="description" style="display: block; margin-bottom: 5px;">' . __('Hold Ctrl (Cmd on Mac) to select multiple countries', 'elementor-geo-popup') . '</span>';
+        
+        // Get existing countries (convert from old single country or use array)
+        $selected_countries = array();
+        if ($mapping) {
+            if (isset($mapping->countries) && is_array($mapping->countries)) {
+                $selected_countries = $mapping->countries;
+            } elseif (isset($mapping->country_iso2) && !empty($mapping->country_iso2)) {
+                $selected_countries = array($mapping->country_iso2);
+            }
+        }
+        
+        echo '<select name="mappings[' . $mapping_id . '][countries][]" class="country-select" multiple="multiple" size="8" style="width: 100%; max-width: 400px;" required>';
         
         $countries = $this->get_countries_list();
         foreach ($countries as $code => $name) {
-            $selected = $country === $code ? 'selected' : '';
-            echo '<option value="' . $code . '" ' . $selected . '>' . esc_html($name) . '</option>';
+            $selected = in_array($code, $selected_countries) ? 'selected' : '';
+            echo '<option value="' . esc_attr($code) . '" ' . $selected . '>' . esc_html($code . ' - ' . $name) . '</option>';
         }
         echo '</select>';
+        echo '<p class="description" style="margin-top: 5px;">' . __('Select one or more countries that should see this content variant', 'elementor-geo-popup') . '</p>';
         echo '</td>';
         echo '</tr>';
         
@@ -580,8 +592,8 @@ class RW_Geo_Variant_Groups_Admin {
             echo '</tr>';
         }
 
-        // Section reference (shown/hidden by JS based on type mask)
-        {
+        // Section reference (only show for Section/Container types)
+        if ($variant && ($variant->type_mask & (RW_GEO_TYPE_SECTION | RW_GEO_TYPE_CONTAINER))) {
             $section_ref = $mapping ? ($mapping->section_ref ?? '') : '';
             echo '<tr class="section-ref-row">';
             echo '<th scope="row"><label>' . __('Section ID', 'elementor-geo-popup') . '</label></th>';
@@ -592,8 +604,8 @@ class RW_Geo_Variant_Groups_Admin {
             echo '</tr>';
         }
 
-        // Widget reference (shown/hidden by JS based on type mask)
-        {
+        // Widget reference (only show for Widget type)
+        if ($variant && ($variant->type_mask & RW_GEO_TYPE_WIDGET)) {
             $widget_ref = $mapping ? ($mapping->widget_ref ?? '') : '';
             echo '<tr class="widget-ref-row">';
             echo '<th scope="row"><label>' . __('Widget ID', 'elementor-geo-popup') . '</label></th>';
@@ -815,12 +827,22 @@ class RW_Geo_Variant_Groups_Admin {
         }
         
         $variant_id = intval($_POST['variant_id'] ?? 0);
-        $country_iso2 = strtoupper($_POST['country_iso2'] ?? '');
+        
+        // Handle both old (country_iso2) and new (countries array) formats
+        $countries = array();
+        if (isset($_POST['countries']) && is_array($_POST['countries'])) {
+            $countries = array_map('strtoupper', array_map('sanitize_text_field', $_POST['countries']));
+        } elseif (isset($_POST['country_iso2']) && !empty($_POST['country_iso2'])) {
+            $countries = array(strtoupper($_POST['country_iso2']));
+        }
+        
         $page_id = intval($_POST['page_id'] ?? 0) ?: null;
         $popup_id = intval($_POST['popup_id'] ?? 0) ?: null;
+        $section_ref = sanitize_text_field($_POST['section_ref'] ?? '');
+        $widget_ref = sanitize_text_field($_POST['widget_ref'] ?? '');
         
-        if (!$variant_id || !$country_iso2) {
-            wp_send_json_error(__('Group ID and country are required', 'elementor-geo-popup'));
+        if (!$variant_id || empty($countries)) {
+            wp_send_json_error(__('Group ID and at least one country are required', 'elementor-geo-popup'));
         }
         
         // Prevent conflicts with existing Rules that target the same Page/Popup
@@ -858,15 +880,18 @@ class RW_Geo_Variant_Groups_Admin {
         
         $data = array(
             'variant_id' => $variant_id,
-            'country_iso2' => $country_iso2,
+            'countries' => $countries, // Array of countries
+            'country_iso2' => $countries[0], // Keep for backwards compatibility
             'page_id' => $page_id,
-            'popup_id' => $popup_id
+            'popup_id' => $popup_id,
+            'section_ref' => $section_ref,
+            'widget_ref' => $widget_ref
         );
         
         $mapping_crud = new RW_Geo_Mapping_CRUD();
         
-        // Check if mapping exists
-        $existing = $mapping_crud->get_by_variant_country($variant_id, $country_iso2);
+        // Check if mapping exists for first country (backwards compat check)
+        $existing = $mapping_crud->get_by_variant_country($variant_id, $countries[0]);
         
         if ($existing) {
             $result = $mapping_crud->update($existing->id, $data);
@@ -882,7 +907,7 @@ class RW_Geo_Variant_Groups_Admin {
                     $rules->save_or_update_rule(
                         'popup',
                         (string) $popup_id,
-                        array($country_iso2),
+                        $countries, // Use full countries array
                         50,
                         true,
                         'groups',
