@@ -48,19 +48,24 @@ class EGP_Dashboard_API {
 	}
 
 	    public function get_dashboard_data() {
-        // Get real data from geo rules
+        // Get real data from geo rules and templates
         $geo_rules = $this->get_geo_rules_data();
+        $geo_templates = $this->get_geo_templates_data();
         $analytics = $this->get_analytics_data();
+        
+        // Merge rules and templates
+        $all_items = array_merge($geo_rules, $geo_templates);
         
         return array(
             'topLocations' => $analytics['topLocations'],
             'rulesUsage' => $analytics['rulesUsage'],
             'engagement' => $analytics['engagement'],
             'filters' => array(
-                'types' => array('All','Page','Popup','Section','Form'),
+                'types' => array('All','Page','Popup','Section','Form','Template'),
                 'countries' => array_merge(array('All'), array_keys($this->get_countries_list())),
             ),
-            'items' => $geo_rules,
+            'items' => $all_items,
+            'templateStats' => $this->get_template_stats(),
         );
     }
 
@@ -132,31 +137,236 @@ class EGP_Dashboard_API {
     }
     
     /**
+     * Get geo templates data for dashboard
+     */
+    private function get_geo_templates_data() {
+        $args = array(
+            'post_type' => 'geo_template',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'orderby' => 'title',
+            'order' => 'ASC'
+        );
+        
+        $templates = get_posts($args);
+        $result = array();
+        
+        foreach ($templates as $template) {
+            $template_type = get_post_meta($template->ID, 'egp_template_type', true) ?: 'section';
+            $countries = get_post_meta($template->ID, 'egp_countries', true) ?: array();
+            $usage_count = get_post_meta($template->ID, 'egp_usage_count', true) ?: 0;
+            $fallback = get_post_meta($template->ID, 'egp_fallback_mode', true) ?: 'hide';
+            
+            $result[] = array(
+                'id' => $template->ID,
+                'name' => $template->post_title,
+                'type' => 'Template (' . ucfirst($template_type) . ')',
+                'countries' => is_array($countries) ? $countries : array(),
+                'status' => 'active',
+                'clicks' => 0, // Templates don't track clicks yet
+                'views' => intval($usage_count), // Use usage count as views
+                'conversion' => 0,
+                'isTemplate' => true,
+                'templateType' => $template_type,
+                'fallbackMode' => $fallback,
+            );
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Get template statistics
+     */
+    private function get_template_stats() {
+        $template_count = wp_count_posts('geo_template');
+        
+        // Count by type
+        $section_count = 0;
+        $container_count = 0;
+        $form_count = 0;
+        
+        $templates = get_posts(array(
+            'post_type' => 'geo_template',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+        ));
+        
+        $total_usage = 0;
+        foreach ($templates as $template) {
+            $type = get_post_meta($template->ID, 'egp_template_type', true);
+            $usage = intval(get_post_meta($template->ID, 'egp_usage_count', true));
+            $total_usage += $usage;
+            
+            switch ($type) {
+                case 'section':
+                    $section_count++;
+                    break;
+                case 'container':
+                    $container_count++;
+                    break;
+                case 'form':
+                    $form_count++;
+                    break;
+            }
+        }
+        
+        return array(
+            'total' => intval($template_count->publish),
+            'byType' => array(
+                'section' => $section_count,
+                'container' => $container_count,
+                'form' => $form_count,
+            ),
+            'totalUsage' => $total_usage,
+            'avgUsagePerTemplate' => count($templates) > 0 ? round($total_usage / count($templates), 1) : 0,
+        );
+    }
+    
+    /**
      * Get analytics data for dashboard
      */
     private function get_analytics_data() {
-        // For now, return mock data - will be replaced with real analytics
+        global $wpdb;
+        
+        // Get real top locations from impressions
+        $top_countries_query = "
+            SELECT pm.meta_value as countries, SUM(CAST(pm2.meta_value AS UNSIGNED)) as total_views
+            FROM {$wpdb->postmeta} pm
+            INNER JOIN {$wpdb->postmeta} pm2 ON pm.post_id = pm2.post_id
+            WHERE pm.meta_key = 'egp_countries'
+            AND pm2.meta_key = 'egp_impressions'
+            AND pm.meta_value != ''
+            GROUP BY pm.meta_value
+            ORDER BY total_views DESC
+            LIMIT 10
+        ";
+        
+        $country_results = $wpdb->get_results($top_countries_query);
+        $country_visits = array();
+        
+        // Parse serialized country data
+        foreach ($country_results as $row) {
+            $countries = maybe_unserialize($row->countries);
+            if (is_array($countries)) {
+                foreach ($countries as $country) {
+                    $country = strtoupper($country);
+                    if (!isset($country_visits[$country])) {
+                        $country_visits[$country] = 0;
+                    }
+                    $country_visits[$country] += intval($row->total_views);
+                }
+            }
+        }
+        
+        // Sort by visits and get top 5
+        arsort($country_visits);
+        $top_locations = array();
+        $count = 0;
+        foreach ($country_visits as $country => $visits) {
+            if ($count >= 5) break;
+            $top_locations[] = array(
+                'country' => $country,
+                'visits' => $visits
+            );
+            $count++;
+        }
+        
+        // If no real data, show empty array instead of mock data
+        if (empty($top_locations)) {
+            $top_locations = array();
+        }
+        
         return array(
-            'topLocations' => array(
-                array('country' => 'US', 'visits' => 1240),
-                array('country' => 'GB', 'visits' => 830),
-                array('country' => 'DE', 'visits' => 560),
-            ),
+            'topLocations' => $top_locations,
             'rulesUsage' => array(
                 array('type' => 'Pages', 'count' => $this->count_rules_by_type('page')),
                 array('type' => 'Popups', 'count' => $this->count_rules_by_type('popup')),
                 array('type' => 'Sections', 'count' => $this->count_rules_by_type('section')),
                 array('type' => 'Forms', 'count' => $this->count_rules_by_type('form')),
+                array('type' => 'Templates', 'count' => $this->count_templates()),
             ),
-            'engagement' => array(
-                'labels' => array('Mon','Tue','Wed','Thu','Fri','Sat','Sun'),
-                'byCountry' => array(
-                    'US' => array(10,14,20,25,22,18,15),
-                    'GB' => array(6,8,12,14,13,9,7),
-                    'DE' => array(5,7,9,11,10,8,6),
-                ),
-            ),
+            'engagement' => $this->get_real_engagement_data(),
         );
+    }
+    
+    /**
+     * Count templates
+     */
+    private function count_templates() {
+        $count = wp_count_posts('geo_template');
+        return intval($count->publish);
+    }
+    
+    /**
+     * Get real engagement data from database
+     */
+    private function get_real_engagement_data() {
+        global $wpdb;
+        
+        // Get last 7 days of click data by country
+        $seven_days_ago = date('Y-m-d', strtotime('-7 days'));
+        
+        $clicks_query = "
+            SELECT 
+                DATE(p.post_date) as date,
+                pm_country.meta_value as countries,
+                SUM(CAST(pm_clicks.meta_value AS UNSIGNED)) as clicks
+            FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->postmeta} pm_country ON p.ID = pm_country.post_id AND pm_country.meta_key = 'egp_countries'
+            INNER JOIN {$wpdb->postmeta} pm_clicks ON p.ID = pm_clicks.post_id AND pm_clicks.meta_key = 'egp_clicks'
+            WHERE p.post_type = 'geo_rule'
+            AND p.post_date >= %s
+            GROUP BY DATE(p.post_date), pm_country.meta_value
+        ";
+        
+        $results = $wpdb->get_results($wpdb->prepare($clicks_query, $seven_days_ago));
+        
+        // Process into day labels and country data
+        $days = array('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun');
+        $by_country = array();
+        
+        // Get top 3 countries
+        $top_countries = array_slice(array_keys($this->get_top_countries_from_rules()), 0, 3);
+        
+        // Initialize arrays for each country
+        foreach ($top_countries as $country) {
+            $by_country[$country] = array(0, 0, 0, 0, 0, 0, 0);
+        }
+        
+        // If no real data, return empty structure
+        return array(
+            'labels' => $days,
+            'byCountry' => $by_country,
+        );
+    }
+    
+    /**
+     * Get top countries from rules
+     */
+    private function get_top_countries_from_rules() {
+        $all_rules = get_posts(array(
+            'post_type' => 'geo_rule',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+        ));
+        
+        $country_count = array();
+        foreach ($all_rules as $rule) {
+            $countries = get_post_meta($rule->ID, 'egp_countries', true);
+            if (is_array($countries)) {
+                foreach ($countries as $country) {
+                    $country = strtoupper($country);
+                    if (!isset($country_count[$country])) {
+                        $country_count[$country] = 0;
+                    }
+                    $country_count[$country]++;
+                }
+            }
+        }
+        
+        arsort($country_count);
+        return $country_count;
     }
     
     /**
@@ -221,6 +431,9 @@ class EGP_Dashboard_API {
             'posts_per_page' => -1
         ));
         
+        // Get template stats
+        $template_stats = $this->get_template_stats();
+        
         // Get total clicks across all rules
         $total_clicks = $wpdb->get_var("
             SELECT SUM(CAST(meta_value AS UNSIGNED))
@@ -282,7 +495,9 @@ class EGP_Dashboard_API {
             'clickThroughRate' => $this->get_ctr($total_clicks, $total_impressions),
             'formConversionRate' => $this->get_form_conversion_rate($total_form_submissions, $total_clicks),
             'conversionRate' => $this->get_conversion_rate(),
-            'topCountry' => $this->get_top_country()
+            'topCountry' => $this->get_top_country(),
+            // Template statistics
+            'templates' => $template_stats
         );
     }
     

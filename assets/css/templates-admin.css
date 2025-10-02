@@ -1,0 +1,208 @@
+/**
+ * Geo Templates Admin Styles
+ */
+
+.egp-templates-wrap {
+    max-width: 1200px;
+}
+
+/* Empty State */
+.egp-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    margin-top: 20px;
+}
+
+.egp-empty-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.egp-empty-state h3 {
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.egp-empty-state p {
+    color: #646970;
+    margin-bottom: 20px;
+}
+
+/* Templates Grid */
+.egp-templates-grid {
+    margin-top: 20px;
+}
+
+.egp-templates-list {
+    background: #fff;
+}
+
+/* Template Type Badges */
+.egp-template-type-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.egp-type-section {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.egp-type-container {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.egp-type-form {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+/* Countries Display */
+.egp-more-countries {
+    color: #646970;
+    font-size: 11px;
+}
+
+.egp-no-countries {
+    color: #d63638;
+    font-style: italic;
+}
+
+/* Modal Styles */
+.egp-modal {
+    display: none;
+    position: fixed;
+    z-index: 100000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+.egp-modal-content {
+    background-color: #fff;
+    margin: 5% auto;
+    padding: 0;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    width: 90%;
+    max-width: 700px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.egp-modal-content h2 {
+    margin: 0;
+    padding: 20px 24px;
+    border-bottom: 1px solid #dcdcde;
+    font-size: 18px;
+}
+
+.egp-modal-content .form-table {
+    margin: 20px 24px;
+}
+
+.egp-modal-content .submit {
+    padding: 20px 24px;
+    margin: 0;
+    background: #f6f7f7;
+    border-top: 1px solid #dcdcde;
+    border-radius: 0 0 4px 4px;
+}
+
+.egp-modal-close {
+    color: #646970;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    line-height: 20px;
+    cursor: pointer;
+    padding: 20px 24px;
+}
+
+.egp-modal-close:hover,
+.egp-modal-close:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Form Elements */
+.egp-modal-content .form-table th {
+    width: 200px;
+    padding: 15px 10px 15px 0;
+}
+
+.egp-modal-content .form-table td {
+    padding: 15px 0;
+}
+
+.egp-modal-content .required {
+    color: #d63638;
+}
+
+.egp-modal-content .description {
+    color: #646970;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+/* Select2 Overrides */
+.select2-container {
+    z-index: 100001 !important;
+}
+
+.select2-dropdown {
+    z-index: 100002 !important;
+}
+
+/* Action Buttons */
+.egp-templates-list .button-small {
+    margin-right: 5px;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+    .egp-modal-content {
+        width: 95%;
+        margin: 10% auto;
+    }
+    
+    .egp-modal-content .form-table th,
+    .egp-modal-content .form-table td {
+        display: block;
+        width: 100%;
+        padding: 10px 0;
+    }
+    
+    .egp-modal-content .form-table th {
+        padding-bottom: 5px;
+    }
+}
+
+/* Notice Animations */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.notice {
+    animation: slideDown 0.3s ease;
+}
+

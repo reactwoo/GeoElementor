@@ -190,6 +190,12 @@ class ElementorGeoPopup {
                 require_once EGP_PLUGIN_DIR . 'includes/geo-rules.php';
             }, 5);
         }
+        
+        // Load geo templates system (NEW - hybrid architecture)
+        require_once EGP_PLUGIN_DIR . 'includes/geo-templates.php';
+        
+        // Register Elementor widgets
+        add_action('elementor/widgets/register', array($this, 'register_elementor_widgets'));
     }
     
     /**
@@ -293,6 +299,28 @@ class ElementorGeoPopup {
             </script>
             <?php
         });
+    }
+    
+    /**
+     * Register Elementor widgets
+     */
+    public function register_elementor_widgets($widgets_manager) {
+        // Check if Elementor is loaded
+        if (!did_action('elementor/loaded')) {
+            return;
+        }
+        
+        // Include widget files
+        require_once EGP_PLUGIN_DIR . 'includes/widgets/geo-section-widget.php';
+        require_once EGP_PLUGIN_DIR . 'includes/widgets/geo-container-widget.php';
+        require_once EGP_PLUGIN_DIR . 'includes/widgets/geo-form-widget.php';
+        
+        // Register widgets
+        $widgets_manager->register(new \EGP_Geo_Section_Widget());
+        $widgets_manager->register(new \EGP_Geo_Container_Widget());
+        $widgets_manager->register(new \EGP_Geo_Form_Widget());
+        
+        error_log('[EGP] Registered 3 Geo widgets: Section, Container, Form');
     }
     
     /**
