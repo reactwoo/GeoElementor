@@ -43,7 +43,7 @@
                     return;
                 }
 
-                // Update the hidden egp_countries setting
+                // Update the hidden egp_countries setting and trigger change detection
                 if (typeof settings.set === 'function') {
                     settings.set('egp_countries', selectedCountries);
                     console.log('[EGP Sync] Updated via settings.set()');
@@ -54,6 +54,14 @@
                     panel.model.set('settings', currentSettings);
                     console.log('[EGP Sync] Updated via model.set()');
                 }
+
+                // Trigger Elementor's change detection to enable save button
+                if (elementor && elementor.saver && elementor.saver.setFlagEditorChange) {
+                    elementor.saver.setFlagEditorChange(true);
+                }
+
+                // Also trigger panel model change
+                panel.model.trigger('change');
 
                 // Auto-save rule after a delay
                 setTimeout(function() {

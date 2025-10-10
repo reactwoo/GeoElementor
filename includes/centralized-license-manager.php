@@ -54,11 +54,6 @@ class EGP_Centralized_License_Manager {
      */
     public function is_current_plugin($plugin_slug) {
         $current_plugin = $this->get_current_plugin_slug();
-        
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log("[EGP License] Checking plugin isolation: requested={$plugin_slug}, current={$current_plugin}");
-        }
-        
         return $plugin_slug === $current_plugin;
     }
     
@@ -115,10 +110,6 @@ class EGP_Centralized_License_Manager {
         $token_expired = $expires_at && $expires_at < (time() + 300);
         
         if ($token_expired) {
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log("[EGP License] Token expired or expiring soon, attempting refresh. Expires: " . date('Y-m-d H:i:s', $expires_at) . ", Current: " . date('Y-m-d H:i:s'));
-            }
-            
             // Try to refresh the token
             $refresh_token = get_option("{$prefix}_license_refresh_token", '');
             if ($refresh_token) {
@@ -126,14 +117,9 @@ class EGP_Centralized_License_Manager {
                 if (!is_wp_error($refreshed_data)) {
                     $access_token = $refreshed_data['accessToken'] ?? $access_token;
                     $expires_at = $refreshed_data['expires_at'] ?? $expires_at;
-                    
-                    if (defined('WP_DEBUG') && WP_DEBUG) {
-                        error_log("[EGP License] Token refreshed successfully. New expires: " . date('Y-m-d H:i:s', $expires_at));
-                    }
                 } else {
-                    if (defined('WP_DEBUG') && WP_DEBUG) {
-                        error_log("[EGP License] Token refresh failed: " . $refreshed_data->get_error_message());
-                    }
+                    // Only log failures
+                    error_log("[EGP License] Token refresh FAILED: " . $refreshed_data->get_error_message());
                     
                     // If refresh fails, clear the expired tokens
                     delete_option("{$prefix}_license_access_token");
@@ -143,9 +129,8 @@ class EGP_Centralized_License_Manager {
                     return array('valid' => false, 'error' => 'Token expired and refresh failed. Please reactivate your license.');
                 }
             } else {
-                if (defined('WP_DEBUG') && WP_DEBUG) {
-                    error_log("[EGP License] No refresh token available, clearing expired access token");
-                }
+                // Only log failures
+                error_log("[EGP License] No refresh token available, clearing expired access token");
                 
                 // No refresh token, clear the expired access token
                 delete_option("{$prefix}_license_access_token");
@@ -427,23 +412,14 @@ class EGP_Centralized_License_Manager {
         foreach ($backtrace as $trace) {
             if (isset($trace['file'])) {
                 if (strpos($trace['file'], 'geo-elementor') !== false) {
-                    if (defined('WP_DEBUG') && WP_DEBUG) {
-                        error_log('[EGP License] Detected geo-elementor plugin from: ' . $trace['file']);
-                    }
                     return 'geo-elementor';
                 } elseif (strpos($trace['file'], 'ali2woo') !== false) {
-                    if (defined('WP_DEBUG') && WP_DEBUG) {
-                        error_log('[EGP License] Detected ali2woo plugin from: ' . $trace['file']);
-                    }
                     return 'ali2woo';
                 }
             }
         }
         
         // Default to geo-elementor if we can't determine
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('[EGP License] Could not determine plugin, defaulting to geo-elementor');
-        }
         return 'geo-elementor';
     }
     

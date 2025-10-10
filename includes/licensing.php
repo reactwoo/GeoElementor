@@ -78,10 +78,6 @@ class EGP_Licensing {
             $license_data = $this->license_manager->get_license_data($this->plugin_slug, null, true);
         }
         
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('EGP License: Centralized manager returned: ' . print_r($license_data, true));
-        }
-        
         if (is_wp_error($license_data)) {
             $error_message = $license_data->get_error_message();
             if (defined('WP_DEBUG') && WP_DEBUG) {
@@ -109,10 +105,6 @@ class EGP_Licensing {
         
         $is_valid = isset($license_data['valid']) && $license_data['valid'];
         
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('EGP License: Validation result - is_valid: ' . ($is_valid ? 'true' : 'false'));
-        }
-        
         if ($is_valid) {
             update_option('egp_license_status', 'valid');
             
@@ -120,18 +112,13 @@ class EGP_Licensing {
             if (isset($license_data['product_name'])) {
                 update_option('egp_license_data', $license_data);
             }
-            
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('EGP License: Status updated to valid');
-            }
         } else {
             $error_message = isset($license_data['error']) ? $license_data['error'] : 'Unknown error';
             update_option('egp_license_status', 'invalid');
             update_option('egp_license_error', $error_message);
             
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('EGP License: Status updated to invalid - ' . $error_message);
-            }
+            // Only log failures
+            error_log('EGP License: Validation FAILED - ' . $error_message);
         }
         
         return $is_valid;
