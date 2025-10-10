@@ -133,11 +133,12 @@ class EGP_Geo_Widget extends \Elementor\Widget_Base {
             ]
         );
 
+        // Use native SELECT instead of SELECT2
         $this->add_control(
             'content_template',
             [
                 'label' => esc_html__('Template', 'elementor-geo-popup'),
-                'type' => \Elementor\Controls_Manager::SELECT2,
+                'type' => \Elementor\Controls_Manager::SELECT,
                 'options' => $this->get_templates_list(),
                 'condition' => [
                     'content_type' => 'template',
@@ -168,19 +169,26 @@ class EGP_Geo_Widget extends \Elementor\Widget_Base {
             ]
         );
 
+        // Use native HTML select instead of SELECT2
         $this->add_control(
-            'target_countries',
+            'target_countries_html',
             [
-                'label' => esc_html__('Target Countries', 'elementor-geo-popup'),
-                'type' => \Elementor\Controls_Manager::SELECT,
-                'multiple' => true,
-                'options' => $this->get_countries_list(),
-                'default' => $this->get_preferred_countries(),
+                'type' => \Elementor\Controls_Manager::RAW_HTML,
+                'raw' => $this->get_countries_select_html('target_countries', esc_html__('Target Countries', 'elementor-geo-popup')),
                 'condition' => [
                     'geo_targeting_enabled' => 'yes',
                 ],
-                'description' => esc_html__('Select one or more countries to target. Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup'),
-                'select2options' => [], // Disable Select2 to use native multi-select
+            ]
+        );
+        
+        $this->add_control(
+            'target_countries',
+            [
+                'type' => \Elementor\Controls_Manager::HIDDEN,
+                'default' => '',
+                'condition' => [
+                    'geo_targeting_enabled' => 'yes',
+                ],
             ]
         );
 
@@ -890,5 +898,21 @@ class EGP_Geo_Widget extends \Elementor\Widget_Base {
             </div>
         <# } #>
         <?php
+    }
+    
+    protected function get_countries_select_html($control_id, $label) {
+        $countries = $this->get_countries_list();
+        $html = '<div class="egp-countries-native">';
+        $html .= '<label class="elementor-control-title">' . esc_html($label) . '</label>';
+        $html .= '<div class="elementor-control-input-wrapper">';
+        $html .= '<select id="' . esc_attr($control_id) . '_native" class="egp-country-select" multiple size="12" style="width:100%;max-width:100%;min-height:220px;">';
+        foreach ($countries as $code => $name) {
+            $html .= '<option value="' . esc_attr($code) . '">' . esc_html($name) . '</option>';
+        }
+        $html .= '</select>';
+        $html .= '<p class="description">' . esc_html__('Select one or more countries to target. Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup') . '</p>';
+        $html .= '</div>';
+        $html .= '</div>';
+        return $html;
     }
 }

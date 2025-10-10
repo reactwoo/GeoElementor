@@ -92,13 +92,20 @@ class EGP_Geo_Form_Widget extends \Elementor\Widget_Base {
             ]
         );
         
+        // Use native HTML select instead of SELECT2
+        $this->add_control(
+            'override_countries_html',
+            [
+                'type' => \Elementor\Controls_Manager::RAW_HTML,
+                'raw' => $this->get_countries_select_html('override_countries', __('Override Countries', 'elementor-geo-popup')),
+            ]
+        );
+        
         $this->add_control(
             'override_countries',
             [
-                'label' => __('Override Countries', 'elementor-geo-popup'),
-                'type' => \Elementor\Controls_Manager::SELECT2,
-                'multiple' => true,
-                'options' => $this->get_countries_list(),
+                'type' => \Elementor\Controls_Manager::HIDDEN,
+                'default' => '',
             ]
         );
         
@@ -200,6 +207,22 @@ class EGP_Geo_Form_Widget extends \Elementor\Widget_Base {
             'BR' => 'Brazil', 'MX' => 'Mexico', 'NL' => 'Netherlands', 'SE' => 'Sweden',
             'NO' => 'Norway', 'DK' => 'Denmark', 'FI' => 'Finland', 'PL' => 'Poland',
         ];
+    }
+    
+    protected function get_countries_select_html($control_id, $label) {
+        $countries = $this->get_countries_list();
+        $html = '<div class="egp-countries-native">';
+        $html .= '<label class="elementor-control-title">' . esc_html($label) . '</label>';
+        $html .= '<div class="elementor-control-input-wrapper">';
+        $html .= '<select id="' . esc_attr($control_id) . '_native" class="egp-country-select" multiple size="8" style="width:100%;max-width:100%;min-height:180px;">';
+        foreach ($countries as $code => $name) {
+            $html .= '<option value="' . esc_attr($code) . '">' . esc_html($name) . '</option>';
+        }
+        $html .= '</select>';
+        $html .= '<p class="description">' . esc_html__('Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup') . '</p>';
+        $html .= '</div>';
+        $html .= '</div>';
+        return $html;
     }
 }
 
