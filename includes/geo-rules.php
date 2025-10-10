@@ -1517,7 +1517,21 @@ class EGP_Geo_Rules {
      * Check if user has Pro access
      */
     private function is_pro_user() {
-        return current_user_can('manage_woocommerce') || apply_filters('egp_is_pro_user', false);
+        // Check if license manager is available
+        if (!class_exists('EGP_Centralized_License_Manager')) {
+            return apply_filters('egp_is_pro_user', false);
+        }
+        
+        $license_manager = EGP_Centralized_License_Manager::get_instance();
+        $license_data = $license_manager->get_license_data('geo-elementor', null, false);
+        
+        // Check if license data is valid
+        if (is_wp_error($license_data)) {
+            return apply_filters('egp_is_pro_user', false);
+        }
+        
+        $is_valid = isset($license_data['valid']) && $license_data['valid'];
+        return $is_valid || apply_filters('egp_is_pro_user', false);
     }
     
     /**

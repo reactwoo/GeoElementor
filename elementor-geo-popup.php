@@ -530,8 +530,8 @@ class ElementorGeoPopup {
             return;
         }
 
-        // Determine Pro gating
-        $is_pro = current_user_can('manage_woocommerce') || apply_filters('egp_is_pro_user', false);
+        // Determine Pro gating - check license status instead of WooCommerce capability
+        $is_pro = $this->is_license_valid() || apply_filters('egp_is_pro_user', false);
 
         $element->start_controls_section(
             'egp_geo_tools',
@@ -757,6 +757,28 @@ class ElementorGeoPopup {
         );
         
         printf('<div class="notice notice-warning is-dismissible"><p>%1$s</p></div>', $message);
+    }
+    
+    /**
+     * Check if plugin license is valid
+     * 
+     * @return bool True if license is valid, false otherwise
+     */
+    private function is_license_valid() {
+        // Check if license manager is available
+        if (!class_exists('EGP_Centralized_License_Manager')) {
+            return false;
+        }
+        
+        $license_manager = EGP_Centralized_License_Manager::get_instance();
+        $license_data = $license_manager->get_license_data('geo-elementor', null, false);
+        
+        // Check if license data is valid
+        if (is_wp_error($license_data)) {
+            return false;
+        }
+        
+        return isset($license_data['valid']) && $license_data['valid'];
     }
 }
 
