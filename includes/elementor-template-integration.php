@@ -56,6 +56,11 @@ class EGP_Elementor_Template_Integration {
             return;
         }
         
+        // Don't add to popups - they get geo controls in Advanced tab instead
+        if (method_exists($document, 'get_name') && $document->get_name() === 'popup') {
+            return;
+        }
+        
         error_log('[EGP] Adding geo controls to template: ' . $document->get_main_id());
         
         // Add section in Settings tab
@@ -80,18 +85,26 @@ class EGP_Elementor_Template_Integration {
             ]
         );
         
+        // Use native HTML select instead of SELECT2
         $document->add_control(
-            'egp_countries',
+            'egp_countries_html',
             [
-                'label' => __('Target Countries', 'elementor-geo-popup'),
-                'type' => \Elementor\Controls_Manager::SELECT2,
-                'multiple' => true,
-                'options' => $this->get_countries_list(),
-                'label_block' => true,
+                'type' => \Elementor\Controls_Manager::RAW_HTML,
+                'raw' => $this->get_countries_select_html(),
                 'condition' => [
                     'egp_geo_enabled' => 'yes',
                 ],
-                'description' => __('Template will only display to visitors from these countries', 'elementor-geo-popup'),
+            ]
+        );
+        
+        $document->add_control(
+            'egp_countries',
+            [
+                'type' => \Elementor\Controls_Manager::HIDDEN,
+                'default' => '',
+                'condition' => [
+                    'egp_geo_enabled' => 'yes',
+                ],
             ]
         );
         
@@ -230,6 +243,25 @@ class EGP_Elementor_Template_Integration {
         // User is in target countries - show template
         error_log('[EGP] Template ' . $post_id . ' allowed for country: ' . $user_country);
         return $data;
+    }
+    
+    /**
+     * Get countries select HTML (native select, not SELECT2)
+     */
+    private function get_countries_select_html() {
+        $countries = $this->get_countries_list();
+        $html = '<div class="egp-countries-native">';
+        $html .= '<label class="elementor-control-title">' . esc_html__('Target Countries', 'elementor-geo-popup') . '</label>';
+        $html .= '<div class="elementor-control-input-wrapper">';
+        $html .= '<select id="egp_countries_native" class="egp-country-select" multiple size="12" style="width:100%;max-width:100%;min-height:220px;">';
+        foreach ($countries as $code => $name) {
+            $html .= '<option value="' . esc_attr($code) . '">' . esc_html($name) . '</option>';
+        }
+        $html .= '</select>';
+        $html .= '<p class="description">' . esc_html__('Hold Ctrl/Cmd to select multiple countries. Template will only display to visitors from these countries.', 'elementor-geo-popup') . '</p>';
+        $html .= '</div>';
+        $html .= '</div>';
+        return $html;
     }
     
     /**
