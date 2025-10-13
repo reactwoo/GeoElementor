@@ -15,7 +15,7 @@
             this.form = $('#egp-template-form');
             
             this.bindEvents();
-            this.initSelect2();
+            this.initNativeSelect();
         },
 
         bindEvents: function() {
@@ -58,12 +58,14 @@
             });
         },
 
-        initSelect2: function() {
-            if ($.fn.select2) {
-                $('#egp-template-countries').select2({
-                    placeholder: 'Select countries...',
-                    allowClear: true,
-                    width: '100%'
+        initNativeSelect: function () {
+            // Using native multi-select instead of SELECT2 to avoid deprecation warnings
+            // Native select with multiple attribute provides the same functionality
+            var $select = $('#egp-template-countries');
+            if ($select.length) {
+                $select.css({
+                    'width': '100%',
+                    'min-height': '120px'
                 });
             }
         },

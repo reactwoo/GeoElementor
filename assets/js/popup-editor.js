@@ -196,9 +196,9 @@
                         var $container = panel.$el.find('#egp_countries_container');
                         if (!$container.length) { return; }
 
-                        // For Elementor SELECT2 control, we don't need to populate the container
-                        // The control is handled by Elementor itself
-                        console.log('[EGP] Countries data loaded for SELECT2 control:', Object.keys(map || {}).length + ' countries');
+                        // For native select control, we don't need to populate the container
+                        // The control is handled by our native select implementation
+                        console.log('[EGP] Countries data loaded for native select control:', Object.keys(map || {}).length + ' countries');
 
                     } catch (e) { console.log('[EGP] Error setting up countries selector:', e); }
                 };
