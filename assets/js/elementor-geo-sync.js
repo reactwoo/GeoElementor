@@ -78,9 +78,16 @@
 
     function restoreCountrySelection() {
         try {
-            if (typeof elementor === 'undefined' || !elementor.getPanelView) { return; }
-            var panelView = elementor.getPanelView().getCurrentPageView();
-            if (!panelView || !panelView.model) { return; }
+            if (typeof elementor === 'undefined' || !elementor.getPanelView || !elementor.getPanelView()) {
+                // Retry slightly later if panel not ready yet (e.g., popup editor init)
+                setTimeout(restoreCountrySelection, 200);
+                return;
+            }
+            var panelView = elementor.getPanelView().getCurrentPageView && elementor.getPanelView().getCurrentPageView();
+            if (!panelView || !panelView.model) {
+                setTimeout(restoreCountrySelection, 200);
+                return;
+            }
             var settings = panelView.model.get('settings');
             var storedCountries = settings && typeof settings.get === 'function' ? settings.get('egp_countries') : [];
             if (Array.isArray(storedCountries) && storedCountries.length > 0) {
@@ -101,8 +108,11 @@
             return;
         }
 
+        var settingsObj = (model.get && model.get('settings')) || null;
         var enabled = (model.getSetting && model.getSetting('egp_geo_enabled') === 'yes')
-            || (model.get && model.get('settings') && model.get('settings').get && model.get('settings').get('egp_geo_enabled') === 'yes');
+            || (settingsObj && settingsObj.get && settingsObj.get('egp_geo_enabled') === 'yes')
+            // For popups, also respect page-level key if present
+            || (settingsObj && settingsObj.get && settingsObj.get('egp_enable_geo_targeting') === 'yes');
         var countries = (model.getSetting && model.getSetting('egp_countries'))
             || (model.get && model.get('settings') && model.get('settings').get && model.get('settings').get('egp_countries')) || [];
 
@@ -110,7 +120,9 @@
             countries = countries ? [countries] : [];
         }
 
-        if (!enabled || countries.length === 0) {
+        // In popup editor, allow save when countries chosen even if toggle not yet reflected
+        var isPopupDoc = !!(window.egpEditor && egpEditor.isPopup);
+        if ((!enabled && !isPopupDoc) || countries.length === 0) {
             console.log('[EGP Sync] Not saving - enabled:', enabled, 'countries:', countries);
             return;
         }
@@ -118,6 +130,11 @@
         // Use Elementor's internal ID (this matches the data-id attribute in the DOM)
         var elementId = model.get('id');
         var elementType = model.get('elType') || 'section';
+        // For popups, target the popup document ID and type=popup so PHP creates a popup rule
+        if (isPopupDoc && window.egpEditor && egpEditor.documentId) {
+            elementId = egpEditor.documentId;
+            elementType = 'popup';
+        }
         var priority = (model.getSetting && model.getSetting('egp_geo_priority'))
             || (model.get && model.get('settings') && model.get('settings').get && model.get('settings').get('egp_geo_priority')) || 50;
 
