@@ -57,8 +57,8 @@
 
                 // Auto-save rule after a delay
                 setTimeout(function() {
-                    autoSaveRule(panelView);
-                }, 500);
+                    autoSaveRule(panelView, selectedCountries);
+                }, 700);
 
             } catch(e) {
                 console.error('[EGP Sync] Error updating settings:', e);
@@ -78,16 +78,16 @@
 
     function restoreCountrySelection() {
         try {
-            if (typeof elementor === 'undefined' || !elementor.getPanelView || !elementor.getPanelView()) {
-                // Retry slightly later if panel not ready yet (e.g., popup editor init)
+            if (typeof elementor === 'undefined' || !elementor.getPanelView) {
                 setTimeout(restoreCountrySelection, 200);
                 return;
             }
-            var panelView = elementor.getPanelView().getCurrentPageView && elementor.getPanelView().getCurrentPageView();
-            if (!panelView || !panelView.model) {
-                setTimeout(restoreCountrySelection, 200);
+            var panelView = null;
+            try { panelView = elementor.getPanelView().getCurrentPageView && elementor.getPanelView().getCurrentPageView(); } catch (err) {
+                setTimeout(restoreCountrySelection, 250);
                 return;
             }
+            if (!panelView || !panelView.model) { setTimeout(restoreCountrySelection, 200); return; }
             var settings = panelView.model.get('settings');
             var storedCountries = settings && typeof settings.get === 'function' ? settings.get('egp_countries') : [];
             if (Array.isArray(storedCountries) && storedCountries.length > 0) {
@@ -102,7 +102,7 @@
         }
     }
 
-    function autoSaveRule(viewOrPanel) {
+    function autoSaveRule(viewOrPanel, countriesOverride) {
         var model = viewOrPanel && viewOrPanel.model ? viewOrPanel.model : null;
         if (!model) {
             return;
@@ -113,7 +113,8 @@
             || (settingsObj && settingsObj.get && settingsObj.get('egp_geo_enabled') === 'yes')
             // For popups, also respect page-level key if present
             || (settingsObj && settingsObj.get && settingsObj.get('egp_enable_geo_targeting') === 'yes');
-        var countries = (model.getSetting && model.getSetting('egp_countries'))
+        var countries = (Array.isArray(countriesOverride) && countriesOverride.length) ? countriesOverride
+            : (model.getSetting && model.getSetting('egp_countries'))
             || (model.get && model.get('settings') && model.get('settings').get && model.get('settings').get('egp_countries')) || [];
 
         if (!Array.isArray(countries)) {
