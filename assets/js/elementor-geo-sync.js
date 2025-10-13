@@ -50,7 +50,10 @@
                 console.log('[EGP Sync] Updated element setting');
 
                 // Trigger Elementor's change detection to enable save button
-                if (elementor && elementor.saver && elementor.saver.setFlagEditorChange) {
+                if (window.$e && $e.internal) {
+                    try { $e.internal('document/save/set-is-modified', { status: true }); } catch (_) { }
+                    console.log('[EGP Sync] Set editor change flag');
+                } else if (elementor && elementor.saver && elementor.saver.setFlagEditorChange) {
                     elementor.saver.setFlagEditorChange(true);
                     console.log('[EGP Sync] Set editor change flag');
                 }
@@ -142,7 +145,9 @@
         // Use custom label for display, but save Elementor's ID as the target
         var customLabel = (model.getSetting && model.getSetting('egp_element_id'))
             || (model.get && model.get('settings') && model.get('settings').get && model.get('settings').get('egp_element_id')) || '';
-        var title = customLabel || (elementType.charAt(0).toUpperCase() + elementType.slice(1) + ' ' + elementId);
+        // Build a consistent title: "Rule Name (Element ID)"
+        var baseName = customLabel && String(customLabel).trim().length ? customLabel.trim() : (elementType.charAt(0).toUpperCase() + elementType.slice(1) + ' ' + elementId);
+        var title = baseName + ' (' + elementId + ')';
 
         var data = {
             action: 'egp_save_elementor_rule_enhanced',
