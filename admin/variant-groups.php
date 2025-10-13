@@ -345,48 +345,52 @@ class RW_Geo_Variant_Groups_Admin {
         echo '</td>';
         echo '</tr>';
         
-        // Default Page
-        echo '<tr>';
-        echo '<th scope="row"><label for="default_page_id">' . __('Default Page', 'elementor-geo-popup') . '</label></th>';
-        echo '<td>';
-        echo '<select id="default_page_id" name="default_page_id">';
-        echo '<option value="">' . __('Select Page', 'elementor-geo-popup') . '</option>';
-        $pages = get_pages(array('sort_column' => 'post_title'));
-        foreach ($pages as $page) {
-            $selected = ($variant->default_page_id ?? '') == $page->ID ? 'selected' : '';
-            echo '<option value="' . $page->ID . '" ' . $selected . '>' . esc_html($page->post_title) . '</option>';
+        // Default Page (show only when Page type enabled)
+        if (($type_mask & RW_GEO_TYPE_PAGE)) {
+            echo '<tr>';
+            echo '<th scope="row"><label for="default_page_id">' . __('Default Page', 'elementor-geo-popup') . '</label></th>';
+            echo '<td>';
+            echo '<select id="default_page_id" name="default_page_id">';
+            echo '<option value="">' . __('Select Page', 'elementor-geo-popup') . '</option>';
+            $pages = get_pages(array('sort_column' => 'post_title'));
+            foreach ($pages as $page) {
+                $selected = ($variant->default_page_id ?? '') == $page->ID ? 'selected' : '';
+                echo '<option value="' . $page->ID . '" ' . $selected . '>' . esc_html($page->post_title) . '</option>';
+            }
+            echo '</select>';
+            echo '</td>';
+            echo '</tr>';
         }
-        echo '</select>';
-        echo '</td>';
-        echo '</tr>';
         
-        // Default Popup
-        echo '<tr>';
-        echo '<th scope="row"><label for="default_popup_id">' . __('Default Popup', 'elementor-geo-popup') . '</label></th>';
-        echo '<td>';
-        echo '<select id="default_popup_id" name="default_popup_id">';
-        echo '<option value="">' . __('Select Popup', 'elementor-geo-popup') . '</option>';
-        $popups = get_posts(array(
-            'post_type' => 'elementor_library',
-            'meta_query' => array(
-                array(
-                    'key' => '_elementor_template_type',
-                    'value' => 'popup'
-                )
-            ),
-            'posts_per_page' => -1,
-            'orderby' => 'title'
-        ));
-        foreach ($popups as $popup) {
-            $selected = ($variant->default_popup_id ?? '') == $popup->ID ? 'selected' : '';
-            echo '<option value="' . $popup->ID . '" ' . $selected . '>' . esc_html($popup->post_title) . '</option>';
+        // Default Popup (show only when Popup type enabled)
+        if (($type_mask & RW_GEO_TYPE_POPUP)) {
+            echo '<tr>';
+            echo '<th scope="row"><label for="default_popup_id">' . __('Default Popup', 'elementor-geo-popup') . '</label></th>';
+            echo '<td>';
+            echo '<select id="default_popup_id" name="default_popup_id">';
+            echo '<option value="">' . __('Select Popup', 'elementor-geo-popup') . '</option>';
+            $popups = get_posts(array(
+                'post_type' => 'elementor_library',
+                'meta_query' => array(
+                    array(
+                        'key' => '_elementor_template_type',
+                        'value' => 'popup'
+                    )
+                ),
+                'posts_per_page' => -1,
+                'orderby' => 'title'
+            ));
+            foreach ($popups as $popup) {
+                $selected = ($variant->default_popup_id ?? '') == $popup->ID ? 'selected' : '';
+                echo '<option value="' . $popup->ID . '" ' . $selected . '>' . esc_html($popup->post_title) . '</option>';
+            }
+            echo '</select>';
+            echo '</td>';
+            echo '</tr>';
         }
-        echo '</select>';
-        echo '</td>';
-        echo '</tr>';
 
         // Default Section/Widget refs (shown when types enabled)
-        echo '<tr class="egp-default-section-row">';
+        if (($type_mask & RW_GEO_TYPE_SECTION)) { echo '<tr class="egp-default-section-row">'; } else { echo '<tr class="egp-default-section-row" style="display:none">'; }
         echo '<th scope="row"><label for="default_section_ref">' . __('Default Section ID/Template', 'elementor-geo-popup') . '</label></th>';
         echo '<td>';
         $def_section = $variant->default_section_ref ?? '';
@@ -414,7 +418,7 @@ class RW_Geo_Variant_Groups_Admin {
         echo '</td>';
         echo '</tr>';
 
-        echo '<tr class="egp-default-widget-row">';
+        if (($type_mask & RW_GEO_TYPE_WIDGET)) { echo '<tr class="egp-default-widget-row">'; } else { echo '<tr class="egp-default-widget-row" style="display:none">'; }
         echo '<th scope="row"><label for="default_widget_ref">' . __('Default Widget ID/Template', 'elementor-geo-popup') . '</label></th>';
         echo '<td>';
         $def_widget = $variant->default_widget_ref ?? '';

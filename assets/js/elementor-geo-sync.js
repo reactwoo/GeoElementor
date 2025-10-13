@@ -8,15 +8,29 @@
 
     console.log('[EGP Sync] Script loaded');
 
-    // Wait for Elementor to be ready
+    // Wait for Elementor to be ready (prefer $e lifecycle, fallback to polling)
+    var egpInitialized = false;
     function initWhenReady() {
+        if (egpInitialized) { return; }
+        // Prefer Elementor internal event bus if available
+        if (window.$e && $e.on) {
+            $e.on('document:loaded', function () {
+                if (egpInitialized) { return; }
+                egpInitialized = true;
+                console.log('[EGP Sync] Elementor ready, initializing');
+                setupCountrySync();
+            });
+        }
+        // Fallback polling if $e is not available yet
         if (typeof elementor === 'undefined' || !elementor.channels || !elementor.channels.editor) {
-            setTimeout(initWhenReady, 100);
+            setTimeout(initWhenReady, 120);
             return;
         }
-
-        console.log('[EGP Sync] Elementor ready, initializing');
-        setupCountrySync();
+        if (!egpInitialized) {
+            egpInitialized = true;
+            console.log('[EGP Sync] Elementor ready, initializing');
+            setupCountrySync();
+        }
     }
 
     function setupCountrySync() {
@@ -64,7 +78,7 @@
                 }, 700);
 
             } catch(e) {
-                console.error('[EGP Sync] Error updating settings:', e);
+                console.warn('[EGP Sync] Error updating settings:', e);
             }
         });
 
@@ -101,7 +115,7 @@
                 }
             }
         } catch(e) {
-            console.error('[EGP Sync] Error restoring selection:', e);
+            console.warn('[EGP Sync] Error restoring selection:', e);
         }
     }
 
