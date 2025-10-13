@@ -544,7 +544,14 @@ class RW_Geo_Variant_Groups_Admin {
         
         $countries = $this->get_countries_list();
         foreach ($countries as $code => $name) {
-            $selected = in_array($code, $selected_countries) ? 'selected' : '';
+            // Normalize in case countries.json provides objects/arrays
+            if (is_array($name)) {
+                if (isset($name['name'])) { $name = $name['name']; }
+                elseif (isset($name['title'])) { $name = $name['title']; }
+                else { $name = (string) reset($name); }
+            }
+            $name = (string) $name;
+            $selected = in_array($code, $selected_countries, true) ? 'selected' : '';
             echo '<option value="' . esc_attr($code) . '" ' . $selected . '>' . esc_html($code . ' - ' . $name) . '</option>';
         }
         echo '</select>';
@@ -596,8 +603,8 @@ class RW_Geo_Variant_Groups_Admin {
             echo '</tr>';
         }
 
-        // Section reference (only show for Section/Container types)
-        if ($variant && ($variant->type_mask & (RW_GEO_TYPE_SECTION | RW_GEO_TYPE_CONTAINER))) {
+        // Section reference (only show for Section types)
+        if ($variant && ($variant->type_mask & RW_GEO_TYPE_SECTION)) {
             $section_ref = $mapping ? ($mapping->section_ref ?? '') : '';
             echo '<tr class="section-ref-row">';
             echo '<th scope="row"><label>' . __('Section ID', 'elementor-geo-popup') . '</label></th>';
