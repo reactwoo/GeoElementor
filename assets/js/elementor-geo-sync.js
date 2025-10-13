@@ -29,22 +29,24 @@
 
             console.log('[EGP Sync] Countries selected:', selectedCountries);
 
-            // Get currently edited element directly
+            // Use panel current page view to avoid elementorFrontend dependency
             try {
-                var currentElement = elementor.getCurrentElement();
-                if (!currentElement) {
+                if (typeof elementor === 'undefined' || !elementor.getPanelView) {
+                    console.log('[EGP Sync] Elementor panel not ready');
+                    return;
+                }
+                var panelView = elementor.getPanelView().getCurrentPageView();
+                if (!panelView || !panelView.model) {
                     console.log('[EGP Sync] No current element');
                     return;
                 }
-
-                var elementView = currentElement.view || currentElement;
-                if (!elementView || !elementView.model) {
-                    console.log('[EGP Sync] No element view/model');
-                    return;
+                var settings = panelView.model.get('settings');
+                if (settings && typeof settings.set === 'function') {
+                    settings.set('egp_countries', selectedCountries);
+                } else {
+                    // Fallback write
+                    panelView.model.setSetting && panelView.model.setSetting('egp_countries', selectedCountries);
                 }
-
-                // Update the hidden egp_countries setting directly on the element
-                elementView.model.setSetting('egp_countries', selectedCountries);
                 console.log('[EGP Sync] Updated element setting');
 
                 // Trigger Elementor's change detection to enable save button
@@ -55,7 +57,7 @@
 
                 // Auto-save rule after a delay
                 setTimeout(function() {
-                    autoSaveRule(elementView);
+                    autoSaveRule(panelView);
                 }, 500);
 
             } catch(e) {
@@ -76,19 +78,12 @@
 
     function restoreCountrySelection() {
         try {
-            var currentElement = elementor.getCurrentElement();
-            if (!currentElement) {
-                return;
-            }
-
-            var elementView = currentElement.view || currentElement;
-            if (!elementView || !elementView.model) {
-                return;
-            }
-
-            var storedCountries = elementView.model.getSetting('egp_countries');
+            if (typeof elementor === 'undefined' || !elementor.getPanelView) { return; }
+            var panelView = elementor.getPanelView().getCurrentPageView();
+            if (!panelView || !panelView.model) { return; }
+            var settings = panelView.model.get('settings');
+            var storedCountries = settings && typeof settings.get === 'function' ? settings.get('egp_countries') : [];
             if (Array.isArray(storedCountries) && storedCountries.length > 0) {
-                // Find the native select and set its value
                 var $select = $('select[id^="egp_countries_native"]');
                 if ($select.length) {
                     $select.val(storedCountries);
@@ -100,13 +95,16 @@
         }
     }
 
-    function autoSaveRule(elementView) {
-        if (!elementView || !elementView.model) {
+    function autoSaveRule(viewOrPanel) {
+        var model = viewOrPanel && viewOrPanel.model ? viewOrPanel.model : null;
+        if (!model) {
             return;
         }
 
-        var enabled = elementView.model.getSetting('egp_geo_enabled') === 'yes';
-        var countries = elementView.model.getSetting('egp_countries') || [];
+        var enabled = (model.getSetting && model.getSetting('egp_geo_enabled') === 'yes')
+            || (model.get && model.get('settings') && model.get('settings').get && model.get('settings').get('egp_geo_enabled') === 'yes');
+        var countries = (model.getSetting && model.getSetting('egp_countries'))
+            || (model.get && model.get('settings') && model.get('settings').get && model.get('settings').get('egp_countries')) || [];
 
         if (!Array.isArray(countries)) {
             countries = countries ? [countries] : [];
@@ -118,12 +116,14 @@
         }
 
         // Use Elementor's internal ID (this matches the data-id attribute in the DOM)
-        var elementId = elementView.model.get('id');
-        var elementType = elementView.model.get('elType') || 'section';
-        var priority = elementView.model.getSetting('egp_geo_priority') || 50;
+        var elementId = model.get('id');
+        var elementType = model.get('elType') || 'section';
+        var priority = (model.getSetting && model.getSetting('egp_geo_priority'))
+            || (model.get && model.get('settings') && model.get('settings').get && model.get('settings').get('egp_geo_priority')) || 50;
 
         // Use custom label for display, but save Elementor's ID as the target
-        var customLabel = elementView.model.getSetting('egp_element_id') || '';
+        var customLabel = (model.getSetting && model.getSetting('egp_element_id'))
+            || (model.get && model.get('settings') && model.get('settings').get && model.get('settings').get('egp_element_id')) || '';
         var title = customLabel || (elementType.charAt(0).toUpperCase() + elementType.slice(1) + ' ' + elementId);
 
         var data = {
@@ -154,8 +154,8 @@
                 showSaveIndicator('success');
 
                 // Store the rule ID for future updates
-                if (response.data && response.data.rule_id && elementView && elementView.model) {
-                    elementView.model.setSetting('egp_rule_id', response.data.rule_id);
+                if (response.data && response.data.rule_id && model && model.setSetting) {
+                    model.setSetting('egp_rule_id', response.data.rule_id);
                     console.log('[EGP Sync] Stored rule_id:', response.data.rule_id);
                 }
 
