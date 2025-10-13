@@ -729,6 +729,12 @@ class RW_Geo_Variant_Groups_Admin {
 
         foreach ($countries as $code => $name) {
             $code_str = strtoupper($code);
+            // Normalize name if provided as array/object
+            if (is_array($name)) {
+                if (isset($name['name'])) { $name = $name['name']; }
+                elseif (isset($name['title'])) { $name = $name['title']; }
+                else { $name = (string) reset($name); }
+            }
             $name_str = (string) $name;
             if ($q === '' || strpos($code_str, $q_upper) !== false || strpos(strtolower($name_str), $q_lower) !== false) {
                 $results[] = array('code' => $code_str, 'name' => $name_str);
@@ -843,8 +849,12 @@ class RW_Geo_Variant_Groups_Admin {
         $countries = array();
         if (isset($_POST['countries']) && is_array($_POST['countries'])) {
             $countries = array_map('strtoupper', array_map('sanitize_text_field', $_POST['countries']));
+            // Filter out empty values
+            $countries = array_filter($countries, function($country) {
+                return !empty($country);
+            });
         } elseif (isset($_POST['country_iso2']) && !empty($_POST['country_iso2'])) {
-            $countries = array(strtoupper($_POST['country_iso2']));
+            $countries = array(strtoupper(sanitize_text_field($_POST['country_iso2'])));
         }
         
         $page_id = intval($_POST['page_id'] ?? 0) ?: null;
@@ -852,8 +862,15 @@ class RW_Geo_Variant_Groups_Admin {
         $section_ref = sanitize_text_field($_POST['section_ref'] ?? '');
         $widget_ref = sanitize_text_field($_POST['widget_ref'] ?? '');
         
-        if (!$variant_id || empty($countries)) {
-            wp_send_json_error(__('Group ID and at least one country are required', 'elementor-geo-popup'));
+        // Enhanced validation with detailed error messages
+        if (!$variant_id) {
+            error_log('[EGP Debug] ajax_save_mapping: Missing variant_id');
+            wp_send_json_error(__('Group ID is required', 'elementor-geo-popup'));
+        }
+        
+        if (empty($countries)) {
+            error_log('[EGP Debug] ajax_save_mapping: Empty countries array. POST data: ' . print_r($_POST, true));
+            wp_send_json_error(__('At least one country is required', 'elementor-geo-popup'));
         }
         
         // Prevent conflicts with existing Rules that target the same Page/Popup
@@ -889,29 +906,66 @@ class RW_Geo_Variant_Groups_Admin {
             }
         }
         
-        $data = array(
-            'variant_id' => $variant_id,
-            'countries' => $countries, // Array of countries
-            'country_iso2' => $countries[0], // Keep for backwards compatibility
-            'page_id' => $page_id,
-            'popup_id' => $popup_id,
-            'section_ref' => $section_ref,
-            'widget_ref' => $widget_ref
-        );
+        // Ensure we have at least one country before proceeding
+        if (!isset($countries[0])) {
+            error_log('[EGP Debug] ajax_save_mapping: Countries array has no elements');
+            wp_send_json_error(__('Invalid country data', 'elementor-geo-popup'));
+        }
         
-        $mapping_crud = new RW_Geo_Mapping_CRUD();
-        
-        // Check if mapping exists for first country (backwards compat check)
-        $existing = $mapping_crud->get_by_variant_country($variant_id, $countries[0]);
-        
-        if ($existing) {
-            $result = $mapping_crud->update($existing->id, $data);
-        } else {
-            $result = $mapping_crud->create($data);
+        // Wrap database operations in try-catch to prevent 500 errors
+        try {
+            if (!class_exists('RW_Geo_Mapping_CRUD')) {
+                error_log('[EGP Debug] ajax_save_mapping: RW_Geo_Mapping_CRUD class not found');
+                wp_send_json_error(__('Mapping database handler not available', 'elementor-geo-popup'));
+            }
+            
+            $mapping_crud = new RW_Geo_Mapping_CRUD();
+            $saved_count = 0;
+            $errors = array();
+            
+            // Loop through each country and create/update a mapping for each
+            foreach ($countries as $country_code) {
+                $data = array(
+                    'variant_id' => $variant_id,
+                    'country_iso2' => $country_code,
+                    'page_id' => $page_id,
+                    'popup_id' => $popup_id,
+                    'section_ref' => $section_ref,
+                    'widget_ref' => $widget_ref
+                );
+                
+                // Check if mapping exists for this country
+                $existing = $mapping_crud->get_by_variant_country($variant_id, $country_code);
+                
+                if ($existing) {
+                    $result = $mapping_crud->update($existing->id, $data);
+                } else {
+                    $result = $mapping_crud->create($data);
+                }
+                
+                if (is_wp_error($result)) {
+                    $errors[] = $country_code . ': ' . $result->get_error_message();
+                } else {
+                    $saved_count++;
+                }
+            }
+            
+            // If all saves failed, return error
+            if ($saved_count === 0 && !empty($errors)) {
+                error_log('[EGP Debug] ajax_save_mapping: All saves failed - ' . implode('; ', $errors));
+                wp_send_json_error(__('Failed to save mappings: ', 'elementor-geo-popup') . implode('; ', array_slice($errors, 0, 3)));
+            }
+            
+            // For backwards compatibility, use the first country's result
+            $result = $saved_count > 0 ? true : new WP_Error('save_failed', 'No mappings saved');
+            
+        } catch (Exception $e) {
+            error_log('[EGP Debug] ajax_save_mapping: Exception - ' . $e->getMessage());
+            wp_send_json_error(__('Database error: ', 'elementor-geo-popup') . $e->getMessage());
         }
 
         // Keep Rules in sync: if popup_id is set, ensure corresponding rule exists/updates
-        if (!is_wp_error($result) && $popup_id) {
+        if (!is_wp_error($result) && $popup_id && $saved_count > 0) {
             if (class_exists('EGP_Geo_Rules')) {
                 $rules = EGP_Geo_Rules::get_instance();
                 if (method_exists($rules, 'save_or_update_rule')) {
@@ -932,9 +986,32 @@ class RW_Geo_Variant_Groups_Admin {
             wp_send_json_error($result->get_error_message());
         }
         
+        $message = sprintf(
+            _n(
+                'Mapping saved successfully for %d country',
+                'Mappings saved successfully for %d countries',
+                $saved_count,
+                'elementor-geo-popup'
+            ),
+            $saved_count
+        );
+        
+        if (!empty($errors)) {
+            $message .= '. ' . sprintf(
+                _n(
+                    'Warning: %d country failed',
+                    'Warning: %d countries failed',
+                    count($errors),
+                    'elementor-geo-popup'
+                ),
+                count($errors)
+            );
+        }
+        
         wp_send_json_success(array(
-            'message' => __('Mapping saved successfully', 'elementor-geo-popup'),
-            'mapping_id' => $existing ? $existing->id : $result
+            'message' => $message,
+            'saved_count' => $saved_count,
+            'failed_count' => count($errors)
         ));
     }
     

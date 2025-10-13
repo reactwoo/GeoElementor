@@ -315,22 +315,40 @@
             // Get selected countries from multi-select
             var selectedCountries = $row.find('.country-select').val();
 
+            // Enhanced validation for countries
+            if (!selectedCountries || !Array.isArray(selectedCountries) || selectedCountries.length === 0) {
+                RW_Geo_Variants_Admin.showNotice('Please select at least one country', 'error');
+                $row.find('.country-select').focus();
+                return;
+            }
+
+            // Filter out empty values
+            selectedCountries = selectedCountries.filter(function (country) {
+                return country && country.trim() !== '';
+            });
+
+            if (selectedCountries.length === 0) {
+                RW_Geo_Variants_Admin.showNotice('Please select valid countries', 'error');
+                $row.find('.country-select').focus();
+                return;
+            }
+
             // Collect mapping data
             var mappingData = {
                 action: 'rw_geo_save_mapping',
                 nonce: rwGeoVariants.nonce,
                 variant_id: $('input[name="variant_id"]').val(),
-                countries: selectedCountries || [], // Array of countries
-                country_iso2: selectedCountries && selectedCountries[0] ? selectedCountries[0] : '', // Backwards compat
+                countries: selectedCountries, // Array of countries
+                country_iso2: selectedCountries[0], // Backwards compat
                 page_id: $row.find('.page-select').val() || '',
                 popup_id: $row.find('.popup-select').val() || '',
                 section_ref: ($row.find('.section-ref').val() || '').replace(/^#/, ''),
                 widget_ref: ($row.find('.widget-ref').val() || '').replace(/^#/, '')
             };
 
-            // Validate required fields
-            if (!mappingData.countries || mappingData.countries.length === 0) {
-                RW_Geo_Variants_Admin.showNotice('At least one country is required', 'error');
+            // Additional validation
+            if (!mappingData.variant_id) {
+                RW_Geo_Variants_Admin.showNotice('Group ID is missing. Please reload the page.', 'error');
                 return;
             }
 
