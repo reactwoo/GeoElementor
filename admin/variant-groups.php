@@ -848,11 +848,29 @@ class RW_Geo_Variant_Groups_Admin {
         // Handle both old (country_iso2) and new (countries array) formats
         $countries = array();
         if (isset($_POST['countries']) && is_array($_POST['countries'])) {
-            $countries = array_map('strtoupper', array_map('sanitize_text_field', $_POST['countries']));
-            // Filter out empty values
-            $countries = array_filter($countries, function($country) {
-                return !empty($country);
-            });
+            $countries = array_map('sanitize_text_field', $_POST['countries']);
+            // Normalize values to ISO2 codes
+            $normalized = array();
+            foreach ($countries as $raw) {
+                $raw = trim((string) $raw);
+                if ($raw === '') { continue; }
+                // If option text like "US - United States" was accidentally posted
+                if (preg_match('/^([A-Za-z]{2})\b/', $raw, $m)) {
+                    $normalized[] = strtoupper($m[1]);
+                    continue;
+                }
+                // If already a two-letter code
+                if (preg_match('/^[A-Za-z]{2}$/', $raw)) {
+                    $normalized[] = strtoupper($raw);
+                    continue;
+                }
+                // Otherwise skip invalid values (e.g., numeric like 108)
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('[EGP Debug] ajax_save_mapping: Skipping invalid country value: ' . $raw);
+                }
+            }
+            // De-duplicate
+            $countries = array_values(array_unique($normalized));
         } elseif (isset($_POST['country_iso2']) && !empty($_POST['country_iso2'])) {
             $countries = array(strtoupper(sanitize_text_field($_POST['country_iso2'])));
         }

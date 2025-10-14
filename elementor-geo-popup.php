@@ -74,6 +74,15 @@ class ElementorGeoPopup {
         register_activation_hook(EGP_PLUGIN_FILE, array($this, 'activate'));
         register_deactivation_hook(EGP_PLUGIN_FILE, array($this, 'deactivate'));
     }
+
+    /**
+     * Whether to emit verbose info logs
+     */
+    private function should_log_info() {
+        // Only log info when explicit debug option enabled and WP_DEBUG true
+        $debug_opt = get_option('egp_debug_mode');
+        return (defined('WP_DEBUG') && WP_DEBUG && !empty($debug_opt));
+    }
     
     /**
      * Initialize plugin
@@ -84,7 +93,7 @@ class ElementorGeoPopup {
             return;
         }
 
-        error_log('[EGP] Plugin init() called');
+        if ($this->should_log_info()) { error_log('[EGP] Plugin init() called'); }
         add_action('admin_footer', function() {
             echo '<script>console.log("[EGP] Plugin init() called");</script>';
         });
@@ -114,19 +123,20 @@ class ElementorGeoPopup {
 
         // Check if Elementor is active
         if (!did_action('elementor/loaded')) {
-            error_log('[EGP] Elementor not loaded yet - showing missing notice');
+            // Info noise suppressed by default
+            if ($this->should_log_info()) { error_log('[EGP] Elementor not loaded yet - showing missing notice'); }
             add_action('admin_notices', array($this, 'elementor_missing_notice'));
             return;
         }
 
         // Check if Elementor Pro is active (robust)
         if (!$this->is_elementor_pro_active()) {
-            error_log('[EGP] Elementor Pro not found (robust check) - showing missing notice');
+            if ($this->should_log_info()) { error_log('[EGP] Elementor Pro not found (robust check) - showing missing notice'); }
             add_action('admin_notices', array($this, 'elementor_pro_missing_notice'));
             return;
         }
 
-        error_log('[EGP] Elementor and Pro found - proceeding with full initialization');
+        if ($this->should_log_info()) { error_log('[EGP] Elementor and Pro found - proceeding with full initialization'); }
         
         // Determine readiness before loading geo-dependent components
         $this->geo_ready = $this->is_geo_ready();
@@ -146,7 +156,7 @@ class ElementorGeoPopup {
 
         // Also try to register immediately if Elementor is already loaded
         if (did_action('elementor/loaded')) {
-            error_log('[EGP] Elementor already loaded, registering hooks immediately');
+            if ($this->should_log_info()) { error_log('[EGP] Elementor already loaded, registering hooks immediately'); }
             add_action('admin_footer', function() {
                 echo '<script>console.log("[EGP] Elementor already loaded - registering hooks immediately");</script>';
             });
@@ -347,7 +357,7 @@ class ElementorGeoPopup {
      */
     public function register_elementor_hooks() {
         // Debug logging
-        error_log('[EGP] register_elementor_hooks() called - Elementor loaded: ' . (did_action('elementor/loaded') ? 'YES' : 'NO'));
+        if ($this->should_log_info()) { error_log('[EGP] register_elementor_hooks() called - Elementor loaded: ' . (did_action('elementor/loaded') ? 'YES' : 'NO')); }
         
         // This is the key: register controls immediately using the proper hooks
         // Following the if-so pattern which is proven to work
@@ -494,7 +504,7 @@ class ElementorGeoPopup {
             return;
         }
 
-        error_log('[EGP] Registering Elementor geo controls using if-so pattern');
+        if ($this->should_log_info()) { error_log('[EGP] Registering Elementor geo controls using if-so pattern'); }
 
         // KEY FIX: Use 'common/_section_style' hook for ALL widgets (this is what if-so does)
         // This is the standard way to add controls to all widgets at once
@@ -512,7 +522,7 @@ class ElementorGeoPopup {
         // Add controls to Popups (Elementor Pro)
         add_action('elementor/element/popup/section_advanced/after_section_end', array($this, 'add_geo_targeting_controls'), 10, 2);
 
-        error_log('[EGP] Geo controls hooks registered successfully');
+        if ($this->should_log_info()) { error_log('[EGP] Geo controls hooks registered successfully'); }
 
         // Mark as registered
         $controls_registered = true;
