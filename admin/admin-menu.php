@@ -12,6 +12,7 @@ class EGP_Admin_Menu {
 	public function __construct() {
 		add_action('admin_menu', array($this, 'register_menus'), 9);
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_menu_icon_css'));
+		add_action('admin_notices', array($this, 'maybe_show_core_notice'));
 	}
 
 	public function register_menus() {
@@ -101,6 +102,31 @@ class EGP_Admin_Menu {
 	public function render_dashboard() {
 		echo '<div class="wrap"><h1>' . esc_html__('Geo Rules Dashboard', 'elementor-geo-popup') . '</h1>';
 		echo '<div id="geo-el-admin-app"></div></div>';
+	}
+
+	/**
+	 * Suggest ReactWoo Geo Core when not present so users understand the dependency.
+	 */
+	public function maybe_show_core_notice() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		$screen = get_current_screen();
+		if ( ! $screen || strpos( $screen->id, 'geo-elementor' ) === false ) {
+			return;
+		}
+		if ( function_exists( 'rwgc_is_ready' ) ) {
+			return;
+		}
+		echo '<div class="notice notice-warning"><p>';
+		echo esc_html__( 'GeoElementor now uses ReactWoo Geo Core for country detection. Please install and activate the free ReactWoo Geo Core plugin to ensure accurate geolocation and shared settings across ReactWoo products.', 'elementor-geo-popup' );
+		echo '</p><p>';
+		printf(
+			/* translators: %s: ReactWoo Geo Core docs/download URL placeholder. */
+			esc_html__( 'Download ReactWoo Geo Core: %s', 'elementor-geo-popup' ),
+			'https://reactwoo.com/reactwoo-geocore'
+		);
+		echo '</p></div>';
 	}
 
 	public function render_rules() {

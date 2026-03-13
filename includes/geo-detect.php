@@ -130,6 +130,14 @@ class EGP_Geo_Detect {
      * Get visitor's country
      */
     public function get_visitor_country() {
+		// Prefer ReactWoo Geo Core when available so all ReactWoo products share one geo engine.
+		if ( function_exists( 'rwgc_get_visitor_country' ) && function_exists( 'rwgc_is_ready' ) && rwgc_is_ready() ) {
+			$country = strtoupper( (string) rwgc_get_visitor_country() );
+			if ( $country && strlen( $country ) === 2 ) {
+				return $country;
+			}
+		}
+
         // Check for cached result first
         $cached_country = wp_cache_get('egp_visitor_country_' . $this->get_visitor_ip(), 'egp_geo');
         
