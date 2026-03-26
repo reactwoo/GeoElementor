@@ -3,7 +3,7 @@
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
  * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration via ReactWoo Geo Core and MaxMind GeoLite2 database.
- * Version: 1.0.4
+ * Version: 1.0.5
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
  * License: GPL v2 or later
@@ -11,7 +11,7 @@
  * Text Domain: elementor-geo-popup
  * Domain Path: /languages
  * Requires at least: 5.0
- * Tested up to: 6.4
+ * Tested up to: 6.9
  * Requires PHP: 7.4
  * Elementor requires at least: 3.0.0
  * Elementor tested up to: 3.18.0
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('EGP_VERSION', '1.0.4');
+define('EGP_VERSION', '1.0.5');
 define('EGP_PLUGIN_FILE', __FILE__);
 define('EGP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EGP_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -197,6 +197,9 @@ class ElementorGeoPopup {
         require_once EGP_PLUGIN_DIR . 'includes/widget-registration.php';
         require_once EGP_PLUGIN_DIR . 'includes/global-settings.php';
         require_once EGP_PLUGIN_DIR . 'includes/dashboard-api.php';
+        if (file_exists(EGP_PLUGIN_DIR . 'includes/geo-database.php')) {
+            require_once EGP_PLUGIN_DIR . 'includes/geo-database.php';
+        }
 
         // Load geo-rules with defensive check to prevent early loading conflicts
         if (did_action('init')) {
@@ -289,7 +292,61 @@ class ElementorGeoPopup {
         }
         new EGP_Widget_Registration();
         new EGP_Global_Settings();
+        $this->register_rwgc_extensions();
         // Geo Rules system is auto-initialized
+    }
+
+    /**
+     * Register extension hooks for ReactWoo Geo Core baseline routing.
+     */
+    private function register_rwgc_extensions() {
+        if (!function_exists('rwgc_is_ready') && !class_exists('RWGC_Routing')) {
+            return;
+        }
+
+        add_filter('rwgc_route_variant_decision', array($this, 'extend_rwgc_route_variant_decision'), 20, 2);
+    }
+
+    /**
+     * Extend Geo Core free routing decision for Pro users.
+     *
+     * @param array $decision Current decision payload.
+     * @param array $config   Geo Core page config.
+     * @return array
+     */
+    public function extend_rwgc_route_variant_decision($decision, $config) {
+        if (!$this->is_license_valid() || !class_exists('RW_Geo_Router')) {
+            return $decision;
+        }
+
+        $country = isset($decision['country']) ? strtoupper(sanitize_text_field($decision['country'])) : '';
+        if ('' === $country) {
+            return $decision;
+        }
+
+        $target = 0;
+        try {
+            $router = RW_Geo_Router::get_instance();
+            $variant = $router->get_active_variant_group_for_route();
+            if (!$variant) {
+                return $decision;
+            }
+            $mapping = $router->resolve_mapping($variant, $country);
+            if ($mapping && !empty($mapping->page_id)) {
+                $target = absint($mapping->page_id);
+            } elseif (!empty($variant->default_page_id)) {
+                $target = absint($variant->default_page_id);
+            }
+        } catch (\Throwable $e) {
+            return $decision;
+        }
+
+        if ($target > 0) {
+            $decision['target_page_id'] = $target;
+            $decision['reason'] = 'egp_pro_variant';
+        }
+
+        return $decision;
     }
 
     /**

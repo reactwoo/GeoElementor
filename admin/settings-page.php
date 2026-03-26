@@ -241,12 +241,64 @@ class EGP_Admin_Settings {
                 <img id="egp-admin-logo" src="<?php echo esc_url( EGP_PLUGIN_URL . 'assets/img/GeoElementor.svg' ); ?>" alt="Geo Elementor" style="height:40px;width:auto;vertical-align:middle;" />
                 <h1 style="margin:0;line-height:1;"><?php echo esc_html(get_admin_page_title()); ?></h1>
             </div>
+
+			<div class="egp-hero">
+				<h2><?php esc_html_e( 'GeoElementor Pro Extension Settings', 'elementor-geo-popup' ); ?></h2>
+				<p><?php esc_html_e( 'Use this screen for advanced GeoElementor behavior. Geo Core remains the owner of shared geo engine and baseline routing.', 'elementor-geo-popup' ); ?></p>
+				<div class="egp-chip-row">
+					<span class="egp-chip"><?php esc_html_e( 'Geo Core: engine + baseline', 'elementor-geo-popup' ); ?></span>
+					<span class="egp-chip"><?php esc_html_e( 'GeoElementor: advanced rules/groups', 'elementor-geo-popup' ); ?></span>
+					<span class="egp-chip egp-chip--warn"><?php esc_html_e( 'Free limit remains 1 fallback + 1 mapping', 'elementor-geo-popup' ); ?></span>
+				</div>
+				<div class="egp-cta-row">
+					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=rwgc-settings' ) ); ?>"><?php esc_html_e( 'Open Geo Core Settings', 'elementor-geo-popup' ); ?></a>
+					<a class="button button-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=geo-elementor-variants' ) ); ?>"><?php esc_html_e( 'Open Variant Groups', 'elementor-geo-popup' ); ?></a>
+				</div>
+			</div>
+
+			<div class="notice notice-info" style="margin:14px 0;">
+				<p>
+					<?php esc_html_e( 'Baseline controls live in ReactWoo Geo Core (free) while GeoElementor focuses on advanced variant groups and element-level targeting (Pro).', 'elementor-geo-popup' ); ?>
+					<br />
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=rwgc-settings' ) ); ?>"><?php esc_html_e( 'Open Geo Core Settings', 'elementor-geo-popup' ); ?></a>
+				</p>
+			</div>
             
             <?php if (isset($_GET['settings-updated'])) : ?>
                 <div class="notice notice-success is-dismissible">
                     <p><?php _e('Settings saved successfully!', 'elementor-geo-popup'); ?></p>
                 </div>
             <?php endif; ?>
+
+			<div class="egp-section-card">
+				<h2><?php esc_html_e( 'Feature Split', 'elementor-geo-popup' ); ?></h2>
+				<table class="egp-feature-matrix">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Capability', 'elementor-geo-popup' ); ?></th>
+							<th><?php esc_html_e( 'Geo Core', 'elementor-geo-popup' ); ?></th>
+							<th><?php esc_html_e( 'GeoElementor', 'elementor-geo-popup' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><?php esc_html_e( 'Geo engine and MaxMind readiness', 'elementor-geo-popup' ); ?></td>
+							<td><?php esc_html_e( 'Primary owner', 'elementor-geo-popup' ); ?></td>
+							<td><?php esc_html_e( 'Depends on Geo Core', 'elementor-geo-popup' ); ?></td>
+						</tr>
+						<tr>
+							<td><?php esc_html_e( 'Free page routing (server-side)', 'elementor-geo-popup' ); ?></td>
+							<td><?php esc_html_e( '1 default + 1 additional country', 'elementor-geo-popup' ); ?></td>
+							<td><?php esc_html_e( 'Extends decision path', 'elementor-geo-popup' ); ?></td>
+						</tr>
+						<tr>
+							<td><?php esc_html_e( 'Variant Groups / multi-variant logic', 'elementor-geo-popup' ); ?></td>
+							<td><?php esc_html_e( 'No', 'elementor-geo-popup' ); ?></td>
+							<td><?php esc_html_e( 'Yes', 'elementor-geo-popup' ); ?></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
             
             <form method="post" action="options.php">
                 <?php settings_fields('egp_settings'); ?>
@@ -260,7 +312,7 @@ class EGP_Admin_Settings {
                         <?php esc_html_e( 'GeoElementor now relies on the shared ReactWoo Geo Core plugin for IP-to-country lookups and MaxMind database management.', 'elementor-geo-popup' ); ?>
                     </p>
                     <p class="description">
-                        <?php esc_html_e( 'Geo Core free baseline includes Elementor Page/Popup document-level geo visibility. GeoElementor focuses on advanced controls like element-level rules, groups, and analytics.', 'elementor-geo-popup' ); ?>
+                        <?php esc_html_e( 'Geo Core free baseline includes Elementor Page/Popup document-level geo visibility and page-level server-side routing (1 fallback + 1 country mapping per page). GeoElementor focuses on advanced controls like multi-variant routing, element-level rules, groups, and analytics.', 'elementor-geo-popup' ); ?>
                     </p>
                     <p class="description">
                         <?php esc_html_e( 'Configure your MaxMind Account ID, License Key, cache, and fallback country/currency in the ReactWoo Geo Core settings screen. GeoElementor will automatically reuse that geo engine.', 'elementor-geo-popup' ); ?>

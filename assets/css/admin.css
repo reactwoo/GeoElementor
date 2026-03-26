@@ -41,20 +41,27 @@
 /* Modern settings layout */
 .egp-settings h1 {
     margin-bottom: 12px;
+    font-size: 30px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    font-weight: 700;
 }
 
 .egp-section-card {
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 16px 20px;
+    border-radius: 10px;
+    padding: 18px 22px;
     margin: 16px 0;
     box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
 }
 
 .egp-section-card h2 {
     margin-top: 0;
-    font-size: 18px;
+    font-size: 21px;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+    font-weight: 700;
 }
 .egp-database-actions h2 {
     margin-top: 0;
@@ -96,6 +103,12 @@
 .egp-settings .form-table td {
     padding-left: 12px;
     padding-right: 12px;
+}
+
+.egp-settings .form-table th {
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: .01em;
 }
 .egp-settings h2 {
     margin-top: 24px;
@@ -550,4 +563,186 @@
     text-decoration: underline;
 }
 
+/* Shared cross-plugin visual language (WP-admin friendly). */
+.egp-hero {
+    background: linear-gradient(135deg, #2271b1 0%, #005891 100%);
+    color: #fff;
+    border-radius: 12px;
+    padding: 22px;
+    margin: 12px 0 16px;
+    box-shadow: 0 4px 10px rgba(2, 39, 74, 0.14);
+}
+
+.egp-hero h2 {
+    color: #fff;
+    margin: 0 0 8px;
+    font-size: 25px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+
+.egp-hero p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.93);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.egp-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.egp-chip {
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    background: #eff6ff;
+    color: #0c4a7a;
+    border: 1px solid #bfdbfe;
+}
+
+.egp-chip--warn {
+    background: #fff1f2;
+    color: #9f1239;
+    border-color: #fecdd3;
+}
+
+.egp-cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.egp-cta-row .button {
+    font-weight: 600;
+}
+
+.egp-feature-matrix {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.egp-feature-matrix th,
+.egp-feature-matrix td {
+    border: 1px solid #e5e7eb;
+    padding: 10px 12px;
+    text-align: left;
+    line-height: 1.5;
+}
+
+.egp-feature-matrix th {
+    background: #f8fafc;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    font-size: 11px;
+    color: #475467;
+}
+
+/* Responsive pass for narrow admin widths */
+@media (max-width: 900px) {
+    .egp-settings h1 {
+        font-size: 24px;
+    }
+
+    .egp-section-card {
+        padding: 14px 14px;
+    }
+
+    .egp-section-card h2 {
+        font-size: 18px;
+    }
+
+    .egp-hero {
+        padding: 16px;
+    }
+
+    .egp-hero h2 {
+        font-size: 21px;
+    }
+
+    .egp-chip-row,
+    .egp-cta-row {
+        gap: 6px;
+    }
+
+    .egp-cta-row .button {
+        width: 100%;
+        text-align: center;
+    }
+
+    .egp-feature-matrix {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .egp-feature-matrix th,
+    .egp-feature-matrix td {
+        min-width: 190px;
+    }
+}
+
+/* Dark mode compatibility (respects OS/browser preference). */
+@media (prefers-color-scheme: dark) {
+    .egp-settings {
+        color: #e5e7eb;
+    }
+
+    .egp-settings h1,
+    .egp-settings h2,
+    .egp-settings h3,
+    .egp-settings strong {
+        color: #f3f4f6;
+    }
+
+    .egp-section-card,
+    .egp-database-actions,
+    .egp-license-info,
+    .egp-license-actions,
+    .egp-license-help,
+    .egp-settings .form-table {
+        background: #111827;
+        border-color: #374151;
+        color: #e5e7eb;
+    }
+
+    .egp-settings .description,
+    .egp-settings p {
+        color: #a1a1aa;
+    }
+
+    .egp-settings a {
+        color: #93c5fd;
+    }
+
+    .egp-feature-matrix th {
+        background: #1f2937;
+        color: #d1d5db;
+        border-color: #374151;
+    }
+
+    .egp-feature-matrix td {
+        background: #111827;
+        color: #e5e7eb;
+        border-color: #374151;
+    }
+
+    .egp-chip {
+        background: #1e3a5f;
+        border-color: #30567e;
+        color: #dbeafe;
+    }
+
+    .egp-chip--warn {
+        background: #4a2224;
+        border-color: #7f1d1d;
+        color: #fecaca;
+    }
+}
 

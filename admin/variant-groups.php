@@ -181,6 +181,14 @@ class RW_Geo_Variant_Groups_Admin {
         echo '<p style="margin:0 0 8px 0;">' . __('Manage variant Groups that map content (Pages/Popups/Sections/Widgets) to countries.', 'elementor-geo-popup') . '</p>';
         echo '<p style="margin:0 0 8px 0;">' . __('Tip: Use a default target for the group, then add specific overrides for selected countries. Rules on the same target take precedence and may block group mappings.', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="If a Rule already targets the same Page/Popup, the Group mapping will not apply to avoid conflicts."></span></p>';
         echo '</div>';
+
+		echo '<div class="notice notice-info" style="margin:14px 0;">';
+		echo '<p>' . esc_html__('Free tier routing (1 default + 1 additional country variant per page) is configured in Geo Core. This screen is for GeoElementor Pro advanced variant groups.', 'elementor-geo-popup') . '</p>';
+		echo '<p>';
+		echo '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=rwgc-usage' ) ) . '">' . esc_html__('Geo Core Free Routing Guide', 'elementor-geo-popup') . '</a> ';
+		echo '<a class="button button-primary" href="' . esc_url( admin_url( 'admin.php?page=geo-elementor-variants' ) ) . '">' . esc_html__('You are here: Variant Groups', 'elementor-geo-popup') . '</a>';
+		echo '</p>';
+		echo '</div>';
         
         switch ($action) {
             case 'add':

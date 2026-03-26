@@ -72,11 +72,26 @@ class EGP_Geo_Content_Dashboard {
         ?>
         <div class="wrap egp-content-dashboard">
             <h1><?php _e('Geo Content Management', 'elementor-geo-popup'); ?></h1>
+
+			<div class="notice notice-info" style="margin:14px 0;">
+				<p>
+					<?php
+					esc_html_e(
+						'Baseline (Free) routing and geo engine live in ReactWoo Geo Core. GeoElementor Pro extends this with advanced variant groups and element-level targeting.',
+						'elementor-geo-popup'
+					);
+					?>
+				</p>
+				<p>
+					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=rwgc-usage' ) ); ?>"><?php esc_html_e( 'Geo Core Free Routing Guide', 'elementor-geo-popup' ); ?></a>
+					<a class="button button-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=geo-elementor-variants' ) ); ?>"><?php esc_html_e( 'Manage Variant Groups', 'elementor-geo-popup' ); ?></a>
+				</p>
+			</div>
             
             <div class="egp-help-box">
                 <h3><span class="dashicons dashicons-info" style="vertical-align: middle;"></span> <?php _e('How It Works', 'elementor-geo-popup'); ?></h3>
                 <p class="description">
-                    <?php _e('Geo Core (free) handles basic Elementor page/popup geo visibility. GeoElementor extends this with advanced element-level rules, groups, and analytics.', 'elementor-geo-popup'); ?>
+                    <?php _e('Geo Core (free) handles basic Elementor page/popup geo visibility plus page-level server-side routing (1 default + 1 country variant). GeoElementor extends this with advanced multi-variant routing, element-level rules, groups, and analytics.', 'elementor-geo-popup'); ?>
                 </p>
                 <div class="egp-workflow-guide">
                     <div class="egp-workflow-item">

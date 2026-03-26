@@ -100,8 +100,19 @@ class EGP_Admin_Menu {
 	}
 
 	public function render_dashboard() {
-		echo '<div class="wrap"><h1>' . esc_html__('Geo Rules Dashboard', 'elementor-geo-popup') . '</h1>';
-		echo '<div id="geo-el-admin-app"></div></div>';
+		echo '<div class="wrap">';
+		echo '<h1>' . esc_html__('Geo Rules Dashboard', 'elementor-geo-popup') . '</h1>';
+		echo '<div class="notice notice-info" style="margin:14px 0;">';
+		echo '<p>';
+		echo esc_html__( 'Geo Core owns the free geo baseline and server-side page routing (1 default + 1 country variant per page). GeoElementor extends this with advanced variant groups and deeper element-level rules.', 'elementor-geo-popup' );
+		echo '</p>';
+		echo '<p>';
+		echo '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=rwgc-usage' ) ) . '">' . esc_html__( 'Free Routing Guide', 'elementor-geo-popup' ) . '</a> ';
+		echo '<a class="button button-primary" href="' . esc_url( admin_url( 'admin.php?page=geo-elementor-variants' ) ) . '">' . esc_html__( 'Manage Variant Groups', 'elementor-geo-popup' ) . '</a>';
+		echo '</p>';
+		echo '</div>';
+		echo '<div id="geo-el-admin-app"></div>';
+		echo '</div>';
 	}
 
 	/**
@@ -131,6 +142,18 @@ class EGP_Admin_Menu {
 
 	public function render_rules() {
 		echo '<div class="wrap egp-settings">';
+
+		echo '<div class="notice notice-info" style="margin:14px 0;">';
+		echo '<p>';
+		echo esc_html__( 'Geo Core (free) handles shared geo engine + page-level server-side routing (1 default + 1 country variant per page).', 'elementor-geo-popup' ) . '<br />';
+		echo esc_html__( 'GeoElementor Pro uses Rules/Groups for advanced element/page/popup targeting.', 'elementor-geo-popup' );
+		echo '</p>';
+		echo '<p>';
+		echo '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=rwgc-usage' ) ) . '">' . esc_html__( 'Free Routing Guide', 'elementor-geo-popup' ) . '</a> ';
+		echo '<a class="button button-primary" href="' . esc_url( admin_url( 'admin.php?page=geo-elementor-variants' ) ) . '">' . esc_html__( 'Variant Groups', 'elementor-geo-popup' ) . '</a>';
+		echo '</p>';
+		echo '</div>';
+
 		echo '<div class="egp-header" style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">';
 		echo '<img id="egp-admin-logo" src="' . esc_url( EGP_PLUGIN_URL . 'assets/img/GeoElementor.svg' ) . '" alt="Geo Elementor" style="height:40px;width:auto;vertical-align:middle;display:block;" />';
 		echo '<h1 style="margin:0;line-height:1;">' . esc_html__('Geo Rules', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="Rules target a specific Page or Popup with selected countries. If an element is managed by a Group, avoid creating a duplicate Rule for the same element to prevent conflicts."></span></h1>';

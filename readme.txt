@@ -2,9 +2,9 @@
 Contributors: reactwoo
 Tags: elementor, popup, geolocation, geo-targeting, maxmind, country-specific, widget, globals, geo-rules, location-based
 Requires at least: 5.0
-Tested up to: 6.4
+Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.4
+Stable tag: 1.0.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -37,7 +37,8 @@ Advanced geo-targeting solution for Elementor. Create location-based rules for p
 
 1. **Geo Core baseline**: Configure MaxMind and base geo engine in ReactWoo Geo Core
 2. **Free Elementor baseline**: Use document-level geo visibility on Elementor pages/popups in Geo Core
-3. **Create advanced rules**: Use GeoElementor to add section/container/widget targeting and advanced logic
+3. **Free variant routing baseline**: Use Geo Core page-level server-side routing (1 default + 1 country mapping per page)
+4. **Create advanced rules**: Use GeoElementor to add section/container/widget targeting and advanced multi-variant logic
 4. **Configure Popups**: Add advanced geo targeting and behavior controls in Elementor
 5. **Use Geo Widget**: Drag the "Geo" widget into Elementor for dynamic geo-aware content
 6. **Global Settings**: Apply geo-targeting to Elementor's global widgets, colors, and typography
@@ -139,6 +140,11 @@ Yes, the plugin works on all devices and automatically detects mobile IP address
 9. Preferred Countries configuration
 
 == Changelog ==
+
+= 1.0.5 =
+* Added Geo Core routing extension contract integration (`rwgc_route_variant_decision`) for Pro users.
+* Clarified capability split: Geo Core baseline routing vs GeoElementor advanced multi-variant routing.
+* Updated compatibility metadata.
 
 = 1.0.4 =
 * Aligned with ReactWoo Geo Core readiness checks and setup messaging.
