@@ -9,6 +9,24 @@ if (!defined('ABSPATH')) {
 }
 
 class EGP_Admin_Menu {
+	public static function render_inner_nav($current = 'geo-elementor') {
+		$items = array(
+			'geo-elementor'          => __('Dashboard', 'elementor-geo-popup'),
+			'elementor-geo-popup'    => __('Settings', 'elementor-geo-popup'),
+			'geo-content'            => __('Geo Content', 'elementor-geo-popup'),
+			'geo-elementor-rules'    => __('Rules', 'elementor-geo-popup'),
+			'geo-elementor-variants' => __('Groups', 'elementor-geo-popup'),
+			'egp-addons'             => __('Add-Ons', 'elementor-geo-popup'),
+			'geo-elementor-license'  => __('License', 'elementor-geo-popup'),
+		);
+		echo '<nav class="egp-inner-nav" aria-label="' . esc_attr__('GeoElementor section navigation', 'elementor-geo-popup') . '">';
+		foreach ($items as $slug => $label) {
+			$class = 'egp-inner-nav__link' . ($slug === $current ? ' is-active' : '');
+			echo '<a class="' . esc_attr($class) . '" href="' . esc_url(admin_url('admin.php?page=' . $slug)) . '">' . esc_html($label) . '</a>';
+		}
+		echo '</nav>';
+	}
+
 	public function __construct() {
 		add_action('admin_menu', array($this, 'register_menus'), 9);
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_menu_icon_css'));
@@ -102,6 +120,7 @@ class EGP_Admin_Menu {
 	public function render_dashboard() {
 		echo '<div class="wrap">';
 		echo '<h1>' . esc_html__('Geo Rules Dashboard', 'elementor-geo-popup') . '</h1>';
+		self::render_inner_nav('geo-elementor');
 		echo '<div class="notice notice-info" style="margin:14px 0;">';
 		echo '<p>';
 		echo esc_html__( 'Geo Core owns the free geo baseline and server-side page routing (1 default + 1 country variant per page). GeoElementor extends this with advanced variant groups and deeper element-level rules.', 'elementor-geo-popup' );
@@ -142,6 +161,7 @@ class EGP_Admin_Menu {
 
 	public function render_rules() {
 		echo '<div class="wrap egp-settings">';
+		self::render_inner_nav('geo-elementor-rules');
 
 		echo '<div class="notice notice-info" style="margin:14px 0;">';
 		echo '<p>';

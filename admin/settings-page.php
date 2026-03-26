@@ -241,6 +241,7 @@ class EGP_Admin_Settings {
                 <img id="egp-admin-logo" src="<?php echo esc_url( EGP_PLUGIN_URL . 'assets/img/GeoElementor.svg' ); ?>" alt="Geo Elementor" style="height:40px;width:auto;vertical-align:middle;" />
                 <h1 style="margin:0;line-height:1;"><?php echo esc_html(get_admin_page_title()); ?></h1>
             </div>
+			<?php if ( class_exists( 'EGP_Admin_Menu' ) ) { EGP_Admin_Menu::render_inner_nav( 'elementor-geo-popup' ); } ?>
 
 			<div class="egp-hero">
 				<h2><?php esc_html_e( 'GeoElementor Pro Extension Settings', 'elementor-geo-popup' ); ?></h2>

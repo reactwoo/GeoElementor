@@ -15,6 +15,9 @@ class EGP_Admin_Dashboard {
 
 	public function render_page() {
 		echo '<div class="wrap"><h1>' . esc_html__('Geo Rules Dashboard', 'elementor-geo-popup') . "</h1>";
+		if ( class_exists( 'EGP_Admin_Menu' ) ) {
+			EGP_Admin_Menu::render_inner_nav( 'geo-elementor' );
+		}
 		echo '<div id="geo-el-admin-app"></div>';
 		echo '</div>';
 	}

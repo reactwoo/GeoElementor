@@ -72,6 +72,7 @@ class EGP_Geo_Content_Dashboard {
         ?>
         <div class="wrap egp-content-dashboard">
             <h1><?php _e('Geo Content Management', 'elementor-geo-popup'); ?></h1>
+			<?php if ( class_exists( 'EGP_Admin_Menu' ) ) { EGP_Admin_Menu::render_inner_nav( 'geo-content' ); } ?>
 
 			<div class="notice notice-info" style="margin:14px 0;">
 				<p>

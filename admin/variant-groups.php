@@ -177,6 +177,9 @@ class RW_Geo_Variant_Groups_Admin {
         echo '<img id="egp-admin-logo" src="' . esc_url( EGP_PLUGIN_URL . 'assets/img/GeoElementor.svg' ) . '" alt="Geo Elementor" style="height:40px;width:auto;vertical-align:middle;" />';
         echo '<h1 style="margin:0;line-height:1;">' . __('Groups', 'elementor-geo-popup') . '</h1>';
         echo '</div>';
+        if ( class_exists( 'EGP_Admin_Menu' ) ) {
+            EGP_Admin_Menu::render_inner_nav( 'geo-elementor-variants' );
+        }
         echo '<div class="egp-section-card">';
         echo '<p style="margin:0 0 8px 0;">' . __('Manage variant Groups that map content (Pages/Popups/Sections/Widgets) to countries.', 'elementor-geo-popup') . '</p>';
         echo '<p style="margin:0 0 8px 0;">' . __('Tip: Use a default target for the group, then add specific overrides for selected countries. Rules on the same target take precedence and may block group mappings.', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="If a Rule already targets the same Page/Popup, the Group mapping will not apply to avoid conflicts."></span></p>';
