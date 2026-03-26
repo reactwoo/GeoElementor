@@ -174,7 +174,10 @@ class RW_Geo_Variant_Groups_Admin {
         
         echo '<div class="wrap egp-settings">';
         echo '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">';
-        echo '<img id="egp-admin-logo" src="' . esc_url( EGP_PLUGIN_URL . 'assets/img/GeoElementor.svg' ) . '" alt="Geo Elementor" style="height:40px;width:auto;vertical-align:middle;" />';
+        echo '<span class="egp-admin-logo-wrap">';
+        echo '<img id="egp-admin-logo" src="' . esc_url( EGP_PLUGIN_URL . 'assets/img/GeoElementor.svg' ) . '" alt="Geo Elementor" style="height:40px;width:auto;vertical-align:middle;" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-flex\';" />';
+        echo '<span class="egp-admin-logo-fallback" style="display:none;">GE</span>';
+        echo '</span>';
         echo '<h1 style="margin:0;line-height:1;">' . __('Groups', 'elementor-geo-popup') . '</h1>';
         echo '</div>';
         if ( class_exists( 'EGP_Admin_Menu' ) ) {

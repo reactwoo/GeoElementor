@@ -238,7 +238,10 @@ class EGP_Admin_Settings {
         ?>
         <div class="wrap egp-settings">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-                <img id="egp-admin-logo" src="<?php echo esc_url( EGP_PLUGIN_URL . 'assets/img/GeoElementor.svg' ); ?>" alt="Geo Elementor" style="height:40px;width:auto;vertical-align:middle;" />
+                <span class="egp-admin-logo-wrap">
+                    <img id="egp-admin-logo" src="<?php echo esc_url( EGP_PLUGIN_URL . 'assets/img/GeoElementor.svg' ); ?>" alt="Geo Elementor" style="height:40px;width:auto;vertical-align:middle;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';" />
+                    <span class="egp-admin-logo-fallback" style="display:none;">GE</span>
+                </span>
                 <h1 style="margin:0;line-height:1;"><?php echo esc_html(get_admin_page_title()); ?></h1>
             </div>
 			<?php if ( class_exists( 'EGP_Admin_Menu' ) ) { EGP_Admin_Menu::render_inner_nav( 'elementor-geo-popup' ); } ?>
