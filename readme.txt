@@ -4,7 +4,7 @@ Tags: elementor, popup, geolocation, geo-targeting, maxmind, country-specific, w
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.5.1
+Stable tag: 1.0.5.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -140,6 +140,10 @@ Yes, the plugin works on all devices and automatically detects mobile IP address
 9. Preferred Countries configuration
 
 == Changelog ==
+
+= 1.0.5.2 =
+* Added compatibility guard for specific Elementor dependency-order debug notices on newer WordPress versions.
+* Kept notice suppression narrowly scoped to known false positives to avoid hiding real warnings.
 
 = 1.0.5.1 =
 * Added WordPress-safe inner section navigation tabs across key GeoElementor admin screens.

@@ -3,7 +3,7 @@
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
  * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration via ReactWoo Geo Core and MaxMind GeoLite2 database.
- * Version: 1.0.5.1
+ * Version: 1.0.5.2
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
  * License: GPL v2 or later
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('EGP_VERSION', '1.0.5.1');
+define('EGP_VERSION', '1.0.5.2');
 define('EGP_PLUGIN_FILE', __FILE__);
 define('EGP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EGP_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -71,8 +71,39 @@ class ElementorGeoPopup {
      */
     private function init_hooks() {
         add_action('plugins_loaded', array($this, 'init'), 20); // Increased priority to load after other plugins
+        add_filter('doing_it_wrong_trigger_error', array($this, 'filter_known_elementor_dependency_notices'), 10, 4);
         register_activation_hook(EGP_PLUGIN_FILE, array($this, 'activate'));
         register_deactivation_hook(EGP_PLUGIN_FILE, array($this, 'deactivate'));
+    }
+
+    /**
+     * Suppress known Elementor dependency-order notices introduced by WP 6.9.1 debug checks.
+     *
+     * Keep this scoped to the exact Elementor handles/functions to avoid hiding real issues.
+     *
+     * @param bool   $trigger  Whether to trigger the doing_it_wrong notice.
+     * @param string $function Function name.
+     * @param string $message  Notice message.
+     * @param string $version  Version argument from _doing_it_wrong.
+     * @return bool
+     */
+    public function filter_known_elementor_dependency_notices($trigger, $function, $message, $version) {
+        if (!is_admin()) {
+            return $trigger;
+        }
+
+        if (!in_array($function, array('WP_Styles::add', 'WP_Scripts::add'), true)) {
+            return $trigger;
+        }
+
+        $msg = (string) $message;
+        $is_known = (
+            strpos($msg, 'elementor-post-') !== false && strpos($msg, 'elementor-frontend') !== false
+        ) || (
+            strpos($msg, 'elementor-v2-editor-components') !== false && strpos($msg, 'elementor-v2-editor-') !== false
+        );
+
+        return $is_known ? false : $trigger;
     }
 
     /**
