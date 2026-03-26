@@ -4,7 +4,7 @@ Tags: elementor, popup, geolocation, geo-targeting, maxmind, country-specific, w
 Requires at least: 5.0
 Tested up to: 6.4
 Requires PHP: 7.4
-Stable tag: 1.0.2
+Stable tag: 1.0.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -139,6 +139,11 @@ Yes, the plugin works on all devices and automatically detects mobile IP address
 9. Preferred Countries configuration
 
 == Changelog ==
+
+= 1.0.4 =
+* Aligned with ReactWoo Geo Core readiness checks and setup messaging.
+* Clarified free baseline vs advanced capability split in admin and documentation.
+* Prevented duplicate non-pro Elementor control sections when Geo Core baseline is active.
 
 = 1.0.0 =
 * Initial release
