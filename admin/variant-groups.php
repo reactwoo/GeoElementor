@@ -184,12 +184,12 @@ class RW_Geo_Variant_Groups_Admin {
             EGP_Admin_Menu::render_inner_nav( 'geo-elementor-variants' );
         }
         echo '<div class="egp-section-card">';
-        echo '<p style="margin:0 0 8px 0;">' . __('Manage variant Groups that map content (Pages/Popups/Sections/Widgets) to countries.', 'elementor-geo-popup') . '</p>';
+        echo '<p style="margin:0 0 8px 0;">' . __('Manage Pro Groups that map content (Pages/Popups/Sections/Widgets) to countries for a selected Master page.', 'elementor-geo-popup') . '</p>';
         echo '<p style="margin:0 0 8px 0;">' . __('Tip: Use a default target for the group, then add specific overrides for selected countries. Rules on the same target take precedence and may block group mappings.', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="If a Rule already targets the same Page/Popup, the Group mapping will not apply to avoid conflicts."></span></p>';
         echo '</div>';
 
 		echo '<div class="notice notice-info" style="margin:14px 0;">';
-		echo '<p>' . esc_html__('Free tier routing (1 default + 1 additional country variant per page) is configured in Geo Core. This screen is for GeoElementor Pro advanced variant groups.', 'elementor-geo-popup') . '</p>';
+		echo '<p>' . esc_html__('Routing ownership: Geo Core controls free Master/Secondary routing, while this screen controls Pro groups layered on top for country-first matching.', 'elementor-geo-popup') . '</p>';
 		echo '<p>';
 		echo '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=rwgc-usage' ) ) . '">' . esc_html__('Geo Core Free Routing Guide', 'elementor-geo-popup') . '</a> ';
 		echo '<a class="button button-primary" href="' . esc_url( admin_url( 'admin.php?page=geo-elementor-variants' ) ) . '">' . esc_html__('You are here: Variant Groups', 'elementor-geo-popup') . '</a>';
@@ -347,6 +347,31 @@ class RW_Geo_Variant_Groups_Admin {
         echo '<td><input type="text" id="variant_slug" name="variant_slug" value="' . esc_attr($variant->slug ?? '') . '" class="regular-text" required></td>';
         echo '</tr>';
         
+        // Master context
+        echo '<tr>';
+        echo '<th scope="row"><label for="master_page_id">' . __('Master Page', 'elementor-geo-popup') . '</label></th>';
+        echo '<td>';
+        echo '<select id="master_page_id" name="master_page_id">';
+        echo '<option value="">' . __('Select Master Page', 'elementor-geo-popup') . '</option>';
+        $pages = get_pages(array('sort_column' => 'post_title'));
+        foreach ($pages as $page) {
+            $selected = ($variant->master_page_id ?? '') == $page->ID ? 'selected' : '';
+            echo '<option value="' . $page->ID . '" ' . $selected . '>' . esc_html($page->post_title) . '</option>';
+        }
+        echo '</select>';
+        echo '<p class="description">' . __('Choose the Master page this Pro group should manage.', 'elementor-geo-popup') . '</p>';
+        echo '</td>';
+        echo '</tr>';
+
+        echo '<tr>';
+        echo '<th scope="row">' . __('Runtime Status', 'elementor-geo-popup') . '</th>';
+        echo '<td>';
+        echo '<label><input type="checkbox" name="is_active" value="1" ' . checked((int) ($variant->is_active ?? 1), 1, false) . '> ' . __('Active in runtime', 'elementor-geo-popup') . '</label><br>';
+        echo '<label>' . __('Priority', 'elementor-geo-popup') . ' <input type="number" name="priority" value="' . esc_attr($variant->priority ?? 50) . '" min="1" max="1000" class="small-text"></label>';
+        echo '<p class="description">' . __('Lower numbers run first when multiple groups target the same Master page.', 'elementor-geo-popup') . '</p>';
+        echo '</td>';
+        echo '</tr>';
+
         // Type Mask
         echo '<tr>';
         echo '<th scope="row">' . __('Entity Types', 'elementor-geo-popup') . '</th>';
@@ -470,6 +495,12 @@ class RW_Geo_Variant_Groups_Admin {
         echo '<label><input type="checkbox" name="options[respect_cookie]" value="1" ' . checked(!empty($options['respect_cookie']), true, false) . '> ' . __('Respect manual region cookie', 'elementor-geo-popup') . '</label><br>';
         echo '<label><input type="checkbox" name="options[skip_bots]" value="1" ' . checked(!empty($options['skip_bots']), true, false) . '> ' . __('Skip bots/crawlers', 'elementor-geo-popup') . '</label><br>';
         echo '<label>Cookie TTL (days): <input type="number" name="options[cookie_ttl]" value="' . esc_attr($options['cookie_ttl'] ?? 60) . '" min="1" max="365" class="small-text"></label>';
+        echo '<hr style="margin:10px 0;">';
+        echo '<strong>' . __('A/B Experiment (optional)', 'elementor-geo-popup') . '</strong><br>';
+        echo '<label><input type="checkbox" name="options[ab_test][enabled]" value="1" ' . checked(!empty($options['ab_test']['enabled']), true, false) . '> ' . __('Enable weighted split inside this group', 'elementor-geo-popup') . '</label><br>';
+        echo '<label>' . __('Experiment Key', 'elementor-geo-popup') . ': <input type="text" name="options[ab_test][experiment_key]" value="' . esc_attr($options['ab_test']['experiment_key'] ?? '') . '" class="regular-text"></label><br>';
+        echo '<label>' . __('Goal Event', 'elementor-geo-popup') . ': <input type="text" name="options[ab_test][goal_event]" value="' . esc_attr($options['ab_test']['goal_event'] ?? 'conversion') . '" class="regular-text"></label>';
+        echo '<p class="description">' . __('Define buckets in options[ab_test][buckets] via integration/custom UI; runtime assignment is sticky by cookie.', 'elementor-geo-popup') . '</p>';
         echo '</td>';
         echo '</tr>';
         
@@ -792,6 +823,9 @@ class RW_Geo_Variant_Groups_Admin {
             'name' => $name,
             'slug' => $slug,
             'type_mask' => $type_mask,
+            'master_page_id' => intval($_POST['master_page_id'] ?? 0) ?: null,
+            'is_active' => !empty($_POST['is_active']) ? 1 : 0,
+            'priority' => intval($_POST['priority'] ?? 50),
             'default_page_id' => intval($_POST['default_page_id'] ?? 0) ?: null,
             'default_popup_id' => intval($_POST['default_popup_id'] ?? 0) ?: null,
             'options' => array(
@@ -799,9 +833,26 @@ class RW_Geo_Variant_Groups_Admin {
                 'show_selector' => !empty($_POST['options']['show_selector']),
                 'respect_cookie' => !empty($_POST['options']['respect_cookie']),
                 'skip_bots' => !empty($_POST['options']['skip_bots']),
-                'cookie_ttl' => intval($_POST['options']['cookie_ttl'] ?? 60)
+                'cookie_ttl' => intval($_POST['options']['cookie_ttl'] ?? 60),
+                'ab_test' => array(
+                    'enabled' => !empty($_POST['options']['ab_test']['enabled']),
+                    'experiment_key' => sanitize_key($_POST['options']['ab_test']['experiment_key'] ?? ''),
+                    'goal_event' => sanitize_key($_POST['options']['ab_test']['goal_event'] ?? 'conversion'),
+                    'buckets' => array(),
+                ),
             )
         );
+
+        // Validation: one active Pro routing mode per master.
+        if (!empty($data['is_active']) && !empty($data['master_page_id'])) {
+            $variant_crud_check = new RW_Geo_Variant_CRUD();
+            $for_master = $variant_crud_check->get_active_by_master((int) $data['master_page_id']);
+            foreach ($for_master as $existing_variant) {
+                if ((int) $existing_variant->id !== (int) $variant_id) {
+                    wp_send_json_error(__('Another active group already owns this Master page. Disable it first or choose a different Master.', 'elementor-geo-popup'));
+                }
+            }
+        }
         
         $variant_crud = new RW_Geo_Variant_CRUD();
         

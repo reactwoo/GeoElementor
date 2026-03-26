@@ -3,7 +3,7 @@
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
  * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration via ReactWoo Geo Core and MaxMind GeoLite2 database.
- * Version: 1.0.5.2
+ * Version: 1.0.5.3
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
  * License: GPL v2 or later
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('EGP_VERSION', '1.0.5.2');
+define('EGP_VERSION', '1.0.5.3');
 define('EGP_PLUGIN_FILE', __FILE__);
 define('EGP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EGP_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -228,6 +228,9 @@ class ElementorGeoPopup {
         require_once EGP_PLUGIN_DIR . 'includes/widget-registration.php';
         require_once EGP_PLUGIN_DIR . 'includes/global-settings.php';
         require_once EGP_PLUGIN_DIR . 'includes/dashboard-api.php';
+        require_once EGP_PLUGIN_DIR . 'includes/class-egp-ab-testing.php';
+        require_once EGP_PLUGIN_DIR . 'includes/class-egp-ai-translation.php';
+        require_once EGP_PLUGIN_DIR . 'includes/class-egp-pro-migration.php';
         if (file_exists(EGP_PLUGIN_DIR . 'includes/geo-database.php')) {
             require_once EGP_PLUGIN_DIR . 'includes/geo-database.php';
         }
@@ -323,6 +326,9 @@ class ElementorGeoPopup {
         }
         new EGP_Widget_Registration();
         new EGP_Global_Settings();
+        EGP_AB_Testing::init();
+        EGP_AI_Translation::init();
+        EGP_Pro_Migration::init();
         $this->register_rwgc_extensions();
         // Geo Rules system is auto-initialized
     }
@@ -358,7 +364,14 @@ class ElementorGeoPopup {
         $target = 0;
         try {
             $router = RW_Geo_Router::get_instance();
-            $variant = $router->get_active_variant_group_for_route();
+            $master_page_id = isset($decision['page_id']) ? absint($decision['page_id']) : 0;
+            if (class_exists('RWGC_Routing') && $master_page_id > 0) {
+                $cfg = RWGC_Routing::get_page_route_config($master_page_id);
+                if (!empty($cfg['enabled']) && isset($cfg['role']) && $cfg['role'] === 'variant' && !empty($cfg['master_page_id'])) {
+                    $master_page_id = absint($cfg['master_page_id']);
+                }
+            }
+            $variant = $router->get_active_variant_group_for_route($master_page_id);
             if (!$variant) {
                 return $decision;
             }

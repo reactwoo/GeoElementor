@@ -123,7 +123,7 @@ class EGP_Admin_Menu {
 		self::render_inner_nav('geo-elementor');
 		echo '<div class="notice notice-info" style="margin:14px 0;">';
 		echo '<p>';
-		echo esc_html__( 'Geo Core owns the free geo baseline and server-side page routing (1 default + 1 country variant per page). GeoElementor extends this with advanced variant groups and deeper element-level rules.', 'elementor-geo-popup' );
+		echo esc_html__( 'Geo Core owns the free geo baseline and server-side page routing (Master + one Secondary per master). GeoElementor extends this with advanced variant groups and deeper element-level rules.', 'elementor-geo-popup' );
 		echo '</p>';
 		echo '<p>';
 		echo '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=rwgc-usage' ) ) . '">' . esc_html__( 'Free Routing Guide', 'elementor-geo-popup' ) . '</a> ';
@@ -165,7 +165,7 @@ class EGP_Admin_Menu {
 
 		echo '<div class="notice notice-info" style="margin:14px 0;">';
 		echo '<p>';
-		echo esc_html__( 'Geo Core (free) handles shared geo engine + page-level server-side routing (1 default + 1 country variant per page).', 'elementor-geo-popup' ) . '<br />';
+		echo esc_html__( 'Geo Core (free) handles shared geo engine + page-level server-side routing (Master + one Secondary per master).', 'elementor-geo-popup' ) . '<br />';
 		echo esc_html__( 'GeoElementor Pro uses Rules/Groups for advanced element/page/popup targeting.', 'elementor-geo-popup' );
 		echo '</p>';
 		echo '<p>';

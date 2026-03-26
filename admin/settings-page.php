@@ -86,6 +86,16 @@ class EGP_Admin_Settings {
             'type' => 'string',
             'default' => 'no_cache'
         ));
+
+        register_setting('egp_settings', 'egp_ai_translation_enabled', array(
+            'type' => 'boolean',
+            'default' => false
+        ));
+
+        register_setting('egp_settings', 'egp_ai_translation_approval_mode', array(
+            'type' => 'string',
+            'default' => 'manual_review'
+        ));
         
         // Add settings sections
         add_settings_section(
@@ -162,6 +172,22 @@ class EGP_Admin_Settings {
             __('Cache Mode', 'elementor-geo-popup'),
             array($this, 'render_cache_mode_field'),
             'egp_settings',
+            'egp_general_section'
+        );
+
+        add_settings_field(
+            'egp_ai_translation_enabled',
+            __('AI Translation Pipeline', 'elementor-geo-popup'),
+            array($this, 'render_ai_translation_enabled_field'),
+            'egp_settings_general',
+            'egp_general_section'
+        );
+
+        add_settings_field(
+            'egp_ai_translation_approval_mode',
+            __('AI Translation Approval', 'elementor-geo-popup'),
+            array($this, 'render_ai_translation_approval_field'),
+            'egp_settings_general',
             'egp_general_section'
         );
 
@@ -252,7 +278,7 @@ class EGP_Admin_Settings {
 				<div class="egp-chip-row">
 					<span class="egp-chip"><?php esc_html_e( 'Geo Core: engine + baseline', 'elementor-geo-popup' ); ?></span>
 					<span class="egp-chip"><?php esc_html_e( 'GeoElementor: advanced rules/groups', 'elementor-geo-popup' ); ?></span>
-					<span class="egp-chip egp-chip--warn"><?php esc_html_e( 'Free limit remains 1 fallback + 1 mapping', 'elementor-geo-popup' ); ?></span>
+					<span class="egp-chip egp-chip--warn"><?php esc_html_e( 'Free routing model: Master + one Secondary', 'elementor-geo-popup' ); ?></span>
 				</div>
 				<div class="egp-cta-row">
 					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=rwgc-settings' ) ); ?>"><?php esc_html_e( 'Open Geo Core Settings', 'elementor-geo-popup' ); ?></a>
@@ -292,7 +318,7 @@ class EGP_Admin_Settings {
 						</tr>
 						<tr>
 							<td><?php esc_html_e( 'Free page routing (server-side)', 'elementor-geo-popup' ); ?></td>
-							<td><?php esc_html_e( '1 default + 1 additional country', 'elementor-geo-popup' ); ?></td>
+							<td><?php esc_html_e( 'Master + one Secondary country page', 'elementor-geo-popup' ); ?></td>
 							<td><?php esc_html_e( 'Extends decision path', 'elementor-geo-popup' ); ?></td>
 						</tr>
 						<tr>
@@ -457,6 +483,33 @@ class EGP_Admin_Settings {
             <option value="cdn_vary" <?php selected($value, 'cdn_vary'); ?>><?php esc_html_e('CDN Vary-by-country (server inject + Vary header)', 'elementor-geo-popup'); ?></option>
         </select>
         <p class="description"><?php esc_html_e('Use Cache-safe if full-page caching/CDN is enabled without country vary.', 'elementor-geo-popup'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render AI translation enabled field.
+     */
+    public function render_ai_translation_enabled_field() {
+        $value = get_option('egp_ai_translation_enabled', false);
+        ?>
+        <label>
+            <input type="checkbox" name="egp_ai_translation_enabled" value="1" <?php checked($value, 1); ?> />
+            <?php esc_html_e('Enable AI translation generation pipeline for locale secondary pages', 'elementor-geo-popup'); ?>
+        </label>
+        <?php
+    }
+
+    /**
+     * Render AI translation approval mode field.
+     */
+    public function render_ai_translation_approval_field() {
+        $value = get_option('egp_ai_translation_approval_mode', 'manual_review');
+        ?>
+        <select name="egp_ai_translation_approval_mode">
+            <option value="manual_review" <?php selected($value, 'manual_review'); ?>><?php esc_html_e('Manual review (draft + editor approval)', 'elementor-geo-popup'); ?></option>
+            <option value="auto_approve" <?php selected($value, 'auto_approve'); ?>><?php esc_html_e('Auto approve (publish immediately)', 'elementor-geo-popup'); ?></option>
+        </select>
+        <p class="description"><?php esc_html_e('Controls whether generated translations are saved as drafts or published immediately.', 'elementor-geo-popup'); ?></p>
         <?php
     }
 

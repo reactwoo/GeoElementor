@@ -87,6 +87,9 @@ class RW_Geo_Database {
             name VARCHAR(190) NOT NULL,
             slug VARCHAR(190) NOT NULL,
             type_mask TINYINT UNSIGNED NOT NULL DEFAULT 3,
+            master_page_id BIGINT UNSIGNED NULL,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            priority SMALLINT UNSIGNED NOT NULL DEFAULT 50,
             default_page_id BIGINT UNSIGNED NULL,
             default_popup_id BIGINT UNSIGNED NULL,
             default_section_ref VARCHAR(190) NULL,
@@ -96,7 +99,9 @@ class RW_Geo_Database {
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             UNIQUE KEY slug_unique (slug),
-            KEY type_mask_idx (type_mask)
+            KEY type_mask_idx (type_mask),
+            KEY master_page_idx (master_page_id),
+            KEY active_priority_idx (is_active, priority)
         ) {$this->charset_collate};";
         
         dbDelta($sql);
@@ -121,6 +126,28 @@ class RW_Geo_Database {
                 ON DELETE CASCADE
         ) {$this->charset_collate};";
         
+        dbDelta($sql);
+
+        // Experiment analytics table (A/B add-on contract).
+        $events_table = $this->db->prefix . 'rw_geo_experiment_event';
+        $sql = "CREATE TABLE {$events_table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            variant_id BIGINT UNSIGNED NOT NULL,
+            experiment_key VARCHAR(120) NOT NULL,
+            bucket_key VARCHAR(120) NOT NULL,
+            visitor_hash VARCHAR(64) NOT NULL,
+            event_type VARCHAR(40) NOT NULL,
+            target_type VARCHAR(20) NULL,
+            target_id BIGINT UNSIGNED NULL,
+            country_iso2 CHAR(2) NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY variant_exp_idx (variant_id, experiment_key),
+            KEY visitor_idx (visitor_hash),
+            KEY event_type_idx (event_type),
+            KEY created_idx (created_at)
+        ) {$this->charset_collate};";
+
         dbDelta($sql);
         
         if (defined('WP_DEBUG') && WP_DEBUG) {
@@ -154,6 +181,10 @@ class RW_Geo_Database {
             ),
             'defaults' => array(
                 'variant_home_slug' => 'homepage'
+            ),
+            'routing' => array(
+                'pro_group_precedence' => true,
+                'auto_migrate_from_free' => true
             )
         );
         
@@ -214,6 +245,9 @@ class RW_Geo_Variant_CRUD {
             'name' => '',
             'slug' => '',
             'type_mask' => 3, // Page + Popup by default
+            'master_page_id' => null,
+            'is_active' => 1,
+            'priority' => 50,
             'default_page_id' => null,
             'default_popup_id' => null,
             'default_section_ref' => null,
@@ -248,6 +282,9 @@ class RW_Geo_Variant_CRUD {
             'name' => sanitize_text_field($data['name']),
             'slug' => sanitize_key($data['slug']),
             'type_mask' => intval($data['type_mask']),
+            'master_page_id' => $data['master_page_id'] ? intval($data['master_page_id']) : null,
+            'is_active' => !empty($data['is_active']) ? 1 : 0,
+            'priority' => isset($data['priority']) ? max(1, min(1000, intval($data['priority']))) : 50,
             'default_page_id' => $data['default_page_id'] ? intval($data['default_page_id']) : null,
             'default_popup_id' => $data['default_popup_id'] ? intval($data['default_popup_id']) : null,
             'default_section_ref' => $data['default_section_ref'] ? sanitize_text_field($data['default_section_ref']) : null,
@@ -365,6 +402,18 @@ class RW_Geo_Variant_CRUD {
         if (isset($data['type_mask'])) {
             $update_data['type_mask'] = intval($data['type_mask']);
         }
+
+        if (isset($data['master_page_id'])) {
+            $update_data['master_page_id'] = $data['master_page_id'] ? intval($data['master_page_id']) : null;
+        }
+
+        if (isset($data['is_active'])) {
+            $update_data['is_active'] = !empty($data['is_active']) ? 1 : 0;
+        }
+
+        if (isset($data['priority'])) {
+            $update_data['priority'] = max(1, min(1000, intval($data['priority'])));
+        }
         
         if (isset($data['default_page_id'])) {
             $update_data['default_page_id'] = $data['default_page_id'] ? intval($data['default_page_id']) : null;
@@ -421,6 +470,32 @@ class RW_Geo_Variant_CRUD {
         
         return true;
     }
+
+    /**
+     * Get active variants mapped to a specific master page.
+     *
+     * @param int $master_page_id Master page ID.
+     * @return array
+     */
+    public function get_active_by_master($master_page_id) {
+        $master_page_id = intval($master_page_id);
+        if ($master_page_id <= 0) {
+            return array();
+        }
+
+        $results = $this->db->get_results(
+            $this->db->prepare(
+                "SELECT * FROM {$this->table} WHERE master_page_id = %d AND is_active = 1 ORDER BY priority ASC, id ASC",
+                $master_page_id
+            )
+        );
+
+        foreach ($results as $result) {
+            $result->options = json_decode($result->options, true);
+        }
+
+        return is_array($results) ? $results : array();
+    }
 }
 
 /**
@@ -461,7 +536,8 @@ class RW_Geo_Router {
         }
         
         $country = $this->detect_country();
-        $variant = $this->get_active_variant_group_for_route();
+        $master_page_id = $this->get_master_context_page_id();
+        $variant = $this->get_active_variant_group_for_route($master_page_id);
         
         if (!$variant) {
             return;
@@ -475,6 +551,7 @@ class RW_Geo_Router {
         }
         
         $mapping = $this->resolve_mapping($variant, $country);
+        $mapping = apply_filters('egp_ab_assignment_target', $mapping, $variant, $country, $master_page_id);
         $this->set_context_country($country ?: 'GLOBAL');
         $this->resolved_mapping = $mapping;
         
@@ -527,9 +604,18 @@ class RW_Geo_Router {
     /**
      * Get active variant group for current route
      */
-    public function get_active_variant_group_for_route() {
-        // For now, return the default homepage variant
-        // This will be enhanced to detect based on current page/post
+    public function get_active_variant_group_for_route($master_page_id = 0) {
+        $master_page_id = intval($master_page_id);
+
+        if ($master_page_id > 0) {
+            $variant_crud = new RW_Geo_Variant_CRUD();
+            $variants = $variant_crud->get_active_by_master($master_page_id);
+            if (!empty($variants)) {
+                return $variants[0];
+            }
+        }
+
+        // Back-compat fallback: old default slug behavior.
         $settings = get_option('rw_geo_settings', array());
         $default_slug = !empty($settings['defaults']['variant_home_slug']) ? $settings['defaults']['variant_home_slug'] : 'homepage';
         
@@ -561,6 +647,27 @@ class RW_Geo_Router {
             'section_ref' => $variant->default_section_ref,
             'widget_ref' => $variant->default_widget_ref
         );
+    }
+
+    /**
+     * Resolve master context page ID for current request.
+     *
+     * @return int
+     */
+    private function get_master_context_page_id() {
+        $page_id = get_queried_object_id();
+        if (!$page_id) {
+            return 0;
+        }
+
+        if (class_exists('RWGC_Routing')) {
+            $cfg = RWGC_Routing::get_page_route_config((int) $page_id);
+            if (!empty($cfg['enabled']) && isset($cfg['role']) && $cfg['role'] === 'variant' && !empty($cfg['master_page_id'])) {
+                return intval($cfg['master_page_id']);
+            }
+        }
+
+        return intval($page_id);
     }
     
     /**
@@ -927,8 +1034,7 @@ add_action('wp_ajax_rw_geo_preview_mapping', function(){
     $router = RW_Geo_Router::get_instance();
     $variant = $router->get_active_variant_group_for_route();
     if (!$variant) { wp_send_json_error(__('No group for this route', 'elementor-geo-popup')); }
-    $db = RW_Geo_Database::get_instance();
-    $mapping = $db->resolve_mapping($variant, strtoupper($country));
+    $mapping = $router->resolve_mapping($variant, strtoupper($country));
     $out = array(
         'variant' => array('id'=>$variant->id, 'name'=>$variant->name, 'slug'=>$variant->slug),
         'mapping' => $mapping ? array('id'=>$mapping->id, 'popup_id'=>$mapping->popup_id, 'page_id'=>$mapping->page_id) : null,
