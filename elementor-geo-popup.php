@@ -138,8 +138,13 @@ class ElementorGeoPopup {
 
         if ($this->should_log_info()) { error_log('[EGP] Elementor and Pro found - proceeding with full initialization'); }
         
-        // Determine readiness before loading geo-dependent components
-        $this->geo_ready = $this->is_geo_ready();
+        // Determine readiness before loading geo-dependent components.
+        // When ReactWoo Geo Core is present, use its readiness instead of internal MaxMind flags.
+        if ( function_exists( 'rwgc_is_ready' ) ) {
+            $this->geo_ready = (bool) rwgc_is_ready();
+        } else {
+            $this->geo_ready = $this->is_geo_ready();
+        }
 
         // Load plugin components
         $this->load_dependencies();
@@ -226,10 +231,17 @@ class ElementorGeoPopup {
             if (!$this->geo_ready) {
                 add_action('admin_notices', function(){
                     if (!current_user_can('manage_options')) { return; }
-                    $url = esc_url(admin_url('admin.php?page=elementor-geo-popup#maxmind'));
-                    echo '<div class="notice notice-warning"><p>'
-                       . esc_html__('Geo Elementor is inactive until you add your MaxMind license key.', 'elementor-geo-popup')
-                       . ' <a href="' . $url . '">' . esc_html__('Add your key in Settings', 'elementor-geo-popup') . '</a>.</p></div>';
+                    if ( function_exists( 'rwgc_is_ready' ) ) {
+                        $url  = esc_url( admin_url( 'admin.php?page=reactwoo-geocore-settings' ) );
+                        echo '<div class="notice notice-warning"><p>'
+                           . esc_html__( 'GeoElementor is waiting for ReactWoo Geo Core to finish setup (MaxMind license and database).', 'elementor-geo-popup' )
+                           . ' <a href="' . $url . '">' . esc_html__( 'Open Geo Core settings', 'elementor-geo-popup' ) . '</a>.</p></div>';
+                    } else {
+                        $url = esc_url(admin_url('admin.php?page=elementor-geo-popup#maxmind'));
+                        echo '<div class="notice notice-warning"><p>'
+                           . esc_html__('Geo Elementor is inactive until you add your MaxMind license key.', 'elementor-geo-popup')
+                           . ' <a href="' . $url . '">' . esc_html__('Add your key in Settings', 'elementor-geo-popup') . '</a>.</p></div>';
+                    }
                 });
             }
             // Reduce editor console noise: prevent cross-origin Google Fonts requests in Elementor editor
@@ -534,6 +546,10 @@ class ElementorGeoPopup {
      * This method is called by the registered hooks for each element type
      */
     public function add_geo_targeting_controls($element, $args = null) {
+        // Geo Core now provides baseline Elementor controls in free mode.
+        // Avoid duplicate/conflicting control sections when Geo Core is active.
+        $rwgc_basic_active = class_exists('RWGC_Elementor') || function_exists('rwgc_is_ready');
+
         // Check if geo controls already exist to prevent duplicates
         $controls = $element->get_controls();
         if (is_array($controls) && isset($controls['egp_geo_tools'])) {
@@ -542,6 +558,10 @@ class ElementorGeoPopup {
 
         // Determine Pro gating - check license status instead of WooCommerce capability
         $is_pro = $this->is_license_valid() || apply_filters('egp_is_pro_user', false);
+
+        if (!$is_pro && $rwgc_basic_active) {
+            return;
+        }
 
         $element->start_controls_section(
             'egp_geo_tools',

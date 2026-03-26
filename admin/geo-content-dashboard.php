@@ -75,6 +75,9 @@ class EGP_Geo_Content_Dashboard {
             
             <div class="egp-help-box">
                 <h3><span class="dashicons dashicons-info" style="vertical-align: middle;"></span> <?php _e('How It Works', 'elementor-geo-popup'); ?></h3>
+                <p class="description">
+                    <?php _e('Geo Core (free) handles basic Elementor page/popup geo visibility. GeoElementor extends this with advanced element-level rules, groups, and analytics.', 'elementor-geo-popup'); ?>
+                </p>
                 <div class="egp-workflow-guide">
                     <div class="egp-workflow-item">
                         <strong><?php _e('Reusable Content:', 'elementor-geo-popup'); ?></strong>

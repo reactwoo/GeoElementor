@@ -16,8 +16,10 @@ Advanced geo-targeting solution for Elementor. Create location-based rules for p
 
 = Key Features =
 
+* **Built on ReactWoo Geo Core**: Reuses shared IP/country engine and MaxMind management from Geo Core
+* **Clear free vs advanced split**: Geo Core handles page/popup baseline, GeoElementor adds advanced targeting depth
 * **Geo Rules Management**: Create and manage complex geo-targeting rules from a dedicated admin interface
-* **Multi-Target Support**: Target popups, pages, sections, and widgets with geo rules
+* **Multi-Target Support**: Advanced targeting for sections, containers, widgets, and grouped experiences
 * **Geo-Targeted Popups**: Show specific popups to visitors from selected countries
 * **Geo Widget**: Dedicated Elementor widget for geo-targeting any content
 * **Global Settings Integration**: Apply geo-targeting to Elementor's global widgets, colors, and typography
@@ -33,14 +35,14 @@ Advanced geo-targeting solution for Elementor. Create location-based rules for p
 
 = How It Works =
 
-1. **Setup**: Configure your MaxMind license key and preferred countries in the plugin settings
-2. **Database**: Download the latest GeoLite2 country database
-3. **Create Geo Rules**: Use the Geo Rules admin interface to create targeting rules for popups, pages, or content
-4. **Configure Popups**: Add geo-targeting rules to your Elementor popups (manual or automatic sync)
-5. **Use Geo Widget**: Drag the "Geo" widget into any Elementor design for content geo-targeting
+1. **Geo Core baseline**: Configure MaxMind and base geo engine in ReactWoo Geo Core
+2. **Free Elementor baseline**: Use document-level geo visibility on Elementor pages/popups in Geo Core
+3. **Create advanced rules**: Use GeoElementor to add section/container/widget targeting and advanced logic
+4. **Configure Popups**: Add advanced geo targeting and behavior controls in Elementor
+5. **Use Geo Widget**: Drag the "Geo" widget into Elementor for dynamic geo-aware content
 6. **Global Settings**: Apply geo-targeting to Elementor's global widgets, colors, and typography
-7. **Automatic Detection**: Plugin detects visitor countries and shows appropriate content
-8. **Analytics**: Track popup performance and visitor engagement by country
+7. **Automatic Detection**: Shared engine detects visitor countries and applies matching rules
+8. **Analytics**: Track performance and engagement by country
 
 = Use Cases =
 

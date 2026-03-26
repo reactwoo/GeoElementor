@@ -255,8 +255,19 @@ class EGP_Admin_Settings {
                     <?php do_settings_sections('egp_settings_general'); ?>
                 </div>
                 <div class="egp-section-card" id="maxmind">
-                    <h2><?php _e('MaxMind Integration', 'elementor-geo-popup'); ?></h2>
-                    <?php do_settings_sections('egp_settings_maxmind'); ?>
+                    <h2><?php _e('Geo engine (ReactWoo Geo Core)', 'elementor-geo-popup'); ?></h2>
+                    <p class="description">
+                        <?php esc_html_e( 'GeoElementor now relies on the shared ReactWoo Geo Core plugin for IP-to-country lookups and MaxMind database management.', 'elementor-geo-popup' ); ?>
+                    </p>
+                    <p class="description">
+                        <?php esc_html_e( 'Geo Core free baseline includes Elementor Page/Popup document-level geo visibility. GeoElementor focuses on advanced controls like element-level rules, groups, and analytics.', 'elementor-geo-popup' ); ?>
+                    </p>
+                    <p class="description">
+                        <?php esc_html_e( 'Configure your MaxMind Account ID, License Key, cache, and fallback country/currency in the ReactWoo Geo Core settings screen. GeoElementor will automatically reuse that geo engine.', 'elementor-geo-popup' ); ?>
+                    </p>
+                    <p class="description">
+                        <?php esc_html_e( 'If Geo Core is missing or not ready, GeoElementor will gracefully fall back and your geo rules may not behave as expected.', 'elementor-geo-popup' ); ?>
+                    </p>
                 </div>
                 <div class="egp-section-card">
                     <h2><?php _e('Preferred Countries', 'elementor-geo-popup'); ?></h2>
@@ -264,37 +275,18 @@ class EGP_Admin_Settings {
                 </div>
                 <div class="egp-section-card">
                     <h2><?php _e('Database Management', 'elementor-geo-popup'); ?></h2>
-                    <?php do_settings_sections('egp_settings_database'); ?>
+                    <p class="description">
+                        <?php esc_html_e( 'Database downloads and updates are now handled entirely by ReactWoo Geo Core. Use the Geo Core → Tools screen to update or manually upload the MaxMind database.', 'elementor-geo-popup' ); ?>
+                    </p>
                 </div>
                 <?php submit_button(); ?>
             </form>
             
             <div class="egp-database-actions">
                 <h2><?php _e('Database Actions', 'elementor-geo-popup'); ?></h2>
-                
-                <div class="egp-action-buttons">
-                    <button type="button" id="egp-update-database" class="button button-primary">
-                        <?php _e('Update Database', 'elementor-geo-popup'); ?>
-                    </button>
-                    
-                    <button type="button" id="egp-test-connection" class="button button-secondary">
-                        <?php _e('Test Connection', 'elementor-geo-popup'); ?>
-                    </button>
-                </div>
-                
-                <div id="egp-status-message"></div>
-                
-                <div class="egp-database-info">
-                    <h3><?php _e('Database Information', 'elementor-geo-popup'); ?></h3>
-                    <p>
-                        <strong><?php _e('Last Update:', 'elementor-geo-popup'); ?></strong>
-                        <?php echo esc_html(get_option('egp_last_update', __('Never', 'elementor-geo-popup'))); ?>
-                    </p>
-                    <p>
-                        <strong><?php _e('Database Path:', 'elementor-geo-popup'); ?></strong>
-                        <?php echo esc_html(get_option('egp_database_path', __('Not set', 'elementor-geo-popup'))); ?>
-                    </p>
-                </div>
+                <p class="description">
+                    <?php esc_html_e( 'MaxMind database status, last update time, and manual upload options now live in ReactWoo Geo Core → Tools. Use that screen to manage the shared GeoLite2 database used by all ReactWoo products.', 'elementor-geo-popup' ); ?>
+                </p>
             </div>
         </div>
         <?php
