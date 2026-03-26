@@ -22,8 +22,6 @@ class EGP_Admin_Settings {
     public function __construct() {
         add_action('admin_init', array($this, 'init_settings'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
-        add_action('wp_ajax_egp_update_database', array($this, 'ajax_update_database'));
-        add_action('wp_ajax_egp_test_connection', array($this, 'ajax_test_connection'));
         
 
     }
@@ -43,32 +41,9 @@ class EGP_Admin_Settings {
      * Initialize settings
      */
     public function init_settings() {
-        register_setting('egp_settings', 'egp_maxmind_license_key', array(
-            'type' => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
-            'default' => ''
-        ));
-        
-        // Do not register egp_database_path: it's managed programmatically by the updater.
-        
-        register_setting('egp_settings', 'egp_auto_update', array(
-            'type' => 'boolean',
-            'default' => false
-        ));
-        
         register_setting('egp_settings', 'egp_debug_mode', array(
             'type' => 'boolean',
             'default' => false
-        ));
-        
-        register_setting('egp_settings', 'egp_default_popup_id', array(
-            'type' => 'integer',
-            'default' => 0
-        ));
-        
-        register_setting('egp_settings', 'egp_fallback_behavior', array(
-            'type' => 'string',
-            'default' => 'show_to_all'
         ));
         
         register_setting('egp_settings', 'egp_preferred_countries', array(
@@ -97,14 +72,6 @@ class EGP_Admin_Settings {
             'default' => 'manual_review'
         ));
         
-        // Add settings sections
-        add_settings_section(
-            'egp_maxmind_section',
-            '',
-            array($this, 'render_maxmind_section'),
-            'egp_settings_maxmind'
-        );
-        
         add_settings_section(
             'egp_general_section',
             '',
@@ -117,46 +84,6 @@ class EGP_Admin_Settings {
             '',
             array($this, 'render_preferred_countries_section'),
             'egp_settings_preferred'
-        );
-        
-        add_settings_section(
-            'egp_database_section',
-            '',
-            array($this, 'render_database_section'),
-            'egp_settings_database'
-        );
-        
-        // Add settings fields
-        add_settings_field(
-            'egp_maxmind_license_key',
-            __('MaxMind License Key', 'elementor-geo-popup'),
-            array($this, 'render_license_key_field'),
-            'egp_settings_maxmind',
-            'egp_maxmind_section'
-        );
-        
-        add_settings_field(
-            'egp_auto_update',
-            __('Auto Update Database', 'elementor-geo-popup'),
-            array($this, 'render_auto_update_field'),
-            'egp_settings_maxmind',
-            'egp_maxmind_section'
-        );
-        
-        add_settings_field(
-            'egp_default_popup_id',
-            __('Default Popup ID', 'elementor-geo-popup'),
-            array($this, 'render_default_popup_field'),
-            'egp_settings_general',
-            'egp_general_section'
-        );
-        
-        add_settings_field(
-            'egp_fallback_behavior',
-            __('Fallback Behavior', 'elementor-geo-popup'),
-            array($this, 'render_fallback_field'),
-            'egp_settings_general',
-            'egp_general_section'
         );
         
         add_settings_field(
@@ -342,43 +269,20 @@ class EGP_Admin_Settings {
                         <?php esc_html_e( 'GeoElementor now relies on the shared ReactWoo Geo Core plugin for IP-to-country lookups and MaxMind database management.', 'elementor-geo-popup' ); ?>
                     </p>
                     <p class="description">
-                        <?php esc_html_e( 'Geo Core free baseline includes Elementor Page/Popup document-level geo visibility and page-level server-side routing (1 fallback + 1 country mapping per page). GeoElementor focuses on advanced controls like multi-variant routing, element-level rules, groups, and analytics.', 'elementor-geo-popup' ); ?>
+                        <?php esc_html_e( 'Geo Core owns the MaxMind database and the shared country detection. GeoElementor only provides advanced routing and targeting on top.', 'elementor-geo-popup' ); ?>
                     </p>
                     <p class="description">
-                        <?php esc_html_e( 'Configure your MaxMind Account ID, License Key, cache, and fallback country/currency in the ReactWoo Geo Core settings screen. GeoElementor will automatically reuse that geo engine.', 'elementor-geo-popup' ); ?>
-                    </p>
-                    <p class="description">
-                        <?php esc_html_e( 'If Geo Core is missing or not ready, GeoElementor will gracefully fall back and your geo rules may not behave as expected.', 'elementor-geo-popup' ); ?>
+                        <?php esc_html_e( 'If Geo Core is missing or not ready, you will see a warning. Use Geo Core → Tools to update the MaxMind database.', 'elementor-geo-popup' ); ?>
                     </p>
                 </div>
                 <div class="egp-section-card">
                     <h2><?php _e('Preferred Countries', 'elementor-geo-popup'); ?></h2>
                     <?php do_settings_sections('egp_settings_preferred'); ?>
                 </div>
-                <div class="egp-section-card">
-                    <h2><?php _e('Database Management', 'elementor-geo-popup'); ?></h2>
-                    <p class="description">
-                        <?php esc_html_e( 'Database downloads and updates are now handled entirely by ReactWoo Geo Core. Use the Geo Core → Tools screen to update or manually upload the MaxMind database.', 'elementor-geo-popup' ); ?>
-                    </p>
-                </div>
                 <?php submit_button(); ?>
             </form>
-            
-            <div class="egp-database-actions">
-                <h2><?php _e('Database Actions', 'elementor-geo-popup'); ?></h2>
-                <p class="description">
-                    <?php esc_html_e( 'MaxMind database status, last update time, and manual upload options now live in ReactWoo Geo Core → Tools. Use that screen to manage the shared GeoLite2 database used by all ReactWoo products.', 'elementor-geo-popup' ); ?>
-                </p>
-            </div>
         </div>
         <?php
-    }
-    
-    /**
-     * Render MaxMind section
-     */
-    public function render_maxmind_section() {
-        echo '<p>' . __('Configure your MaxMind integration to enable geolocation functionality.', 'elementor-geo-popup') . '</p>';
     }
     
     /**
@@ -388,75 +292,8 @@ class EGP_Admin_Settings {
         echo '<p>' . __('Configure general plugin behavior and default settings.', 'elementor-geo-popup') . '</p>';
     }
     
-    /**
-     * Render database section
-     */
-    public function render_database_section() {
-        echo '<p>' . __('Manage your MaxMind database and update settings.', 'elementor-geo-popup') . '</p>';
-    }
-    
-    /**
-     * Render license key field
-     */
-    public function render_license_key_field() {
-        $value = get_option('egp_maxmind_license_key');
-        ?>
-        <input type="text" id="egp_maxmind_license_key" name="egp_maxmind_license_key" 
-               value="<?php echo esc_attr($value); ?>" class="regular-text" />
-        <p class="description">
-            <?php _e('Enter your MaxMind license key. You can get one for free at', 'elementor-geo-popup'); ?>
-            <a href="https://www.maxmind.com/en/geolite2/signup" target="_blank">maxmind.com</a>
-        </p>
-        <?php
-    }
-    
-    /**
-     * Render auto update field
-     */
-    public function render_auto_update_field() {
-        $value = get_option('egp_auto_update');
-        ?>
-        <label>
-            <input type="checkbox" name="egp_auto_update" value="1" <?php checked($value, 1); ?> />
-            <?php _e('Automatically update the database weekly', 'elementor-geo-popup'); ?>
-        </label>
-        <?php
-    }
-    
-    /**
-     * Render default popup field
-     */
-    public function render_default_popup_field() {
-        $value = get_option('egp_default_popup_id');
-        ?>
-        <input type="number" id="egp_default_popup_id" name="egp_default_popup_id" 
-               value="<?php echo esc_attr($value); ?>" min="0" />
-        <p class="description">
-            <?php _e('Default popup ID to show when no specific country match is found (0 = none)', 'elementor-geo-popup'); ?>
-        </p>
-        <?php
-    }
-    
-    /**
-     * Render fallback field
-     */
-    public function render_fallback_field() {
-        $value = get_option('egp_fallback_behavior');
-        $options = array(
-            'show_to_none' => __('Show to none', 'elementor-geo-popup'),
-            'show_to_all' => __('Show to all visitors', 'elementor-geo-popup'),
-            'apply_group_rule' => __('Apply Group Rule', 'elementor-geo-popup'),
-        );
-        ?>
-        <select name="egp_fallback_behavior">
-            <?php foreach ($options as $key => $label) : ?>
-                <option value="<?php echo esc_attr($key); ?>" <?php selected($value, $key); ?>>
-                    <?php echo esc_html($label); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-        <?php
-    }
+    // NOTE: MaxMind/database update UI intentionally removed from GeoElementor.
+    // Geo Core is the single owner of the MaxMind database and country detection.
     
     /**
      * Render debug field
@@ -799,211 +636,6 @@ class EGP_Admin_Settings {
         );
     }
     
-    /**
-     * AJAX update database
-     */
-    public function ajax_update_database() {
-        check_ajax_referer('egp_admin_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
-        }
-        
-        $license_key = get_option('egp_maxmind_license_key');
-        if (empty($license_key)) {
-            wp_send_json_error(__('MaxMind license key not configured', 'elementor-geo-popup'));
-        }
-        
-        $result = $this->update_geo_database($license_key);
-        
-        if (is_wp_error($result)) {
-            wp_send_json_error($result->get_error_message());
-        }
-        
-        wp_send_json_success(__('Database updated successfully', 'elementor-geo-popup'));
-    }
-    
-    /**
-     * AJAX test connection
-     */
-    public function ajax_test_connection() {
-        check_ajax_referer('egp_admin_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
-        }
-        
-        $license_key = get_option('egp_maxmind_license_key');
-        if (empty($license_key)) {
-            wp_send_json_error(__('MaxMind license key not configured', 'elementor-geo-popup'));
-        }
-        
-        $result = $this->test_maxmind_connection($license_key);
-        
-        if (is_wp_error($result)) {
-            wp_send_json_error($result->get_error_message());
-        }
-        
-        wp_send_json_success(__('Connection successful', 'elementor-geo-popup'));
-    }
-    
-    /**
-     * Update geo database
-     */
-    private function update_geo_database($license_key) {
-        if (!class_exists('PharData')) {
-            return new WP_Error('phar_missing', __('The PHP Phar extension is required to extract the MaxMind archive. Please enable the phar extension.', 'elementor-geo-popup'));
-        }
-
-        $upload_dir = wp_upload_dir();
-        $geo_dir = $upload_dir['basedir'] . '/geo-popup-db';
-
-        if (!file_exists($geo_dir)) {
-            wp_mkdir_p($geo_dir);
-        }
-
-        // Prepare temp paths
-        $temp_gz = trailingslashit($geo_dir) . 'GeoLite2-Country.tar.gz';
-        $temp_tar = trailingslashit($geo_dir) . 'GeoLite2-Country.tar';
-        $extract_dir = trailingslashit($geo_dir) . 'extract_tmp';
-
-        // Clean any previous temp
-        if (file_exists($temp_gz)) { @unlink($temp_gz); }
-        if (file_exists($temp_tar)) { @unlink($temp_tar); }
-        if (file_exists($extract_dir)) { $this->rmdir_recursive($extract_dir); }
-
-        $download_url = add_query_arg(array(
-            'edition_id' => 'GeoLite2-Country',
-            'license_key' => $license_key,
-            'suffix' => 'tar.gz'
-        ), 'https://download.maxmind.com/app/geoip_download');
-
-        // Stream download to disk to avoid memory spikes
-        $response = wp_remote_get($download_url, array(
-            'timeout'  => 60,
-            'stream'   => true,
-            'filename' => $temp_gz,
-            'headers'  => array('User-Agent' => 'Elementor-Geo-Popup')
-        ));
-
-        if (is_wp_error($response)) {
-            return $response;
-        }
-
-        $code = wp_remote_retrieve_response_code($response);
-        if ($code !== 200 || !file_exists($temp_gz) || filesize($temp_gz) === 0) {
-            return new WP_Error('download_failed', sprintf(__('Failed to download MaxMind database (HTTP %d).', 'elementor-geo-popup'), intval($code)));
-        }
-
-        try {
-            // Decompress .tar.gz to .tar
-            $gz = new PharData($temp_gz);
-            $gz->decompress(); // creates $temp_tar
-
-            // Extract .tar to temp directory
-            if (!file_exists($extract_dir)) {
-                wp_mkdir_p($extract_dir);
-            }
-            $tar = new PharData($temp_tar);
-            $tar->extractTo($extract_dir, null, true);
-        } catch (Exception $e) {
-            // Clean temp and return error
-            if (file_exists($temp_gz)) { @unlink($temp_gz); }
-            if (file_exists($temp_tar)) { @unlink($temp_tar); }
-            if (file_exists($extract_dir)) { $this->rmdir_recursive($extract_dir); }
-            return new WP_Error('extract_failed', sprintf(__('Failed to extract archive: %s', 'elementor-geo-popup'), $e->getMessage()));
-        }
-
-        // Find the .mmdb file inside the extracted directory
-        $mmdb_file = null;
-        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($extract_dir, RecursiveDirectoryIterator::SKIP_DOTS));
-        foreach ($iterator as $file) {
-            if (strtolower(pathinfo($file->getFilename(), PATHINFO_EXTENSION)) === 'mmdb') {
-                $mmdb_file = $file->getPathname();
-                break;
-            }
-        }
-
-        if (!$mmdb_file) {
-            // Clean temp
-            if (file_exists($temp_gz)) { @unlink($temp_gz); }
-            if (file_exists($temp_tar)) { @unlink($temp_tar); }
-            if (file_exists($extract_dir)) { $this->rmdir_recursive($extract_dir); }
-            return new WP_Error('no_mmdb', __('No .mmdb file found in the downloaded archive.', 'elementor-geo-popup'));
-        }
-
-        // Move to final location
-        $final_path = trailingslashit($geo_dir) . 'GeoLite2-Country.mmdb';
-        if (file_exists($final_path)) {
-            @unlink($final_path);
-        }
-        if (!@rename($mmdb_file, $final_path)) {
-            // Try copy fallback
-            if (!@copy($mmdb_file, $final_path)) {
-                return new WP_Error('move_failed', __('Failed to move the database file to its final location.', 'elementor-geo-popup'));
-            }
-        }
-
-        // Clean temp files but keep .htaccess and final .mmdb
-        if (file_exists($temp_gz)) { @unlink($temp_gz); }
-        if (file_exists($temp_tar)) { @unlink($temp_tar); }
-        if (file_exists($extract_dir)) { $this->rmdir_recursive($extract_dir); }
-
-        // Update options
-        update_option('egp_database_path', $final_path);
-        update_option('egp_last_update', current_time('mysql'));
-
-        return true;
-    }
-    
-    /**
-     * Test MaxMind connection
-     */
-    private function test_maxmind_connection($license_key) {
-        $test_url = add_query_arg(array(
-            'edition_id' => 'GeoLite2-Country',
-            'license_key' => $license_key,
-            'suffix' => 'tar.gz'
-        ), 'https://download.maxmind.com/app/geoip_download');
-        
-        $response = wp_remote_head($test_url);
-        
-        if (is_wp_error($response)) {
-            return $response;
-        }
-        
-        $status_code = wp_remote_retrieve_response_code($response);
-        if ($status_code !== 200) {
-            return new WP_Error('invalid_response', sprintf(__('Invalid response code: %d', 'elementor-geo-popup'), $status_code));
-        }
-        
-        return true;
-    }
-    
-    /**
-     * Cleanup extracted files
-     */
-    private function cleanup_extracted_files($directory) {
-        // Deprecated in favor of rmdir_recursive on a specific temp folder.
-        return;
-    }
-
-    private function rmdir_recursive($path) {
-        if (!file_exists($path)) {
-            return;
-        }
-        $it = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::CHILD_FIRST
-        );
-        foreach ($it as $fileinfo) {
-            if ($fileinfo->isDir()) {
-                @rmdir($fileinfo->getRealPath());
-            } else {
-                @unlink($fileinfo->getRealPath());
-            }
-        }
-        @rmdir($path);
-    }
+    // Database update/test handlers intentionally removed from GeoElementor.
 }
 

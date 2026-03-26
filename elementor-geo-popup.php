@@ -3,7 +3,7 @@
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
  * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration via ReactWoo Geo Core and MaxMind GeoLite2 database.
- * Version: 1.0.5.3
+ * Version: 1.0.5.4
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
  * License: GPL v2 or later
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('EGP_VERSION', '1.0.5.3');
+define('EGP_VERSION', '1.0.5.4');
 define('EGP_PLUGIN_FILE', __FILE__);
 define('EGP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EGP_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -150,6 +150,9 @@ class ElementorGeoPopup {
             new EGP_Licensing();
             // Enable Elementor new template modal deep-link
             self::bootstrap_elementor_new_template_modal();
+
+            // Show Geo Core prerequisite notice until Geo Core is ready.
+            add_action('admin_notices', array($this, 'maybe_show_geocore_prereq_notice'), 5);
         }
 
         // Check if Elementor is active
@@ -443,6 +446,19 @@ class ElementorGeoPopup {
         
         // Set default options
         $this->set_default_options();
+
+        // Geo Core prerequisite: keep a sticky admin notice until Geo Core is ready.
+        if ( ! function_exists( 'rwgc_is_ready' ) ) {
+            update_option( 'egp_needs_geocore', 1 );
+        } else {
+            try {
+                if ( ! rwgc_is_ready() ) {
+                    update_option( 'egp_needs_geocore', 1 );
+                }
+            } catch ( \Throwable $e ) {
+                update_option( 'egp_needs_geocore', 1 );
+            }
+        }
         
         // Flush rewrite rules
         flush_rewrite_rules();
@@ -888,6 +904,54 @@ class ElementorGeoPopup {
         );
         
         printf('<div class="notice notice-warning is-dismissible"><p>%1$s</p></div>', $message);
+    }
+
+    /**
+     * Admin notice: GeoElementor requires Geo Core to be installed and ready.
+     *
+     * @return void
+     */
+    public function maybe_show_geocore_prereq_notice() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        $needs = (bool) get_option( 'egp_needs_geocore', false );
+
+        $core_ready = false;
+        if ( function_exists( 'rwgc_is_ready' ) ) {
+            try {
+                $core_ready = (bool) rwgc_is_ready();
+            } catch ( \Throwable $e ) {
+                $core_ready = false;
+            }
+        }
+
+        // If Geo Core is ready, clear the sticky flag and stop showing.
+        if ( $core_ready ) {
+            if ( $needs ) {
+                delete_option( 'egp_needs_geocore' );
+            }
+            return;
+        }
+
+        // Only show the warning when Geo Core is not ready AND GeoElementor was activated.
+        if ( ! $needs ) {
+            // Activation should set this, but keep it conservative.
+            return;
+        }
+
+        $core_settings_url  = esc_url( admin_url( 'admin.php?page=rwgc-settings' ) );
+        $plugin_install_url = esc_url( admin_url( 'plugin-install.php?s=reactwoo+geo+core&tab=search&type=term' ) );
+
+        echo '<div class="notice notice-warning"><p>';
+        echo esc_html__(
+            'GeoElementor requires ReactWoo Geo Core to be installed and activated first. Geo Core manages the MaxMind database updates and shared country detection.',
+            'elementor-geo-popup'
+        );
+        echo ' <a href="' . $core_settings_url . '">' . esc_html__( 'Open Geo Core Settings', 'elementor-geo-popup' ) . '</a>';
+        echo ' · <a href="' . $plugin_install_url . '">' . esc_html__( 'Install Geo Core', 'elementor-geo-popup' ) . '</a>';
+        echo '</p></div>';
     }
     
     /**
