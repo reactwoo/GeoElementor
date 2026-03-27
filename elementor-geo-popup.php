@@ -3,7 +3,7 @@
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
  * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration via ReactWoo Geo Core and MaxMind GeoLite2 database.
- * Version: 1.0.5.6
+ * Version: 1.0.5.7
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
  * License: GPL v2 or later
@@ -22,6 +22,123 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * Self-heal stale/duplicate plugin basenames for Geo Elementor.
+ *
+ * This addresses cases where folder renames or duplicate uploads leave
+ * invalid entries such as geo-elementor/geo-elementor/elementor-geo-popup.php
+ * in active_plugins.
+ */
+if (!function_exists('egp_self_heal_active_plugin_entries')) {
+    function egp_self_heal_active_plugin_entries() {
+        if (!is_admin() || !function_exists('get_option') || !function_exists('update_option')) {
+            return;
+        }
+
+        $current_basename = plugin_basename(__FILE__);
+        $canonical_basename = 'geo-elementor/elementor-geo-popup.php';
+        $canonical_exists = file_exists(WP_PLUGIN_DIR . '/' . $canonical_basename);
+        $preferred_basename = $canonical_exists ? $canonical_basename : $current_basename;
+        $removed = array();
+
+        $is_geo_entry = static function ($basename) {
+            $v = strtolower((string) $basename);
+            return (strpos($v, 'geo-elementor') !== false || strpos($v, 'geoelementor') !== false)
+                && strpos($v, 'elementor-geo-popup.php') !== false;
+        };
+
+        $active = get_option('active_plugins', array());
+        if (is_array($active)) {
+            $new_active = array();
+            $preferred_present = false;
+            foreach ($active as $entry) {
+                $entry = (string) $entry;
+                if (!$is_geo_entry($entry)) {
+                    $new_active[] = $entry;
+                    continue;
+                }
+
+                $exists = file_exists(WP_PLUGIN_DIR . '/' . ltrim($entry, '/'));
+                $is_nested_bad = (bool) preg_match('#(^|/)geo-elementor/geo-elementor/#i', $entry);
+
+                if ($entry === $preferred_basename && $exists && !$is_nested_bad) {
+                    $new_active[] = $entry;
+                    $preferred_present = true;
+                    continue;
+                }
+
+                $removed[] = $entry;
+            }
+
+            if (!$preferred_present && file_exists(WP_PLUGIN_DIR . '/' . $preferred_basename)) {
+                $new_active[] = $preferred_basename;
+            }
+
+            $new_active = array_values(array_unique($new_active));
+            if ($new_active !== $active) {
+                update_option('active_plugins', $new_active, false);
+            }
+        }
+
+        if (is_multisite() && function_exists('get_site_option') && function_exists('update_site_option')) {
+            $network_active = get_site_option('active_sitewide_plugins', array());
+            if (is_array($network_active)) {
+                $updated = $network_active;
+                $preferred_present = isset($updated[$preferred_basename]);
+
+                foreach (array_keys($network_active) as $entry) {
+                    if (!$is_geo_entry($entry)) {
+                        continue;
+                    }
+                    $exists = file_exists(WP_PLUGIN_DIR . '/' . ltrim((string) $entry, '/'));
+                    $is_nested_bad = (bool) preg_match('#(^|/)geo-elementor/geo-elementor/#i', (string) $entry);
+                    if ($entry === $preferred_basename && $exists && !$is_nested_bad) {
+                        continue;
+                    }
+                    unset($updated[$entry]);
+                    $removed[] = (string) $entry;
+                }
+
+                if (!$preferred_present && file_exists(WP_PLUGIN_DIR . '/' . $preferred_basename)) {
+                    $updated[$preferred_basename] = time();
+                }
+
+                if ($updated !== $network_active) {
+                    update_site_option('active_sitewide_plugins', $updated);
+                }
+            }
+        }
+
+        if (!empty($removed)) {
+            update_option('egp_self_heal_removed_entries', array_values(array_unique($removed)), false);
+        }
+
+        if (function_exists('wp_clean_plugins_cache')) {
+            wp_clean_plugins_cache(true);
+        }
+    }
+}
+
+if (!function_exists('egp_render_self_heal_notice')) {
+    function egp_render_self_heal_notice() {
+        if (!is_admin() || !current_user_can('activate_plugins')) {
+            return;
+        }
+        $removed = get_option('egp_self_heal_removed_entries', array());
+        if (empty($removed) || !is_array($removed)) {
+            return;
+        }
+        delete_option('egp_self_heal_removed_entries');
+        echo '<div class="notice notice-warning is-dismissible"><p>';
+        echo esc_html__('Geo Elementor repaired stale/duplicate active plugin entries and kept the canonical slug geo-elementor.', 'elementor-geo-popup');
+        echo '<br /><code>' . esc_html(implode(', ', $removed)) . '</code>';
+        echo '</p></div>';
+    }
+}
+
+egp_self_heal_active_plugin_entries();
+add_action('admin_notices', 'egp_render_self_heal_notice');
+
 // Defensive: prevent fatal collisions when multiple Geo Elementor copies are installed.
 if (defined('EGP_PLUGIN_FILE') || class_exists('ElementorGeoPopup', false)) {
     if (is_admin() && function_exists('add_action')) {
@@ -30,7 +147,7 @@ if (defined('EGP_PLUGIN_FILE') || class_exists('ElementorGeoPopup', false)) {
                 return;
             }
             echo '<div class="notice notice-error"><p>';
-            echo esc_html__('Geo Elementor detected another active copy with the same bootstrap symbols. Keep only one Geo Elementor plugin folder (recommended: /plugins/GeoElementor).', 'elementor-geo-popup');
+            echo esc_html__('Geo Elementor detected another active copy with the same bootstrap symbols. Keep only one plugin folder and use the canonical lowercase slug: /plugins/geo-elementor. Remove duplicate folders like GeoElementor-1.', 'elementor-geo-popup');
             echo '</p></div>';
         });
     }
@@ -38,7 +155,7 @@ if (defined('EGP_PLUGIN_FILE') || class_exists('ElementorGeoPopup', false)) {
 }
 
 // Define plugin constants
-define('EGP_VERSION', '1.0.5.6');
+define('EGP_VERSION', '1.0.5.7');
 define('EGP_PLUGIN_FILE', __FILE__);
 define('EGP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EGP_PLUGIN_URL', plugin_dir_url(__FILE__));
