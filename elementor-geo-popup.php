@@ -3,7 +3,7 @@
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
  * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration via ReactWoo Geo Core and MaxMind GeoLite2 database.
- * Version: 1.0.5.5
+ * Version: 1.0.5.6
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
  * License: GPL v2 or later
@@ -22,8 +22,23 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Defensive: prevent fatal collisions when multiple Geo Elementor copies are installed.
+if (defined('EGP_PLUGIN_FILE') || class_exists('ElementorGeoPopup', false)) {
+    if (is_admin() && function_exists('add_action')) {
+        add_action('admin_notices', function () {
+            if (!current_user_can('activate_plugins')) {
+                return;
+            }
+            echo '<div class="notice notice-error"><p>';
+            echo esc_html__('Geo Elementor detected another active copy with the same bootstrap symbols. Keep only one Geo Elementor plugin folder (recommended: /plugins/GeoElementor).', 'elementor-geo-popup');
+            echo '</p></div>';
+        });
+    }
+    return;
+}
+
 // Define plugin constants
-define('EGP_VERSION', '1.0.5.5');
+define('EGP_VERSION', '1.0.5.6');
 define('EGP_PLUGIN_FILE', __FILE__);
 define('EGP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EGP_PLUGIN_URL', plugin_dir_url(__FILE__));
