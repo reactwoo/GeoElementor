@@ -45,6 +45,11 @@ class EGP_Admin_Settings {
             'type' => 'boolean',
             'default' => false
         ));
+
+        register_setting('egp_settings', 'egp_show_country_debug_badge', array(
+            'type' => 'boolean',
+            'default' => false
+        ));
         
         register_setting('egp_settings', 'egp_preferred_countries', array(
             'type' => 'array',
@@ -90,6 +95,22 @@ class EGP_Admin_Settings {
             'egp_debug_mode',
             __('Debug Mode', 'elementor-geo-popup'),
             array($this, 'render_debug_field'),
+            'egp_settings_general',
+            'egp_general_section'
+        );
+
+        add_settings_field(
+            'egp_show_country_debug_badge',
+            __('Show Country Debug Badge', 'elementor-geo-popup'),
+            array($this, 'render_country_debug_badge_field'),
+            'egp_settings_general',
+            'egp_general_section'
+        );
+
+        add_settings_field(
+            'egp_sync_elementor_rules',
+            __('Sync Elementor Rules', 'elementor-geo-popup'),
+            array($this, 'render_sync_rules_field'),
             'egp_settings_general',
             'egp_general_section'
         );
@@ -226,6 +247,16 @@ class EGP_Admin_Settings {
                     <p><?php _e('Settings saved successfully!', 'elementor-geo-popup'); ?></p>
                 </div>
             <?php endif; ?>
+            <?php if (isset($_GET['egp_sync']) && $_GET['egp_sync'] === '1') : ?>
+                <div class="notice notice-success is-dismissible">
+                    <p>
+                        <?php
+                        $updated = isset($_GET['egp_sync_updated']) ? intval($_GET['egp_sync_updated']) : 0;
+                        echo esc_html(sprintf(__('Sync completed. Updated %d rule(s).', 'elementor-geo-popup'), $updated));
+                        ?>
+                    </p>
+                </div>
+            <?php endif; ?>
 
 			<div class="egp-section-card">
 				<h2><?php esc_html_e( 'Feature Split', 'elementor-geo-popup' ); ?></h2>
@@ -305,6 +336,40 @@ class EGP_Admin_Settings {
             <input type="checkbox" name="egp_debug_mode" value="1" <?php checked($value, 1); ?> />
             <?php _e('Enable debug mode (logs geolocation data)', 'elementor-geo-popup'); ?>
         </label>
+        <?php
+    }
+
+    /**
+     * Render country debug badge field.
+     */
+    public function render_country_debug_badge_field() {
+        $value = get_option('egp_show_country_debug_badge', false);
+        ?>
+        <label>
+            <input type="checkbox" name="egp_show_country_debug_badge" value="1" <?php checked($value, 1); ?> />
+            <?php _e('Show frontend country badge (bottom-right) for manual debugging', 'elementor-geo-popup'); ?>
+        </label>
+        <p class="description"><?php _e('Off by default. Enable only when you need to verify country detection on the live page.', 'elementor-geo-popup'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render manual sync field.
+     */
+    public function render_sync_rules_field() {
+        $sync_url = wp_nonce_url(
+            admin_url('admin-post.php?action=egp_sync_elementor_rules'),
+            'egp_sync_elementor_rules'
+        );
+        $last_sync = get_option('egp_last_elementor_rule_sync', '');
+        ?>
+        <a href="<?php echo esc_url($sync_url); ?>" class="button button-secondary">
+            <?php _e('Run Sync Now', 'elementor-geo-popup'); ?>
+        </a>
+        <p class="description"><?php _e('Keeps Elementor rule records aligned with current element IDs, labels, and targeting settings.', 'elementor-geo-popup'); ?></p>
+        <?php if (!empty($last_sync)) : ?>
+            <p class="description"><?php echo esc_html(sprintf(__('Last sync: %s', 'elementor-geo-popup'), $last_sync)); ?></p>
+        <?php endif; ?>
         <?php
     }
 

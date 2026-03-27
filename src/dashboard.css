@@ -110,6 +110,15 @@
   margin: 0 auto;
 }
 
+/* Keep section rhythm consistent across cards below charts. */
+.dashboard-content > .chart-container {
+  margin-bottom: 24px;
+}
+
+.dashboard-content > .chart-container:last-child {
+  margin-bottom: 0;
+}
+
 /* Overview Cards */
 .overview-cards {
   display: grid;

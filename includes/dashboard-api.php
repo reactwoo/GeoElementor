@@ -72,6 +72,18 @@ class EGP_Dashboard_API {
 	public function get_untracked_countries() {
 		$counts = get_option('egp_untracked_country_counts', array());
 		if (!is_array($counts)) { $counts = array(); }
+
+		// Keep "untracked" aligned with all currently tracked sources used by dashboard.
+		$tracked_countries = $this->get_tracked_countries_index();
+		if (!empty($tracked_countries)) {
+			foreach (array_keys($counts) as $code) {
+				$norm = strtoupper(trim((string) $code));
+				if (isset($tracked_countries[$norm])) {
+					unset($counts[$code]);
+				}
+			}
+		}
+
 		// Sort desc by count
 		arsort($counts);
 		$top = array_slice($counts, 0, 5, true);
@@ -84,6 +96,75 @@ class EGP_Dashboard_API {
 			);
 		}
 		return $out;
+	}
+
+	/**
+	 * Build a normalized set of currently tracked country codes across all rule sources.
+	 *
+	 * @return array<string,bool>
+	 */
+	private function get_tracked_countries_index() {
+		$tracked = array();
+
+		// 1) Native geo rules.
+		$rules = get_posts(array(
+			'post_type' => 'geo_rule',
+			'post_status' => 'publish',
+			'posts_per_page' => -1,
+			'fields' => 'ids',
+		));
+		foreach ($rules as $rid) {
+			$countries = get_post_meta($rid, 'egp_countries', true);
+			if (is_array($countries)) {
+				foreach ($countries as $country) {
+					$code = strtoupper(trim((string) $country));
+					if (strlen($code) === 2) {
+						$tracked[$code] = true;
+					}
+				}
+			}
+		}
+
+		// 2) Variant group mappings.
+		if (class_exists('RW_Geo_Mapping_CRUD')) {
+			$mapping_crud = new \RW_Geo_Mapping_CRUD();
+			$mappings = $mapping_crud->get_all();
+			foreach ($mappings as $m) {
+				$code = strtoupper(trim((string) $m->country_iso2));
+				if (strlen($code) === 2) {
+					$tracked[$code] = true;
+				}
+			}
+		}
+
+		// 3) Elementor popup geo settings fallback source.
+		$popups = get_posts(array(
+			'post_type' => 'elementor_library',
+			'post_status' => array('publish', 'draft', 'private'),
+			'meta_query' => array(
+				array('key' => '_elementor_template_type', 'value' => 'popup'),
+			),
+			'posts_per_page' => -1,
+			'fields' => 'ids',
+		));
+		foreach ($popups as $popup_id) {
+			$page_settings = get_post_meta($popup_id, '_elementor_page_settings', true);
+			if (!is_array($page_settings)) {
+				continue;
+			}
+			if (!isset($page_settings['egp_enable_geo_targeting']) || $page_settings['egp_enable_geo_targeting'] !== 'yes') {
+				continue;
+			}
+			$countries = isset($page_settings['egp_countries']) && is_array($page_settings['egp_countries']) ? $page_settings['egp_countries'] : array();
+			foreach ($countries as $country) {
+				$code = strtoupper(trim((string) $country));
+				if (strlen($code) === 2) {
+					$tracked[$code] = true;
+				}
+			}
+		}
+
+		return $tracked;
 	}
     
     /**

@@ -85,9 +85,11 @@ class EGP_Geo_Rules {
         add_action('wp_ajax_egp_get_rule_target', array($this, 'ajax_get_rule_target'));
         add_action('wp_ajax_egp_get_countries', array($this, 'ajax_get_countries'));
         // No-public: internal conflict check helper via AJAX if needed later
+        add_action('admin_post_egp_sync_elementor_rules', array($this, 'handle_manual_elementor_rule_sync'));
 
         // Sync: When an Elementor Popup is saved with geo targeting enabled, create/update a matching Rule
         add_action('save_post_elementor_library', array($this, 'maybe_sync_rule_from_popup_settings'), 20, 3);
+        add_action('admin_init', array($this, 'maybe_backfill_elementor_rule_titles'));
 
         // Cleanup: When a Geo Rule is deleted or trashed, disable geo-targeting on linked popup
         add_action('before_delete_post', array($this, 'maybe_disable_popup_on_rule_delete'));
@@ -889,6 +891,8 @@ class EGP_Geo_Rules {
      */
     private function get_or_create_element_rule($element, $settings, $element_type) {
         $element_id = $element->get_id();
+        $element_title = $this->get_element_title($element, $element_type, $settings);
+        $countries = $this->get_element_countries_from_settings($settings);
 
         // Check if a rule already exists for this element
         $existing_rules = get_posts(array(
@@ -909,12 +913,24 @@ class EGP_Geo_Rules {
         ));
 
         if (!empty($existing_rules)) {
-            return $existing_rules[0]->ID;
+            $rule_id = intval($existing_rules[0]->ID);
+            if ($rule_id > 0) {
+                // Keep rule title synced when Elementor CSS ID changes later.
+                if (!empty($element_title) && get_the_title($rule_id) !== $element_title) {
+                    wp_update_post(array(
+                        'ID' => $rule_id,
+                        'post_title' => $element_title,
+                    ));
+                }
+
+                if (!empty($countries)) {
+                    update_post_meta($rule_id, 'egp_countries', $countries);
+                }
+            }
+            return $rule_id;
         }
 
         // Create a new rule for this element
-        $element_title = $this->get_element_title($element, $element_type);
-
         $rule_data = array(
             'post_title' => $element_title,
             'post_type' => 'geo_rule',
@@ -923,7 +939,7 @@ class EGP_Geo_Rules {
                 'egp_target_type' => $element_type,
                 'egp_element_id' => $element_id,
                 'egp_element_type' => $element_type,
-                'egp_countries' => isset($settings['target_countries']) ? $settings['target_countries'] : array(),
+                'egp_countries' => $countries,
                 'egp_active' => '1',
                 'egp_clicks' => 0,
                 'egp_views' => 0,
@@ -946,20 +962,348 @@ class EGP_Geo_Rules {
     /**
      * Get a descriptive title for an Elementor element
      */
-    private function get_element_title($element, $element_type) {
+    private function get_element_title($element, $element_type, $settings = array()) {
         $element_id = $element->get_id();
+        $settings = is_array($settings) ? $settings : array();
+        $custom_id = '';
+        if (!empty($settings['_element_id'])) {
+            $custom_id = sanitize_title((string) $settings['_element_id']);
+        } elseif (!empty($settings['css_id'])) {
+            $custom_id = sanitize_title((string) $settings['css_id']);
+        }
+
+        $label = $custom_id !== '' ? $custom_id : $element_id;
 
         switch ($element_type) {
             case 'section':
-                return "Section ID: {$element_id}";
+                return "Section: {$label}";
             case 'container':
-                return "Container ID: {$element_id}";
+                return "Container: {$label}";
             case 'widget':
                 $widget_name = $element->get_name();
-                return "Widget: " . ucfirst(str_replace('egp_', '', $widget_name)) . " (ID: {$element_id})";
+                return "Widget: " . ucfirst(str_replace('egp_', '', $widget_name)) . " ({$label})";
             default:
-                return "{$element_type} ID: {$element_id}";
+                return "{$element_type}: {$label}";
         }
+    }
+
+    /**
+     * Extract and normalize country list from Elementor settings.
+     */
+    private function get_element_countries_from_settings($settings) {
+        if (!is_array($settings)) {
+            return array();
+        }
+
+        $countries = array();
+        if (!empty($settings['target_countries']) && is_array($settings['target_countries'])) {
+            $countries = $settings['target_countries'];
+        } elseif (!empty($settings['egp_countries']) && is_array($settings['egp_countries'])) {
+            $countries = $settings['egp_countries'];
+        } elseif (!empty($settings['countries']) && is_array($settings['countries'])) {
+            $countries = $settings['countries'];
+        }
+
+        if (empty($countries)) {
+            return array();
+        }
+
+        return array_values(array_unique(array_map('strtoupper', array_map('sanitize_text_field', $countries))));
+    }
+
+    /**
+     * One-time backfill for older autogenerated Elementor rule names.
+     */
+    public function maybe_backfill_elementor_rule_titles() {
+        if (!is_admin() || !current_user_can('manage_options')) {
+            return;
+        }
+
+        $option_key = 'egp_elementor_rule_title_backfill_v1';
+        if (get_option($option_key, '0') === '1') {
+            return;
+        }
+
+        $rules = get_posts(array(
+            'post_type' => $this->post_type,
+            'post_status' => 'any',
+            'posts_per_page' => 300,
+            'fields' => 'ids',
+            'meta_query' => array(
+                array('key' => $this->meta_prefix . 'target_type', 'value' => array('section', 'container', 'widget'), 'compare' => 'IN'),
+            ),
+        ));
+
+        if (empty($rules)) {
+            update_option($option_key, '1', false);
+            return;
+        }
+
+        foreach ($rules as $rule_id) {
+            $rule_id = intval($rule_id);
+            if ($rule_id <= 0) {
+                continue;
+            }
+
+            $existing_title = (string) get_the_title($rule_id);
+            // Only touch legacy auto-generated titles.
+            if (!$this->is_legacy_elementor_rule_title($existing_title)) {
+                continue;
+            }
+
+            $target_id = (string) get_post_meta($rule_id, $this->meta_prefix . 'target_id', true);
+            if ($target_id === '') {
+                $target_id = (string) get_post_meta($rule_id, $this->meta_prefix . 'element_id', true);
+            }
+            if ($target_id === '') {
+                continue;
+            }
+
+            $target_type = (string) get_post_meta($rule_id, $this->meta_prefix . 'target_type', true);
+            $custom_label = $this->find_elementor_custom_label_by_element_id($target_id);
+            if ($custom_label === '') {
+                continue;
+            }
+
+            $new_title = $this->build_element_title_from_label($target_type, $custom_label);
+            if ($new_title !== '' && $new_title !== $existing_title) {
+                wp_update_post(array(
+                    'ID' => $rule_id,
+                    'post_title' => $new_title,
+                ));
+            }
+        }
+
+        update_option($option_key, '1', false);
+    }
+
+    /**
+     * Manual sync endpoint from admin settings.
+     */
+    public function handle_manual_elementor_rule_sync() {
+        if (!is_admin() || !current_user_can('manage_options')) {
+            wp_die(__('Insufficient permissions', 'elementor-geo-popup'));
+        }
+        check_admin_referer('egp_sync_elementor_rules');
+
+        $result = $this->run_elementor_rule_sync();
+        $redirect_url = add_query_arg(
+            array(
+                'page' => 'elementor-geo-popup',
+                'egp_sync' => '1',
+                'egp_sync_updated' => isset($result['updated']) ? intval($result['updated']) : 0,
+            ),
+            admin_url('admin.php')
+        );
+        wp_safe_redirect($redirect_url);
+        exit;
+    }
+
+    /**
+     * Keep Elementor-derived rule records aligned with element data.
+     */
+    private function run_elementor_rule_sync() {
+        $rules = get_posts(array(
+            'post_type' => $this->post_type,
+            'post_status' => 'any',
+            'posts_per_page' => 500,
+            'fields' => 'ids',
+            'meta_query' => array(
+                array('key' => $this->meta_prefix . 'target_type', 'value' => array('section', 'container', 'widget'), 'compare' => 'IN'),
+            ),
+        ));
+
+        $updated = 0;
+        if (empty($rules)) {
+            return array('updated' => 0);
+        }
+
+        foreach ($rules as $rule_id) {
+            $rule_id = intval($rule_id);
+            if ($rule_id <= 0) {
+                continue;
+            }
+
+            $target_id = (string) get_post_meta($rule_id, $this->meta_prefix . 'target_id', true);
+            if ($target_id === '') {
+                $target_id = (string) get_post_meta($rule_id, $this->meta_prefix . 'element_id', true);
+            }
+            if ($target_id === '') {
+                continue;
+            }
+
+            $target_type = (string) get_post_meta($rule_id, $this->meta_prefix . 'target_type', true);
+            $did_update = false;
+
+            $custom_label = $this->find_elementor_custom_label_by_element_id($target_id);
+            if ($custom_label !== '') {
+                $new_title = $this->build_element_title_from_label($target_type, $custom_label);
+                $existing_title = (string) get_the_title($rule_id);
+                if ($new_title !== '' && $new_title !== $existing_title) {
+                    wp_update_post(array(
+                        'ID' => $rule_id,
+                        'post_title' => $new_title,
+                    ));
+                    $did_update = true;
+                }
+            }
+
+            $countries = $this->find_elementor_countries_by_element_id($target_id);
+            if (!empty($countries)) {
+                update_post_meta($rule_id, $this->meta_prefix . 'countries', $countries);
+                $did_update = true;
+            }
+
+            if ($did_update) {
+                $updated++;
+            }
+        }
+
+        update_option('egp_last_elementor_rule_sync', current_time('mysql'), false);
+        return array('updated' => $updated);
+    }
+
+    private function is_legacy_elementor_rule_title($title) {
+        $title = (string) $title;
+        if ($title === '') {
+            return false;
+        }
+
+        return (bool) preg_match('/^(Section ID:|Container ID:|Widget: .* \(ID:)/', $title);
+    }
+
+    private function build_element_title_from_label($target_type, $label) {
+        $target_type = sanitize_key((string) $target_type);
+        $label = sanitize_title((string) $label);
+        if ($label === '') {
+            return '';
+        }
+
+        switch ($target_type) {
+            case 'section':
+                return "Section: {$label}";
+            case 'container':
+                return "Container: {$label}";
+            case 'widget':
+                return "Widget: {$label}";
+            default:
+                return ucfirst($target_type) . ": {$label}";
+        }
+    }
+
+    private function find_elementor_custom_label_by_element_id($element_id) {
+        global $wpdb;
+        if (!$wpdb || $element_id === '') {
+            return '';
+        }
+
+        $like = '%"id":"' . $wpdb->esc_like((string) $element_id) . '"%';
+        $sql = $wpdb->prepare(
+            "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value LIKE %s ORDER BY post_id DESC LIMIT 50",
+            '_elementor_data',
+            $like
+        );
+        $post_ids = $wpdb->get_col($sql);
+        if (empty($post_ids)) {
+            return '';
+        }
+
+        foreach ($post_ids as $post_id) {
+            $raw = get_post_meta(intval($post_id), '_elementor_data', true);
+            if (empty($raw) || !is_string($raw)) {
+                continue;
+            }
+
+            $data = json_decode($raw, true);
+            if (!is_array($data)) {
+                continue;
+            }
+
+            $found = $this->find_element_settings_in_tree($data, (string) $element_id);
+            if (!is_array($found)) {
+                continue;
+            }
+
+            $label = '';
+            if (!empty($found['settings']['egp_element_id'])) {
+                $label = (string) $found['settings']['egp_element_id'];
+            } elseif (!empty($found['settings']['_element_id'])) {
+                $label = (string) $found['settings']['_element_id'];
+            } elseif (!empty($found['settings']['css_id'])) {
+                $label = (string) $found['settings']['css_id'];
+            }
+
+            $label = sanitize_title($label);
+            if ($label !== '') {
+                return $label;
+            }
+        }
+
+        return '';
+    }
+
+    private function find_elementor_countries_by_element_id($element_id) {
+        global $wpdb;
+        if (!$wpdb || $element_id === '') {
+            return array();
+        }
+
+        $like = '%"id":"' . $wpdb->esc_like((string) $element_id) . '"%';
+        $sql = $wpdb->prepare(
+            "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value LIKE %s ORDER BY post_id DESC LIMIT 50",
+            '_elementor_data',
+            $like
+        );
+        $post_ids = $wpdb->get_col($sql);
+        if (empty($post_ids)) {
+            return array();
+        }
+
+        foreach ($post_ids as $post_id) {
+            $raw = get_post_meta(intval($post_id), '_elementor_data', true);
+            if (empty($raw) || !is_string($raw)) {
+                continue;
+            }
+            $data = json_decode($raw, true);
+            if (!is_array($data)) {
+                continue;
+            }
+            $found = $this->find_element_settings_in_tree($data, (string) $element_id);
+            if (!is_array($found) || empty($found['settings']) || !is_array($found['settings'])) {
+                continue;
+            }
+            $countries = $this->get_element_countries_from_settings($found['settings']);
+            if (!empty($countries)) {
+                return $countries;
+            }
+        }
+
+        return array();
+    }
+
+    private function find_element_settings_in_tree($elements, $target_id) {
+        if (!is_array($elements)) {
+            return null;
+        }
+
+        foreach ($elements as $element) {
+            if (!is_array($element)) {
+                continue;
+            }
+
+            if (!empty($element['id']) && (string) $element['id'] === (string) $target_id) {
+                return $element;
+            }
+
+            if (!empty($element['elements']) && is_array($element['elements'])) {
+                $found = $this->find_element_settings_in_tree($element['elements'], $target_id);
+                if ($found) {
+                    return $found;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -1197,6 +1541,36 @@ class EGP_Geo_Rules {
                 return true;
             }
         }
+
+        // Include Variant Group mappings as tracked countries.
+        if (class_exists('RW_Geo_Mapping_CRUD')) {
+            $mapping_crud = new \RW_Geo_Mapping_CRUD();
+            $mapping = $mapping_crud->get_all(array('country_iso2' => $code));
+            if (!empty($mapping)) {
+                return true;
+            }
+        }
+
+        // Include Elementor popup-level geo settings as tracked countries.
+        $popups = get_posts(array(
+            'post_type' => 'elementor_library',
+            'post_status' => array('publish', 'draft', 'private'),
+            'meta_query' => array(
+                array('key' => '_elementor_template_type', 'value' => 'popup')
+            ),
+            'posts_per_page' => -1,
+            'fields' => 'ids'
+        ));
+        foreach ($popups as $popup_id) {
+            $page_settings = get_post_meta($popup_id, '_elementor_page_settings', true);
+            if (!is_array($page_settings)) { continue; }
+            if (!isset($page_settings['egp_enable_geo_targeting']) || $page_settings['egp_enable_geo_targeting'] !== 'yes') { continue; }
+            $countries = isset($page_settings['egp_countries']) && is_array($page_settings['egp_countries']) ? $page_settings['egp_countries'] : array();
+            if (in_array($code, array_map('strtoupper', $countries), true)) {
+                return true;
+            }
+        }
+
         return false;
     }
     

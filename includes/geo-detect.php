@@ -1007,7 +1007,8 @@ class EGP_Geo_Detect {
      * Render a small debug badge on the page when debug mode is enabled
      */
     public function maybe_render_debug_badge() {
-        if (!get_option('egp_debug_mode')) {
+        // Badge visibility is an explicit frontend setting (separate from log debug mode).
+        if (!get_option('egp_show_country_debug_badge', false)) {
             return;
         }
         // Avoid showing in admin/elementor editor previews if not desired
