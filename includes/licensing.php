@@ -352,14 +352,14 @@ class EGP_Licensing {
         }
         
         ?>
-        <div class="wrap">
-            <h1><?php _e('Geo Elementor License', 'elementor-geo-popup'); ?></h1>
-            
+        <div class="wrap egp-settings">
             <?php if (isset($_GET['license_updated'])) : ?>
                 <div class="notice notice-success is-dismissible">
                     <p><?php _e('License settings updated successfully!', 'elementor-geo-popup'); ?></p>
                 </div>
             <?php endif; ?>
+
+            <?php if ( class_exists( 'EGP_Admin_Menu' ) ) { EGP_Admin_Menu::render_page_header( esc_html__( 'Geo Elementor License', 'elementor-geo-popup' ), 'geo-elementor-license' ); } ?>
             
             <div class="egp-license-container">
                 <div class="egp-license-info">
@@ -599,6 +599,10 @@ class EGP_Licensing {
     public function license_notices() {
         // Only show on admin pages
         if (!is_admin()) {
+            return;
+        }
+
+        if (class_exists('EGP_Admin_Menu') && EGP_Admin_Menu::is_geo_elementor_admin_screen()) {
             return;
         }
         

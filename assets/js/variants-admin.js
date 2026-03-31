@@ -260,8 +260,8 @@
                     '<tr><th><label>Country</label></th><td><select class="country-select" required><option value="">Select Country</option></select></td></tr>',
                     '<tr class="page-row"><th><label>Page</label></th><td><select class="page-select"><option value="">Use Default</option></select></td></tr>',
                     '<tr class="popup-row"><th><label>Popup</label></th><td><select class="popup-select"><option value="">Use Default</option></select></td></tr>',
-                    '<tr><th></th><td><button type="button" class="button button-small save-mapping" data-id="{{id}}">Save Mapping</button> ',
-                    '<button type="button" class="button button-small button-link-delete delete-mapping" data-id="{{id}}">Delete</button></td></tr>',
+                    '<tr><th></th><td><span class="egp-rule-actions" role="group" aria-label="Mapping actions"><button type="button" class="button button-small save-mapping" data-id="{{id}}">Save Mapping</button> ',
+                    '<button type="button" class="button button-small button-link-delete egp-icon-btn delete-mapping" data-id="{{id}}" title="Delete"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">Delete</span></button></span></td></tr>',
                     '</table>'
                 ].join('');
             }

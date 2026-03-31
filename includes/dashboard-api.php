@@ -509,21 +509,10 @@ class EGP_Dashboard_API {
     }
     
     /**
-     * Get countries list
+     * Get countries list (canonical: egp_get_country_options).
      */
     private function get_countries_list() {
-        return array(
-            'US' => 'United States',
-            'CA' => 'Canada',
-            'GB' => 'United Kingdom',
-            'DE' => 'Germany',
-            'FR' => 'France',
-            'AU' => 'Australia',
-            'JP' => 'Japan',
-            'BR' => 'Brazil',
-            'IN' => 'India',
-            'CN' => 'China',
-        );
+        return function_exists( 'egp_get_country_options' ) ? egp_get_country_options() : array();
     }
     
     /**

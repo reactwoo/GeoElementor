@@ -92,19 +92,9 @@ class EGP_Geo_Detect {
             }
         }
 
-        // If fallback behavior is set to apply group rule, invoke variant router injection
-        $fallback = get_option('egp_fallback_behavior', 'show_to_all');
-        if ($fallback === 'apply_group_rule') {
-            if (class_exists('RW_Geo_Database')) {
-                try {
-                    $db = RW_Geo_Database::get_instance();
-                    $db->inject_frontend_content();
-                    if (get_option('egp_debug_mode')) { error_log('EGP: Applied group rule fallback injection'); }
-                } catch (\Throwable $e) {
-                    if (get_option('egp_debug_mode')) { error_log('EGP: Group rule injection error: ' . $e->getMessage()); }
-                }
-            }
-        }
+        // Safety stop: disable GeoElementor -> Geo Core runtime group-rule injection bridge.
+        // This cross-plugin path can override page content unexpectedly when route metadata drifts.
+        // Group-rule fallback can be re-enabled after integration hardening.
 
         // Optionally trigger a specifically matched popup (if you want auto-open behavior)
         // $popup_id = $this->get_matching_popup($country);
@@ -127,6 +117,26 @@ class EGP_Geo_Detect {
     }
     
     /**
+     * Normalize ISO 3166-1 alpha-2 codes so comparisons match rule lists (Geo Core / Elementor use GB; Cloudflare and some APIs return UK).
+     *
+     * @param string|false $code Two-letter code or false.
+     * @return string|false
+     */
+    public static function normalize_iso3166_alpha2( $code ) {
+        if ( ! is_string( $code ) || $code === '' ) {
+            return $code;
+        }
+        $code = strtoupper( trim( $code ) );
+        if ( strlen( $code ) !== 2 ) {
+            return $code;
+        }
+        if ( 'UK' === $code ) {
+            return 'GB';
+        }
+        return $code;
+    }
+
+    /**
      * Get visitor's country
      */
     public function get_visitor_country() {
@@ -134,7 +144,7 @@ class EGP_Geo_Detect {
 		if ( function_exists( 'rwgc_get_visitor_country' ) && function_exists( 'rwgc_is_ready' ) && rwgc_is_ready() ) {
 			$country = strtoupper( (string) rwgc_get_visitor_country() );
 			if ( $country && strlen( $country ) === 2 ) {
-				return $country;
+				return self::normalize_iso3166_alpha2( $country );
 			}
 		}
 
@@ -142,7 +152,7 @@ class EGP_Geo_Detect {
         $cached_country = wp_cache_get('egp_visitor_country_' . $this->get_visitor_ip(), 'egp_geo');
         
         if ($cached_country !== false) {
-            return $cached_country;
+            return self::normalize_iso3166_alpha2( $cached_country );
         }
         
         // Get visitor's IP
@@ -162,6 +172,7 @@ class EGP_Geo_Detect {
         }
         
         if ($country) {
+            $country = self::normalize_iso3166_alpha2( $country );
             // Cache the result for 1 hour
             wp_cache_set('egp_visitor_country_' . $ip, $country, 'egp_geo', HOUR_IN_SECONDS);
         }
@@ -490,8 +501,11 @@ class EGP_Geo_Detect {
             if (get_option('egp_debug_mode')) { error_log('EGP: Element rules build error: ' . $e->getMessage()); }
         }
 
+        // Element-level frontend hiding is now handled by the scoped logic in geo-rules.php.
+        // Keep the popup guard here, but do not emit the older global element rules payload.
+        $element_rules = array();
         if (get_option('egp_debug_mode')) {
-            error_log('EGP: Built ' . count($rules) . ' popup rules and ' . count($element_rules) . ' element rules for guard');
+            error_log('EGP: Built ' . count($rules) . ' popup rules for guard; legacy geo-detect element guard disabled');
         }
         $json_rules = wp_json_encode($rules);
         $json_element_rules = wp_json_encode($element_rules);
@@ -537,57 +551,9 @@ class EGP_Geo_Detect {
                 return Array.isArray(r.countries) && r.countries.indexOf(t) !== -1;
             }
             function hideDisallowedElementsForCountry(country){
-                try {
-                    if (!country) { return; }
-                    var cc = String(country).toUpperCase();
-                    Object.keys(egpElementRules || {}).forEach(function(ref){
-                        try {
-                            var ruleData = egpElementRules[ref];
-                            var allowed = false;
-                            var ruleId = null;
-
-                            if (typeof ruleData === 'object' && ruleData !== null) {
-                                // New structure: {countries: [...], rule_id: "123"}
-                                allowed = Array.isArray(ruleData.countries) && ruleData.countries.indexOf(cc) !== -1;
-                                ruleId = ruleData.rule_id;
-                            } else {
-                                // Legacy structure: just countries array
-                                allowed = Array.isArray(ruleData) && ruleData.indexOf(cc) !== -1;
-                            }
-                            var selectors = [
-                                '.elementor-element[data-id="' + ref + '"]',
-                                '#' + CSS.escape(ref),
-                                '[id="' + ref.replace(/"/g,'\\"') + '"]'
-                            ];
-                            selectors.forEach(function(selector){
-                                try {
-                                    var nodes = document.querySelectorAll(selector);
-                                    nodes.forEach(function(node){
-                                        if (!allowed) {
-                                            node.style.display='none';
-                                            node.style.visibility='hidden';
-                                        } else {
-                                            // Track view for allowed section/container
-                                            try {
-                                                if (window.egpTrackView && typeof window.egpTrackView === 'function') {
-                                                    // Use rule ID from the element rules data structure
-                                                    var trackRuleId = ruleId || node.getAttribute('data-egp-rule-id') ||
-                                                                     node.getAttribute('data-rule-id') || ref;
-                                                    if (trackRuleId && !node.__egpTracked) {
-                                                        window.egpTrackView(trackRuleId);
-                                                        node.__egpTracked = true; // prevent duplicate tracking
-                                                    }
-                                                }
-                                            } catch(trackErr){}
-                                        }
-                                    });
-                                } catch(ee){}
-                            });
-                        } catch(e){}
-                    });
-                } catch(e){}
+                return;
             }
-            try { window.egpApplyGuard = function(country){ hideDisallowedElementsForCountry(country); }; } catch(e){}
+            try { window.egpApplyGuard = function(country){ return; }; } catch(e){}
             function getPopupIdFromNode(node){
                 try {
                     var el = node instanceof Element ? node : null;
@@ -945,8 +911,6 @@ class EGP_Geo_Detect {
                 closeDisallowedIfOpen();
                 observePopups();
                 unhidePopups();
-                // Enforce element-level rules
-                try { hideDisallowedElementsForCountry(<?php echo json_encode($country); ?>); } catch(e){}
                 if (<?php echo get_option('egp_debug_mode') ? 'true' : 'false'; ?>) { try { console.log('[EGP] guards active (pro+docs patched)'); } catch(e){} }
             }
 

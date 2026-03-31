@@ -73,6 +73,7 @@ class RW_Geo_Variant_Groups_Admin {
         wp_enqueue_script('jquery-ui-sortable');
         wp_enqueue_style('wp-admin');
         wp_enqueue_style('wp-list-table');
+        wp_enqueue_style('dashicons');
         
         // Reuse global admin styles (cards, layout)
         wp_enqueue_style(
@@ -173,28 +174,19 @@ class RW_Geo_Variant_Groups_Admin {
         $action = $_GET['action'] ?? 'list';
         
         echo '<div class="wrap egp-settings">';
-        echo '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">';
-        echo '<span class="egp-admin-logo-wrap">';
-        echo '<img id="egp-admin-logo" src="' . esc_url( EGP_PLUGIN_URL . 'assets/img/GeoElementor.svg' ) . '" alt="Geo Elementor" style="height:40px;width:auto;vertical-align:middle;" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-flex\';" />';
-        echo '<span class="egp-admin-logo-fallback" style="display:none;">GE</span>';
-        echo '</span>';
-        echo '<h1 style="margin:0;line-height:1;">' . __('Groups', 'elementor-geo-popup') . '</h1>';
-        echo '</div>';
         if ( class_exists( 'EGP_Admin_Menu' ) ) {
-            EGP_Admin_Menu::render_inner_nav( 'geo-elementor-variants' );
+            $routing_notice  = '<div class="notice notice-info egp-routing-context-notice">';
+            $routing_notice .= '<p>' . esc_html__( 'Routing ownership: Geo Core controls free Master/Secondary routing, while this screen controls Pro groups layered on top for country-first matching.', 'elementor-geo-popup' ) . '</p>';
+            $routing_notice .= '<p>';
+            $routing_notice .= '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=rwgc-usage' ) ) . '">' . esc_html__( 'Geo Core Free Routing Guide', 'elementor-geo-popup' ) . '</a> ';
+            $routing_notice .= '<a class="button button-primary" href="' . esc_url( admin_url( 'admin.php?page=geo-elementor-variants' ) ) . '">' . esc_html__( 'You are here: Variant Groups', 'elementor-geo-popup' ) . '</a>';
+            $routing_notice .= '</p></div>';
+            EGP_Admin_Menu::render_page_header( esc_html__( 'Groups', 'elementor-geo-popup' ), 'geo-elementor-variants', $routing_notice );
         }
         echo '<div class="egp-section-card">';
         echo '<p style="margin:0 0 8px 0;">' . __('Manage Pro Groups that map content (Pages/Popups/Sections/Widgets) to countries for a selected Master page.', 'elementor-geo-popup') . '</p>';
         echo '<p style="margin:0 0 8px 0;">' . __('Tip: Use a default target for the group, then add specific overrides for selected countries. Rules on the same target take precedence and may block group mappings.', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="If a Rule already targets the same Page/Popup, the Group mapping will not apply to avoid conflicts."></span></p>';
         echo '</div>';
-
-		echo '<div class="notice notice-info" style="margin:14px 0;">';
-		echo '<p>' . esc_html__('Routing ownership: Geo Core controls free Master/Secondary routing, while this screen controls Pro groups layered on top for country-first matching.', 'elementor-geo-popup') . '</p>';
-		echo '<p>';
-		echo '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=rwgc-usage' ) ) . '">' . esc_html__('Geo Core Free Routing Guide', 'elementor-geo-popup') . '</a> ';
-		echo '<a class="button button-primary" href="' . esc_url( admin_url( 'admin.php?page=geo-elementor-variants' ) ) . '">' . esc_html__('You are here: Variant Groups', 'elementor-geo-popup') . '</a>';
-		echo '</p>';
-		echo '</div>';
         
         switch ($action) {
             case 'add':
@@ -244,7 +236,7 @@ class RW_Geo_Variant_Groups_Admin {
         echo '<th>' . __('Types', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="Which targets this group can map."></span></th>';
         echo '<th>' . __('Countries', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="Number of country-specific overrides."></span></th>';
         echo '<th>' . __('Updated', 'elementor-geo-popup') . '</th>';
-        echo '<th>' . __('Actions', 'elementor-geo-popup') . '</th>';
+        echo '<th scope="col" class="manage-column column-actions">' . esc_html__( 'Actions', 'elementor-geo-popup' ) . '</th>';
         echo '</tr>';
         echo '</thead>';
         echo '<tbody>';
@@ -295,10 +287,12 @@ class RW_Geo_Variant_Groups_Admin {
             if ($country_count === 0) { $badges[] = '<span class="egp-badge" style="background:#fff3cd;color:#856404;border:1px solid #ffeaa7;border-radius:3px;padding:2px 6px;">' . __('Incomplete', 'elementor-geo-popup') . '</span>'; }
             echo '<td>' . sprintf(_n('%d country', '%d countries', $country_count, 'elementor-geo-popup'), $country_count) . ' ' . implode(' ', $badges) . '</td>';
             echo '<td>' . esc_html(date_i18n(get_option('date_format'), strtotime($variant->updated_at))) . '</td>';
-            echo '<td>';
-            echo '<a href="' . admin_url('admin.php?page=geo-elementor-variants&action=edit&id=' . $variant->id) . '" class="button button-small">' . __('Edit', 'elementor-geo-popup') . '</a> ';
-            echo '<button class="button button-small button-link-delete delete-variant" data-id="' . $variant->id . '">' . __('Delete', 'elementor-geo-popup') . '</button>';
-            echo '</td>';
+            $edit_url = admin_url( 'admin.php?page=geo-elementor-variants&action=edit&id=' . (int) $variant->id );
+            echo '<td class="column-actions egp-rule-actions-cell">';
+            echo '<span class="egp-rule-actions" role="group" aria-label="' . esc_attr__( 'Group actions', 'elementor-geo-popup' ) . '">';
+            echo '<a href="' . esc_url( $edit_url ) . '" class="button button-small egp-icon-btn" title="' . esc_attr__( 'Edit', 'elementor-geo-popup' ) . '"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Edit', 'elementor-geo-popup' ) . '</span></a>';
+            echo '<button type="button" class="button button-small button-link-delete egp-icon-btn delete-variant" data-id="' . esc_attr( $variant->id ) . '" title="' . esc_attr__( 'Delete', 'elementor-geo-popup' ) . '"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Delete', 'elementor-geo-popup' ) . '</span></button>';
+            echo '</span></td>';
             echo '</tr>';
         }
         
@@ -674,85 +668,19 @@ class RW_Geo_Variant_Groups_Admin {
         
         echo '</table>';
         
-        echo '<p>';
-        echo '<button type="button" class="button button-small save-mapping" data-id="' . $mapping_id . '">' . __('Save Mapping', 'elementor-geo-popup') . '</button> ';
-        echo '<button type="button" class="button button-small button-link-delete delete-mapping" data-id="' . $mapping_id . '">' . __('Delete', 'elementor-geo-popup') . '</button>';
-        echo '</p>';
+        echo '<p class="egp-mapping-row-actions"><span class="egp-rule-actions" role="group" aria-label="' . esc_attr__( 'Mapping actions', 'elementor-geo-popup' ) . '">';
+        echo '<button type="button" class="button button-small save-mapping" data-id="' . esc_attr( $mapping_id ) . '">' . esc_html__( 'Save Mapping', 'elementor-geo-popup' ) . '</button> ';
+        echo '<button type="button" class="button button-small button-link-delete egp-icon-btn delete-mapping" data-id="' . esc_attr( $mapping_id ) . '" title="' . esc_attr__( 'Delete', 'elementor-geo-popup' ) . '"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Delete', 'elementor-geo-popup' ) . '</span></button>';
+        echo '</span></p>';
         
         echo '</div>';
     }
     
     /**
-     * Get countries list
+     * Get countries list (canonical: assets/data/countries.json via egp_get_country_options).
      */
     private function get_countries_list() {
-        // Load from bundled ISO-3166 list if available
-        $json_path = dirname(__DIR__) . '/assets/data/countries.json';
-        if (file_exists($json_path)) {
-            $contents = file_get_contents($json_path);
-            $decoded = json_decode($contents, true);
-            if (is_array($decoded) && !empty($decoded)) {
-                return $decoded;
-            }
-        }
-
-        // Fallback minimal list
-        return array(
-            'US' => 'United States',
-            'GB' => 'United Kingdom',
-            'CA' => 'Canada',
-            'AU' => 'Australia',
-            'DE' => 'Germany',
-            'FR' => 'France',
-            'IT' => 'Italy',
-            'ES' => 'Spain',
-            'NL' => 'Netherlands',
-            'BE' => 'Belgium',
-            'SE' => 'Sweden',
-            'NO' => 'Norway',
-            'DK' => 'Denmark',
-            'FI' => 'Finland',
-            'CH' => 'Switzerland',
-            'AT' => 'Austria',
-            'IE' => 'Ireland',
-            'NZ' => 'New Zealand',
-            'JP' => 'Japan',
-            'KR' => 'South Korea',
-            'CN' => 'China',
-            'IN' => 'India',
-            'BR' => 'Brazil',
-            'MX' => 'Mexico',
-            'AR' => 'Argentina',
-            'CL' => 'Chile',
-            'CO' => 'Colombia',
-            'PE' => 'Peru',
-            'VE' => 'Venezuela',
-            'ZA' => 'South Africa',
-            'EG' => 'Egypt',
-            'NG' => 'Nigeria',
-            'KE' => 'Kenya',
-            'MA' => 'Morocco',
-            'SA' => 'Saudi Arabia',
-            'AE' => 'United Arab Emirates',
-            'IL' => 'Israel',
-            'TR' => 'Turkey',
-            'RU' => 'Russia',
-            'PL' => 'Poland',
-            'CZ' => 'Czech Republic',
-            'HU' => 'Hungary',
-            'RO' => 'Romania',
-            'BG' => 'Bulgaria',
-            'HR' => 'Croatia',
-            'SI' => 'Slovenia',
-            'SK' => 'Slovakia',
-            'LT' => 'Lithuania',
-            'LV' => 'Latvia',
-            'EE' => 'Estonia',
-            'MT' => 'Malta',
-            'CY' => 'Cyprus',
-            'GR' => 'Greece',
-            'PT' => 'Portugal'
-        );
+        return function_exists( 'egp_get_country_options' ) ? egp_get_country_options() : array();
     }
 
     /**

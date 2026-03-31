@@ -200,13 +200,7 @@ class EGP_Geo_Container_Widget extends \Elementor\Widget_Base {
     }
     
     protected function get_countries_list() {
-        return [
-            'US' => 'United States', 'GB' => 'United Kingdom', 'CA' => 'Canada',
-            'AU' => 'Australia', 'DE' => 'Germany', 'FR' => 'France', 'IT' => 'Italy',
-            'ES' => 'Spain', 'JP' => 'Japan', 'CN' => 'China', 'IN' => 'India',
-            'BR' => 'Brazil', 'MX' => 'Mexico', 'NL' => 'Netherlands', 'SE' => 'Sweden',
-            'NO' => 'Norway', 'DK' => 'Denmark', 'FI' => 'Finland', 'PL' => 'Poland',
-        ];
+        return function_exists( 'egp_get_country_options' ) ? egp_get_country_options() : array();
     }
     
     protected function get_countries_select_html($control_id, $label) {

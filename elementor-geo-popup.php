@@ -3,7 +3,7 @@
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
  * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration via ReactWoo Geo Core and MaxMind GeoLite2 database.
- * Version: 1.0.5.7
+ * Version: 1.0.5.22
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
  * License: GPL v2 or later
@@ -22,144 +22,26 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-/**
- * Self-heal stale/duplicate plugin basenames for Geo Elementor.
- *
- * This addresses cases where folder renames or duplicate uploads leave
- * invalid entries such as geo-elementor/geo-elementor/elementor-geo-popup.php
- * in active_plugins.
- */
-if (!function_exists('egp_self_heal_active_plugin_entries')) {
-    function egp_self_heal_active_plugin_entries() {
-        if (!is_admin() || !function_exists('get_option') || !function_exists('update_option')) {
-            return;
-        }
-
-        $current_basename = plugin_basename(__FILE__);
-        $canonical_basename = 'geo-elementor/elementor-geo-popup.php';
-        $canonical_exists = file_exists(WP_PLUGIN_DIR . '/' . $canonical_basename);
-        $preferred_basename = $canonical_exists ? $canonical_basename : $current_basename;
-        $removed = array();
-
-        $is_geo_entry = static function ($basename) {
-            $v = strtolower((string) $basename);
-            return (strpos($v, 'geo-elementor') !== false || strpos($v, 'geoelementor') !== false)
-                && strpos($v, 'elementor-geo-popup.php') !== false;
-        };
-
-        $active = get_option('active_plugins', array());
-        if (is_array($active)) {
-            $new_active = array();
-            $preferred_present = false;
-            foreach ($active as $entry) {
-                $entry = (string) $entry;
-                if (!$is_geo_entry($entry)) {
-                    $new_active[] = $entry;
-                    continue;
-                }
-
-                $exists = file_exists(WP_PLUGIN_DIR . '/' . ltrim($entry, '/'));
-                $is_nested_bad = (bool) preg_match('#(^|/)geo-elementor/geo-elementor/#i', $entry);
-
-                if ($entry === $preferred_basename && $exists && !$is_nested_bad) {
-                    $new_active[] = $entry;
-                    $preferred_present = true;
-                    continue;
-                }
-
-                $removed[] = $entry;
-            }
-
-            if (!$preferred_present && file_exists(WP_PLUGIN_DIR . '/' . $preferred_basename)) {
-                $new_active[] = $preferred_basename;
-            }
-
-            $new_active = array_values(array_unique($new_active));
-            if ($new_active !== $active) {
-                update_option('active_plugins', $new_active, false);
-            }
-        }
-
-        if (is_multisite() && function_exists('get_site_option') && function_exists('update_site_option')) {
-            $network_active = get_site_option('active_sitewide_plugins', array());
-            if (is_array($network_active)) {
-                $updated = $network_active;
-                $preferred_present = isset($updated[$preferred_basename]);
-
-                foreach (array_keys($network_active) as $entry) {
-                    if (!$is_geo_entry($entry)) {
-                        continue;
-                    }
-                    $exists = file_exists(WP_PLUGIN_DIR . '/' . ltrim((string) $entry, '/'));
-                    $is_nested_bad = (bool) preg_match('#(^|/)geo-elementor/geo-elementor/#i', (string) $entry);
-                    if ($entry === $preferred_basename && $exists && !$is_nested_bad) {
-                        continue;
-                    }
-                    unset($updated[$entry]);
-                    $removed[] = (string) $entry;
-                }
-
-                if (!$preferred_present && file_exists(WP_PLUGIN_DIR . '/' . $preferred_basename)) {
-                    $updated[$preferred_basename] = time();
-                }
-
-                if ($updated !== $network_active) {
-                    update_site_option('active_sitewide_plugins', $updated);
-                }
-            }
-        }
-
-        if (!empty($removed)) {
-            update_option('egp_self_heal_removed_entries', array_values(array_unique($removed)), false);
-        }
-
-        if (function_exists('wp_clean_plugins_cache')) {
-            wp_clean_plugins_cache(true);
-        }
-    }
-}
-
-if (!function_exists('egp_render_self_heal_notice')) {
-    function egp_render_self_heal_notice() {
-        if (!is_admin() || !current_user_can('activate_plugins')) {
-            return;
-        }
-        $removed = get_option('egp_self_heal_removed_entries', array());
-        if (empty($removed) || !is_array($removed)) {
-            return;
-        }
-        delete_option('egp_self_heal_removed_entries');
-        echo '<div class="notice notice-warning is-dismissible"><p>';
-        echo esc_html__('Geo Elementor repaired stale/duplicate active plugin entries and kept the canonical slug geo-elementor.', 'elementor-geo-popup');
-        echo '<br /><code>' . esc_html(implode(', ', $removed)) . '</code>';
-        echo '</p></div>';
-    }
-}
-
-egp_self_heal_active_plugin_entries();
-add_action('admin_notices', 'egp_render_self_heal_notice');
-
-// Defensive: prevent fatal collisions when multiple Geo Elementor copies are installed.
-if (defined('EGP_PLUGIN_FILE') || class_exists('ElementorGeoPopup', false)) {
-    if (is_admin() && function_exists('add_action')) {
-        add_action('admin_notices', function () {
-            if (!current_user_can('activate_plugins')) {
-                return;
-            }
-            echo '<div class="notice notice-error"><p>';
-            echo esc_html__('Geo Elementor detected another active copy with the same bootstrap symbols. Keep only one plugin folder and use the canonical lowercase slug: /plugins/geo-elementor. Remove duplicate folders like GeoElementor-1.', 'elementor-geo-popup');
-            echo '</p></div>';
-        });
-    }
-    return;
-}
-
 // Define plugin constants
-define('EGP_VERSION', '1.0.5.7');
+define('EGP_VERSION', '1.0.5.22');
 define('EGP_PLUGIN_FILE', __FILE__);
 define('EGP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EGP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('EGP_PLUGIN_BASENAME', plugin_basename(__FILE__));
+
+require_once EGP_PLUGIN_DIR . 'includes/egp-country-data.php';
+// WordPress.org-style updates via ReactWoo API (api.reactwoo.com) — same contract as WHMCS Bridge.
+require_once EGP_PLUGIN_DIR . 'includes/plugin-updater.php';
+
+// Always-on bootstrap marker for staging diagnostics.
+if (function_exists('error_log')) {
+    error_log('[EGP BOOT] Loaded Geo Elementor ' . EGP_VERSION . ' from ' . EGP_PLUGIN_FILE);
+}
+if (!is_admin() && function_exists('add_action')) {
+    add_action('wp_head', function () {
+        echo '<script>window.__EGP_BUILD__="1.0.5.22-admin-header-ux";console.log("[EGP BUILD]",window.__EGP_BUILD__);</script>';
+    }, 1);
+}
 
 // Autoloader for Composer dependencies
 if (file_exists(EGP_PLUGIN_DIR . 'vendor/autoload.php')) {
@@ -182,6 +64,11 @@ class ElementorGeoPopup {
     private $geo_ready = false;
     
     /**
+     * Prevent duplicate init when bootstrap runs late.
+     */
+    private $initialized = false;
+    
+    /**
      * Get single instance of this class
      */
     public static function get_instance() {
@@ -202,7 +89,11 @@ class ElementorGeoPopup {
      * Initialize hooks
      */
     private function init_hooks() {
-        add_action('plugins_loaded', array($this, 'init'), 20); // Increased priority to load after other plugins
+        if (did_action('plugins_loaded')) {
+            $this->init();
+        } else {
+            add_action('plugins_loaded', array($this, 'init'), 20); // Increased priority to load after other plugins
+        }
         add_filter('doing_it_wrong_trigger_error', array($this, 'filter_known_elementor_dependency_notices'), 10, 4);
         register_activation_hook(EGP_PLUGIN_FILE, array($this, 'activate'));
         register_deactivation_hook(EGP_PLUGIN_FILE, array($this, 'deactivate'));
@@ -255,6 +146,11 @@ class ElementorGeoPopup {
         if (!function_exists('wp_get_current_user') || !function_exists('add_action')) {
             return;
         }
+        
+        if ($this->initialized) {
+            return;
+        }
+        $this->initialized = true;
 
         if ($this->should_log_info()) { error_log('[EGP] Plugin init() called'); }
         add_action('admin_footer', function() {
@@ -275,6 +171,10 @@ class ElementorGeoPopup {
             // Demo helpers are not needed in production; removed from runtime
             // Ensure Geo Rules CPT and admin/AJAX are available in wp-admin regardless of Elementor state
             require_once EGP_PLUGIN_DIR . 'includes/geo-rules.php';
+            // Add-on registry UI (listing/install) must load in wp-admin even when Elementor/Pro
+            // are inactive — otherwise the Add-Ons screen is empty or shows "manager not available".
+            require_once EGP_PLUGIN_DIR . 'includes/addon-base.php';
+            require_once EGP_PLUGIN_DIR . 'includes/addon-manager.php';
             // Initialize admin-only components early
             new EGP_Admin_Settings();
             new EGP_Admin_Dashboard();
@@ -318,9 +218,7 @@ class ElementorGeoPopup {
         // Load enhanced fixes
         $this->load_enhanced_fixes();
         
-        // Initialize add-on manager
-        require_once EGP_PLUGIN_DIR . 'includes/addon-manager.php';
-        require_once EGP_PLUGIN_DIR . 'includes/addon-base.php';
+        // Add-on manager is loaded earlier for admin; avoid double bootstrap.
 
         // Register Elementor hooks when Elementor is ready
         add_action('elementor/init', array($this, 'register_elementor_hooks'));
@@ -388,8 +286,9 @@ class ElementorGeoPopup {
             require_once EGP_PLUGIN_DIR . 'includes/page-columns-integration.php';
         }
         
-        // Load homepage variant group support (allows groups for homepage/blog settings)
-        require_once EGP_PLUGIN_DIR . 'includes/homepage-variant-group.php';
+        // Safety stop: keep homepage/blog variant group overrides disabled on frontend
+        // until runtime routing regressions are fully resolved.
+        // require_once EGP_PLUGIN_DIR . 'includes/homepage-variant-group.php';
     }
     
     /**
@@ -464,7 +363,9 @@ class ElementorGeoPopup {
         EGP_AB_Testing::init();
         EGP_AI_Translation::init();
         EGP_Pro_Migration::init();
-        $this->register_rwgc_extensions();
+        // Safety stop: disable Geo Core route decision extension to prevent
+        // unintended variant page swaps on frontend.
+        // $this->register_rwgc_extensions();
         // Geo Rules system is auto-initialized
     }
 
@@ -626,69 +527,10 @@ class ElementorGeoPopup {
     }
 
     /**
-     * Get country options array for Elementor controls
+     * Get country options array for Elementor controls (canonical: assets/data/countries.json).
      */
     private function get_country_options() {
-        return array(
-            'AF' => 'Afghanistan', 'AL' => 'Albania', 'DZ' => 'Algeria', 'AS' => 'American Samoa',
-            'AD' => 'Andorra', 'AO' => 'Angola', 'AI' => 'Anguilla', 'AQ' => 'Antarctica',
-            'AG' => 'Antigua and Barbuda', 'AR' => 'Argentina', 'AM' => 'Armenia', 'AW' => 'Aruba',
-            'AU' => 'Australia', 'AT' => 'Austria', 'AZ' => 'Azerbaijan', 'BS' => 'Bahamas',
-            'BH' => 'Bahrain', 'BD' => 'Bangladesh', 'BB' => 'Barbados', 'BY' => 'Belarus',
-            'BE' => 'Belgium', 'BZ' => 'Belize', 'BJ' => 'Benin', 'BM' => 'Bermuda',
-            'BT' => 'Bhutan', 'BO' => 'Bolivia', 'BA' => 'Bosnia and Herzegovina', 'BW' => 'Botswana',
-            'BR' => 'Brazil', 'BN' => 'Brunei', 'BG' => 'Bulgaria', 'BF' => 'Burkina Faso',
-            'BI' => 'Burundi', 'KH' => 'Cambodia', 'CM' => 'Cameroon', 'CA' => 'Canada',
-            'CV' => 'Cape Verde', 'KY' => 'Cayman Islands', 'CF' => 'Central African Republic',
-            'TD' => 'Chad', 'CL' => 'Chile', 'CN' => 'China', 'CO' => 'Colombia',
-            'KM' => 'Comoros', 'CG' => 'Congo', 'CD' => 'Congo, Democratic Republic',
-            'CK' => 'Cook Islands', 'CR' => 'Costa Rica', 'CI' => 'Côte d\'Ivoire', 'HR' => 'Croatia',
-            'CU' => 'Cuba', 'CW' => 'Curaçao', 'CY' => 'Cyprus', 'CZ' => 'Czech Republic',
-            'DK' => 'Denmark', 'DJ' => 'Djibouti', 'DM' => 'Dominica', 'DO' => 'Dominican Republic',
-            'EC' => 'Ecuador', 'EG' => 'Egypt', 'SV' => 'El Salvador', 'GQ' => 'Equatorial Guinea',
-            'ER' => 'Eritrea', 'EE' => 'Estonia', 'ET' => 'Ethiopia', 'FK' => 'Falkland Islands',
-            'FO' => 'Faroe Islands', 'FJ' => 'Fiji', 'FI' => 'Finland', 'FR' => 'France',
-            'GA' => 'Gabon', 'GM' => 'Gambia', 'GE' => 'Georgia', 'DE' => 'Germany',
-            'GH' => 'Ghana', 'GI' => 'Gibraltar', 'GR' => 'Greece', 'GL' => 'Greenland',
-            'GD' => 'Grenada', 'GU' => 'Guam', 'GT' => 'Guatemala', 'GG' => 'Guernsey',
-            'GN' => 'Guinea', 'GW' => 'Guinea-Bissau', 'GY' => 'Guyana', 'HT' => 'Haiti',
-            'HN' => 'Honduras', 'HK' => 'Hong Kong', 'HU' => 'Hungary', 'IS' => 'Iceland',
-            'IN' => 'India', 'ID' => 'Indonesia', 'IR' => 'Iran', 'IQ' => 'Iraq',
-            'IE' => 'Ireland', 'IM' => 'Isle of Man', 'IL' => 'Israel', 'IT' => 'Italy',
-            'JM' => 'Jamaica', 'JP' => 'Japan', 'JE' => 'Jersey', 'JO' => 'Jordan',
-            'KZ' => 'Kazakhstan', 'KE' => 'Kenya', 'KI' => 'Kiribati', 'KW' => 'Kuwait',
-            'KG' => 'Kyrgyzstan', 'LA' => 'Laos', 'LV' => 'Latvia', 'LB' => 'Lebanon',
-            'LS' => 'Lesotho', 'LR' => 'Liberia', 'LY' => 'Libya', 'LI' => 'Liechtenstein',
-            'LT' => 'Lithuania', 'LU' => 'Luxembourg', 'MO' => 'Macau', 'MK' => 'Macedonia',
-            'MG' => 'Madagascar', 'MW' => 'Malawi', 'MY' => 'Malaysia', 'MV' => 'Maldives',
-            'ML' => 'Mali', 'MT' => 'Malta', 'MH' => 'Marshall Islands', 'MR' => 'Mauritania',
-            'MU' => 'Mauritius', 'MX' => 'Mexico', 'FM' => 'Micronesia', 'MD' => 'Moldova',
-            'MC' => 'Monaco', 'MN' => 'Mongolia', 'ME' => 'Montenegro', 'MS' => 'Montserrat',
-            'MA' => 'Morocco', 'MZ' => 'Mozambique', 'MM' => 'Myanmar', 'NA' => 'Namibia',
-            'NR' => 'Nauru', 'NP' => 'Nepal', 'NL' => 'Netherlands', 'NC' => 'New Caledonia',
-            'NZ' => 'New Zealand', 'NI' => 'Nicaragua', 'NE' => 'Niger', 'NG' => 'Nigeria',
-            'NU' => 'Niue', 'NF' => 'Norfolk Island', 'KP' => 'North Korea', 'MP' => 'Northern Mariana Islands',
-            'NO' => 'Norway', 'OM' => 'Oman', 'PK' => 'Pakistan', 'PW' => 'Palau',
-            'PS' => 'Palestine', 'PA' => 'Panama', 'PG' => 'Papua New Guinea', 'PY' => 'Paraguay',
-            'PE' => 'Peru', 'PH' => 'Philippines', 'PN' => 'Pitcairn', 'PL' => 'Poland',
-            'PT' => 'Portugal', 'PR' => 'Puerto Rico', 'QA' => 'Qatar', 'RO' => 'Romania',
-            'RU' => 'Russia', 'RW' => 'Rwanda', 'WS' => 'Samoa', 'SM' => 'San Marino',
-            'ST' => 'São Tomé and Príncipe', 'SA' => 'Saudi Arabia', 'SN' => 'Senegal',
-            'RS' => 'Serbia', 'SC' => 'Seychelles', 'SL' => 'Sierra Leone', 'SG' => 'Singapore',
-            'SX' => 'Sint Maarten', 'SK' => 'Slovakia', 'SI' => 'Slovenia', 'SB' => 'Solomon Islands',
-            'SO' => 'Somalia', 'ZA' => 'South Africa', 'KR' => 'South Korea', 'SS' => 'South Sudan',
-            'ES' => 'Spain', 'LK' => 'Sri Lanka', 'SD' => 'Sudan', 'SR' => 'Suriname',
-            'SZ' => 'Swaziland', 'SE' => 'Sweden', 'CH' => 'Switzerland', 'SY' => 'Syria',
-            'TW' => 'Taiwan', 'TJ' => 'Tajikistan', 'TZ' => 'Tanzania', 'TH' => 'Thailand',
-            'TL' => 'Timor-Leste', 'TG' => 'Togo', 'TK' => 'Tokelau', 'TO' => 'Tonga',
-            'TT' => 'Trinidad and Tobago', 'TN' => 'Tunisia', 'TR' => 'Turkey', 'TM' => 'Turkmenistan',
-            'TC' => 'Turks and Caicos Islands', 'TV' => 'Tuvalu', 'UG' => 'Uganda', 'UA' => 'Ukraine',
-            'AE' => 'United Arab Emirates', 'GB' => 'United Kingdom', 'US' => 'United States',
-            'UY' => 'Uruguay', 'UZ' => 'Uzbekistan', 'VU' => 'Vanuatu', 'VA' => 'Vatican City',
-            'VE' => 'Venezuela', 'VN' => 'Vietnam', 'VG' => 'Virgin Islands, British',
-            'VI' => 'Virgin Islands, U.S.', 'WF' => 'Wallis and Futuna', 'EH' => 'Western Sahara',
-            'YE' => 'Yemen', 'ZM' => 'Zambia', 'ZW' => 'Zimbabwe'
-        );
+        return function_exists( 'egp_get_country_options' ) ? egp_get_country_options() : array();
     }
 
 

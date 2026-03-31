@@ -1,4 +1,4 @@
-/* Align header logo nicely with notices and headings */
+/* Shared admin shell */
 #egp-admin-logo {
     display: block;
     margin: 0;
@@ -27,23 +27,43 @@
     text-transform: uppercase;
 }
 
-.wrap.egp-settings>div:first-child {
+.egp-page-header {
+    display: flex;
     align-items: center;
-}
-/* Ensure third‑party notices align nicely in our header row */
-.egp-header .notice {
-    margin: 0;
-    padding: 8px 12px;
-    align-self: center;
+    gap: 12px;
+    margin: 0 0 8px;
 }
 
-.egp-header h1 {
-    margin: 0;
-    line-height: 1;
+.egp-page-stack {
+    display: block;
+    width: 100%;
 }
 
-.egp-header .button {
-    align-self: center;
+.egp-page-notices {
+    display: block;
+    width: 100%;
+    clear: both;
+}
+
+.egp-page-notices .notice,
+.egp-page-notices .updated,
+.egp-page-notices .error {
+    display: block;
+    width: 100%;
+    clear: both;
+    margin: 0 0 16px;
+    box-sizing: border-box;
+}
+
+.egp-page-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.egp-page-header h1 {
+    margin: 0;
+    line-height: 1.1;
 }
 
 .egp-inner-nav {
@@ -99,8 +119,8 @@
     box-shadow: 0 2px 10px rgba(15, 23, 42, .05);
 }
 
-/* Modern settings layout */
-.egp-settings h1 {
+/* Modern settings layout (exclude plugin screen header — see .egp-page-heading below) */
+.egp-settings h1:not(.egp-page-heading) {
     margin-bottom: 12px;
     font-size: 32px;
     line-height: 1.2;
@@ -108,10 +128,47 @@
     font-weight: 700;
 }
 
+/* Geo Elementor admin shell: logo + title row, full-width notices below (matches inline admin-menu styles) */
+.egp-admin-header {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.egp-settings .egp-page-brand .egp-page-heading {
+    margin: 0;
+    padding: 0;
+    font-size: 23px;
+    font-weight: 400;
+    line-height: 1.25;
+    letter-spacing: normal;
+}
+
 .egp-settings {
     max-width: 1240px;
     margin: 20px auto;
     padding: 8px 12px 28px;
+}
+
+.egp-content-dashboard {
+    max-width: 1240px;
+    margin: 20px auto;
+    padding: 8px 12px 28px;
+}
+
+.egp-settings > .notice,
+.egp-settings > .updated,
+.egp-settings > .error,
+.egp-content-dashboard > .notice,
+.egp-content-dashboard > .updated,
+.egp-content-dashboard > .error {
+    display: block;
+    width: 100%;
+    clear: both;
+    margin: 0 0 16px;
+    box-sizing: border-box;
 }
 
 .egp-section-card {
@@ -137,7 +194,7 @@
 }
 
 /* Modern settings layout */
-.egp-settings h1 {
+.egp-settings h1:not(.egp-page-heading) {
     margin-bottom: 12px;
 }
 
@@ -168,6 +225,83 @@
 
 .egp-section-card li {
     margin-bottom: 8px;
+}
+
+/* Shared data table styling */
+.egp-settings .wp-list-table,
+.egp-content-dashboard .wp-list-table {
+    width: 100%;
+    margin-top: 14px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, .05);
+}
+
+.egp-settings .wp-list-table thead th,
+.egp-content-dashboard .wp-list-table thead th {
+    background: #f8fafc;
+    color: #475467;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    padding: 14px 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.egp-settings .wp-list-table tbody td,
+.egp-content-dashboard .wp-list-table tbody td,
+.egp-settings .wp-list-table tbody th,
+.egp-content-dashboard .wp-list-table tbody th {
+    padding: 16px;
+    vertical-align: middle;
+    border-top: 1px solid #eef2f6;
+}
+
+.egp-settings .wp-list-table thead th:first-child,
+.egp-content-dashboard .wp-list-table thead th:first-child {
+    border-top-left-radius: 12px;
+}
+
+.egp-settings .wp-list-table thead th:last-child,
+.egp-content-dashboard .wp-list-table thead th:last-child {
+    border-top-right-radius: 12px;
+}
+
+.egp-settings .wp-list-table tbody tr:last-child td:first-child,
+.egp-content-dashboard .wp-list-table tbody tr:last-child td:first-child,
+.egp-settings .wp-list-table tbody tr:last-child th:first-child,
+.egp-content-dashboard .wp-list-table tbody tr:last-child th:first-child {
+    border-bottom-left-radius: 12px;
+}
+
+.egp-settings .wp-list-table tbody tr:last-child td:last-child,
+.egp-content-dashboard .wp-list-table tbody tr:last-child td:last-child,
+.egp-settings .wp-list-table tbody tr:last-child th:last-child,
+.egp-content-dashboard .wp-list-table tbody tr:last-child th:last-child {
+    border-bottom-right-radius: 12px;
+}
+
+.egp-settings .wp-list-table.striped > tbody > :nth-child(odd),
+.egp-content-dashboard .wp-list-table.striped > tbody > :nth-child(odd) {
+    background-color: #fcfdff;
+}
+
+.egp-settings .wp-list-table tbody tr:hover,
+.egp-content-dashboard .wp-list-table tbody tr:hover {
+    background: #f8fbff;
+}
+
+.egp-settings .wp-list-table .button.button-small,
+.egp-content-dashboard .wp-list-table .button.button-small {
+    margin-right: 6px;
+}
+
+.egp-settings .tablenav.top {
+    margin: 0 0 10px;
 }
 
 /* Style core WP settings tables like cards */
@@ -237,7 +371,8 @@
 
 /* License Page Styles */
 .egp-license-container {
-    max-width: 800px;
+    width: 100%;
+    max-width: none;
 }
 
 .egp-license-info,
@@ -733,7 +868,7 @@
         padding: 4px 8px 20px;
     }
 
-    .egp-settings h1 {
+    .egp-settings h1:not(.egp-page-heading) {
         font-size: 24px;
     }
 

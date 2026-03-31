@@ -70,9 +70,8 @@ class EGP_Geo_Content_Dashboard {
         ));
         
         ?>
-        <div class="wrap egp-content-dashboard">
-            <h1><?php _e('Geo Content Management', 'elementor-geo-popup'); ?></h1>
-			<?php if ( class_exists( 'EGP_Admin_Menu' ) ) { EGP_Admin_Menu::render_inner_nav( 'geo-content' ); } ?>
+        <div class="wrap egp-settings egp-content-dashboard">
+			<?php if ( class_exists( 'EGP_Admin_Menu' ) ) { EGP_Admin_Menu::render_page_header( esc_html__( 'Geo Content Management', 'elementor-geo-popup' ), 'geo-content' ); } ?>
 
 			<div class="notice notice-info" style="margin:14px 0;">
 				<p>
@@ -85,6 +84,7 @@ class EGP_Geo_Content_Dashboard {
 				</p>
 				<p>
 					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=rwgc-usage' ) ); ?>"><?php esc_html_e( 'Geo Core Free Routing Guide', 'elementor-geo-popup' ); ?></a>
+					<a class="button" href="<?php echo esc_url( EGP_Admin_Menu::get_sync_rules_url() ); ?>"><?php esc_html_e( 'Run Sync Now', 'elementor-geo-popup' ); ?></a>
 					<a class="button button-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=geo-elementor-variants' ) ); ?>"><?php esc_html_e( 'Manage Variant Groups', 'elementor-geo-popup' ); ?></a>
 				</p>
 			</div>

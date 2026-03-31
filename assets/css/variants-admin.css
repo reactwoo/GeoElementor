@@ -153,27 +153,27 @@
 }
 
 /* Table styling */
-.wp-list-table .column-name {
+.egp-settings .wp-list-table .column-name {
     width: 25%;
 }
 
-.wp-list-table .column-slug {
+.egp-settings .wp-list-table .column-slug {
     width: 15%;
 }
 
-.wp-list-table .column-types {
+.egp-settings .wp-list-table .column-types {
     width: 20%;
 }
 
-.wp-list-table .column-countries {
+.egp-settings .wp-list-table .column-countries {
     width: 15%;
 }
 
-.wp-list-table .column-updated {
+.egp-settings .wp-list-table .column-updated {
     width: 15%;
 }
 
-.wp-list-table .column-actions {
+.egp-settings .wp-list-table .column-actions {
     width: 10%;
 }
 

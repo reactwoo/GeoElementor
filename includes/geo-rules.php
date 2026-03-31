@@ -48,6 +48,7 @@ class EGP_Geo_Rules {
         // Frontend targeting
         add_action('wp_head', array($this, 'add_tracking_data'));
         add_action('wp_footer', array($this, 'add_analytics_script'));
+        // Re-enabled with strict/scoped matching (exact Elementor targets only).
         add_action('wp_footer', array($this, 'add_element_geo_filter_script'), 20);
         add_action('wp_footer', array($this, 'add_popup_geo_filter'), 25);
         
@@ -87,8 +88,9 @@ class EGP_Geo_Rules {
         // No-public: internal conflict check helper via AJAX if needed later
         add_action('admin_post_egp_sync_elementor_rules', array($this, 'handle_manual_elementor_rule_sync'));
 
-        // Sync: When an Elementor Popup is saved with geo targeting enabled, create/update a matching Rule
+        // Sync: When an Elementor document is saved, keep related rules aligned with saved settings
         add_action('save_post_elementor_library', array($this, 'maybe_sync_rule_from_popup_settings'), 20, 3);
+        add_action('save_post', array($this, 'maybe_sync_rules_from_elementor_document'), 30, 3);
         add_action('admin_init', array($this, 'maybe_backfill_elementor_rule_titles'));
 
         // Cleanup: When a Geo Rule is deleted or trashed, disable geo-targeting on linked popup
@@ -173,6 +175,8 @@ class EGP_Geo_Rules {
         if (!is_array($countries)) {
             $countries = array();
         }
+        // Align stored values with picker / visitor detection (e.g. legacy UK → GB).
+        $countries = $this->normalize_country_codes_array( $countries );
         
         ?>
         <table class="form-table">
@@ -632,7 +636,7 @@ class EGP_Geo_Rules {
         }
         
         if (isset($_POST['egp_countries'])) {
-            $countries = array_map('sanitize_text_field', $_POST['egp_countries']);
+            $countries = $this->normalize_country_codes_array( array_map( 'sanitize_text_field', $_POST['egp_countries'] ) );
             // Debug: Log what's being saved
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 error_log("EGP Debug: Saving countries for rule {$post_id}: " . print_r($countries, true));
@@ -893,6 +897,7 @@ class EGP_Geo_Rules {
         $element_id = $element->get_id();
         $element_title = $this->get_element_title($element, $element_type, $settings);
         $countries = $this->get_element_countries_from_settings($settings);
+        $document_id = $this->get_element_document_id($element);
 
         // Check if a rule already exists for this element
         $existing_rules = get_posts(array(
@@ -926,6 +931,10 @@ class EGP_Geo_Rules {
                 if (!empty($countries)) {
                     update_post_meta($rule_id, 'egp_countries', $countries);
                 }
+                if ($document_id > 0) {
+                    update_post_meta($rule_id, 'egp_elementor_document_id', $document_id);
+                    update_post_meta($rule_id, 'egp_document_id', $document_id);
+                }
             }
             return $rule_id;
         }
@@ -943,7 +952,9 @@ class EGP_Geo_Rules {
                 'egp_active' => '1',
                 'egp_clicks' => 0,
                 'egp_views' => 0,
-                'egp_impressions' => 0
+                'egp_impressions' => 0,
+                'egp_elementor_document_id' => $document_id,
+                'egp_document_id' => $document_id,
             )
         );
 
@@ -954,6 +965,33 @@ class EGP_Geo_Rules {
                 error_log("EGP: Created rule ID {$rule_id} for {$element_type} {$element_id}");
             }
             return $rule_id;
+        }
+
+        return 0;
+    }
+
+    private function get_element_document_id($element) {
+        if (!is_object($element)) {
+            return 0;
+        }
+
+        try {
+            if (method_exists($element, 'get_document')) {
+                $document = $element->get_document();
+                if (is_object($document)) {
+                    if (method_exists($document, 'get_main_id')) {
+                        return intval($document->get_main_id());
+                    }
+                    if (method_exists($document, 'get_post')) {
+                        $post = $document->get_post();
+                        if ($post instanceof WP_Post) {
+                            return intval($post->ID);
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            return 0;
         }
 
         return 0;
@@ -1008,7 +1046,7 @@ class EGP_Geo_Rules {
             return array();
         }
 
-        return array_values(array_unique(array_map('strtoupper', array_map('sanitize_text_field', $countries))));
+        return $this->normalize_country_codes_array( array_map( 'sanitize_text_field', $countries ) );
     }
 
     /**
@@ -1135,9 +1173,9 @@ class EGP_Geo_Rules {
             $target_type = (string) get_post_meta($rule_id, $this->meta_prefix . 'target_type', true);
             $did_update = false;
 
-            $custom_label = $this->find_elementor_custom_label_by_element_id($target_id);
-            if ($custom_label !== '') {
-                $new_title = $this->build_element_title_from_label($target_type, $custom_label);
+            $element_sync = $this->find_elementor_rule_sync_data_by_element_id($target_id, $target_type);
+            if (!empty($element_sync)) {
+                $new_title = isset($element_sync['title']) ? (string) $element_sync['title'] : '';
                 $existing_title = (string) get_the_title($rule_id);
                 if ($new_title !== '' && $new_title !== $existing_title) {
                     wp_update_post(array(
@@ -1146,12 +1184,28 @@ class EGP_Geo_Rules {
                     ));
                     $did_update = true;
                 }
-            }
 
-            $countries = $this->find_elementor_countries_by_element_id($target_id);
-            if (!empty($countries)) {
-                update_post_meta($rule_id, $this->meta_prefix . 'countries', $countries);
-                $did_update = true;
+                if (array_key_exists('countries', $element_sync)) {
+                    $new_countries = array_values((array) $element_sync['countries']);
+                    $existing_countries = get_post_meta($rule_id, $this->meta_prefix . 'countries', true);
+                    if (!is_array($existing_countries)) {
+                        $existing_countries = array();
+                    }
+                    if ($new_countries !== array_values($existing_countries)) {
+                        update_post_meta($rule_id, $this->meta_prefix . 'countries', $new_countries);
+                        $did_update = true;
+                    }
+                }
+
+                $document_id = isset($element_sync['document_id']) ? intval($element_sync['document_id']) : 0;
+                if ($document_id > 0) {
+                    $existing_document_id = intval(get_post_meta($rule_id, $this->meta_prefix . 'elementor_document_id', true));
+                    if ($existing_document_id !== $document_id) {
+                        update_post_meta($rule_id, $this->meta_prefix . 'elementor_document_id', $document_id);
+                        update_post_meta($rule_id, $this->meta_prefix . 'document_id', $document_id);
+                        $did_update = true;
+                    }
+                }
             }
 
             if ($did_update) {
@@ -1279,6 +1333,84 @@ class EGP_Geo_Rules {
         }
 
         return array();
+    }
+
+    private function find_elementor_rule_sync_data_by_element_id($element_id, $target_type = '') {
+        global $wpdb;
+        if (!$wpdb || $element_id === '') {
+            return array();
+        }
+
+        $like = '%"id":"' . $wpdb->esc_like((string) $element_id) . '"%';
+        $sql = $wpdb->prepare(
+            "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value LIKE %s ORDER BY post_id DESC LIMIT 50",
+            '_elementor_data',
+            $like
+        );
+        $post_ids = $wpdb->get_col($sql);
+        if (empty($post_ids)) {
+            return array();
+        }
+
+        foreach ($post_ids as $post_id) {
+            $raw = get_post_meta(intval($post_id), '_elementor_data', true);
+            if (empty($raw) || !is_string($raw)) {
+                continue;
+            }
+
+            $data = json_decode($raw, true);
+            if (!is_array($data)) {
+                continue;
+            }
+
+            $found = $this->find_element_settings_in_tree($data, (string) $element_id);
+            if (!is_array($found)) {
+                continue;
+            }
+
+            return array(
+                'title' => $this->build_element_title_from_element_data($target_type, (string) $element_id, $found),
+                'countries' => $this->get_element_countries_from_settings(isset($found['settings']) && is_array($found['settings']) ? $found['settings'] : array()),
+                'document_id' => intval($post_id),
+            );
+        }
+
+        return array();
+    }
+
+    private function build_element_title_from_element_data($target_type, $element_id, $element_data) {
+        $target_type = sanitize_key((string) $target_type);
+        $element_id = sanitize_title((string) $element_id);
+        $settings = (isset($element_data['settings']) && is_array($element_data['settings'])) ? $element_data['settings'] : array();
+
+        $label = '';
+        if (!empty($settings['egp_element_id'])) {
+            $label = (string) $settings['egp_element_id'];
+        } elseif (!empty($settings['_element_id'])) {
+            $label = (string) $settings['_element_id'];
+        } elseif (!empty($settings['css_id'])) {
+            $label = (string) $settings['css_id'];
+        }
+
+        $label = sanitize_title($label);
+        if ($label === '') {
+            $label = $element_id;
+        }
+
+        switch ($target_type) {
+            case 'section':
+                return "Section: {$label}";
+            case 'container':
+                return "Container: {$label}";
+            case 'widget':
+                $widget_name = '';
+                if (!empty($element_data['widgetType'])) {
+                    $widget_name = ucfirst(str_replace('_', ' ', sanitize_text_field((string) $element_data['widgetType'])));
+                }
+                return $widget_name !== '' ? "Widget: {$widget_name} ({$label})" : "Widget: {$label}";
+            default:
+                return ucfirst($target_type) . ": {$label}";
+        }
     }
 
     private function find_element_settings_in_tree($elements, $target_id) {
@@ -1512,6 +1644,9 @@ class EGP_Geo_Rules {
      */
     private function increment_untracked_country($country) {
         $code = strtoupper(trim((string) $country));
+        if ( class_exists( 'EGP_Geo_Detect' ) ) {
+            $code = EGP_Geo_Detect::normalize_iso3166_alpha2( $code );
+        }
         if (!$code || strlen($code) !== 2) { return; }
         $counts = get_option('egp_untracked_country_counts', array());
         if (!is_array($counts)) { $counts = array(); }
@@ -1524,6 +1659,9 @@ class EGP_Geo_Rules {
      */
     private function country_is_tracked($country) {
         $code = strtoupper(trim((string) $country));
+        if ( class_exists( 'EGP_Geo_Detect' ) ) {
+            $code = EGP_Geo_Detect::normalize_iso3166_alpha2( $code );
+        }
         if (!$code || strlen($code) !== 2) { return false; }
         $rules = get_posts(array(
             'post_type' => $this->post_type,
@@ -1537,7 +1675,7 @@ class EGP_Geo_Rules {
         if (empty($rules)) { return false; }
         foreach ($rules as $rid) {
             $countries = get_post_meta($rid, $this->meta_prefix . 'countries', true);
-            if (is_array($countries) && in_array($code, array_map('strtoupper', $countries), true)) {
+            if (is_array($countries) && in_array($code, $this->normalize_country_codes_array($countries), true)) {
                 return true;
             }
         }
@@ -1566,7 +1704,7 @@ class EGP_Geo_Rules {
             if (!is_array($page_settings)) { continue; }
             if (!isset($page_settings['egp_enable_geo_targeting']) || $page_settings['egp_enable_geo_targeting'] !== 'yes') { continue; }
             $countries = isset($page_settings['egp_countries']) && is_array($page_settings['egp_countries']) ? $page_settings['egp_countries'] : array();
-            if (in_array($code, array_map('strtoupper', $countries), true)) {
+            if (in_array($code, $this->normalize_country_codes_array($countries), true)) {
                 return true;
             }
         }
@@ -1651,8 +1789,13 @@ class EGP_Geo_Rules {
      * Hide Sections/Containers/Widgets on the frontend when visitor country is not targeted by rules.
      */
     public function add_element_geo_filter_script() {
-        if (is_admin()) { return; }
-        $user_country = strtoupper($this->get_user_country());
+        if (is_admin() || $this->is_elementor_editor_context()) { return; }
+        $user_country_raw = $this->get_user_country();
+        $user_country = is_string( $user_country_raw ) ? strtoupper( $user_country_raw ) : $user_country_raw;
+        if ( class_exists( 'EGP_Geo_Detect' ) ) {
+            $user_country = EGP_Geo_Detect::normalize_iso3166_alpha2( $user_country );
+        }
+        $current_page_id = get_queried_object_id();
         // Do not early-return when country is unknown; we'll use an AJAX fallback to resolve it client-side
 
         // Fetch active section/widget rules (manual targeting)
@@ -1668,11 +1811,12 @@ class EGP_Geo_Rules {
         error_log('[EGP Debug] Found ' . count($rules) . ' active rules in database');
 
         $targets = array();
+        $targets_by_ref = array();
         foreach ($rules as $rule) {
             $type = get_post_meta($rule->ID, $this->meta_prefix . 'target_type', true);
             error_log('[EGP Debug] Processing rule ' . $rule->ID . ' with type: ' . $type);
-            // Include all valid Elementor element types: section, container, widget, column
-            $valid_types = array('section', 'widget', 'container', 'column');
+            // Include all valid Elementor element types, including legacy "elementor" rules.
+            $valid_types = array('section', 'widget', 'container', 'column', 'elementor');
             if (!in_array($type, $valid_types, true)) { 
                 error_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - wrong type: ' . $type);
                 continue; 
@@ -1681,22 +1825,36 @@ class EGP_Geo_Rules {
             if ($target_id === '' || strpos($target_id, 'template:') === 0) { 
                 error_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - invalid target_id: ' . $target_id);
                 continue; 
-            }                                                                  
+            }
+            $rule_document_id = intval(get_post_meta($rule->ID, $this->meta_prefix . 'elementor_document_id', true));
+            if ($rule_document_id <= 0) {
+                $rule_document_id = intval(get_post_meta($rule->ID, $this->meta_prefix . 'document_id', true));
+            }
+            // Strict document scoping when document ID exists.
+            // For legacy rules without stored document ID, allow strict DOM ref matching to decide applicability.
+            if ($rule_document_id > 0 && $current_page_id > 0 && $rule_document_id !== intval($current_page_id)) {
+                error_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - document mismatch: rule=' . $rule_document_id . ' current=' . $current_page_id);
+                continue;
+            }
             $countries = get_post_meta($rule->ID, $this->meta_prefix . 'countries', true);
             if (!is_array($countries) || empty($countries)) { 
                 error_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - no countries');
                 continue; 
             }  
-            $countries = array_values(array_unique(array_map('strtoupper', $countries)));
+            $countries = $this->normalize_country_codes_array( $countries );
 
             // Store both the original ID and potential variations
             // We'll check multiple possibilities on the frontend
-            $targets[] = array(
-                'ref' => $target_id,
-                'countries' => $countries,
-            );
-            error_log('[EGP Debug] Added target: ' . $target_id . ' for countries: ' . implode(',', $countries));
+            if (!isset($targets_by_ref[$target_id])) {
+                $targets_by_ref[$target_id] = array(
+                    'ref' => $target_id,
+                    'countries' => array(),
+                );
+            }
+            $targets_by_ref[$target_id]['countries'] = array_values(array_unique(array_merge($targets_by_ref[$target_id]['countries'], $countries)));
+            error_log('[EGP Debug] Merged target: ' . $target_id . ' countries now: ' . implode(',', $targets_by_ref[$target_id]['countries']));
         }
+        $targets = array_values($targets_by_ref);
 
         error_log('[EGP Debug] Frontend script - Found ' . count($targets) . ' targets: ' . wp_json_encode($targets));
         
@@ -1722,73 +1880,28 @@ class EGP_Geo_Rules {
             console.log("[EGP Frontend] Loaded", targets.length, "geo targeting rules:", targets);
             
             function egpFindElement(ref) {
-                // Try multiple strategies to find the element
+                // Strict matching only: avoid broad ID/class fallbacks that can hide unrelated content.
                 var found = [];
                 var cleanRef = (ref || "").trim();
-                
-                if (!cleanRef) return found;
-                
-                console.log("[EGP Frontend] Searching for element:", cleanRef);
-                
-                // Strategy 1: Direct data-id match (Elementor's primary identifier)
-                var byDataId = document.querySelectorAll('[data-id="' + cleanRef + '"]');
+                if (!cleanRef) { return found; }
+
+                var byDataId = document.querySelectorAll('.elementor-element[data-id="' + cleanRef + '"]');
                 if (byDataId.length > 0) {
-                    console.log("[EGP Frontend] Found", byDataId.length, "elements by data-id:", cleanRef);
                     byDataId.forEach(function(el) { found.push(el); });
+                    console.log("[EGP Frontend] Found", byDataId.length, "elements by exact data-id:", cleanRef);
                     return found;
                 }
-                
-                // Strategy 2: CSS ID selector
-                var cleanId = cleanRef.replace(/^#/, '');
-                try {
-                    var byId = document.getElementById(cleanId);
-                    if (byId) {
-                        console.log("[EGP Frontend] Found by ID:", cleanId);
-                        found.push(byId);
-                        return found;
-                    }
-                } catch(e) {}
-                
-                // Strategy 3: Try variations of the ID (spaces to dashes, underscores, etc.)
-                var variations = [
-                    cleanRef,
-                    cleanRef.replace(/\s+/g, '-'),
-                    cleanRef.replace(/\s+/g, '_'),
-                    cleanRef.replace(/\s+/g, '').toLowerCase(),
-                    cleanRef.toLowerCase().replace(/\s+/g, '-')
-                ];
-                
-                for (var i = 0; i < variations.length; i++) {
-                    var variant = variations[i];
-                    // Try data-id with variation
-                    var byDataIdVar = document.querySelectorAll('[data-id="' + variant + '"]');
-                    if (byDataIdVar.length > 0) {
-                        console.log("[EGP Frontend] Found by data-id variation:", variant);
-                        byDataIdVar.forEach(function(el) { found.push(el); });
-                        return found;
-                    }
-                    
-                    // Try ID with variation
-                    var byIdVar = document.getElementById(variant);
-                    if (byIdVar) {
-                        console.log("[EGP Frontend] Found by ID variation:", variant);
-                        found.push(byIdVar);
-                        return found;
-                    }
-                }
-                
-                // Strategy 4: Try as class name (last resort)
-                try {
-                    var byClass = document.getElementsByClassName(cleanId);
-                    if (byClass.length > 0) {
-                        console.log("[EGP Frontend] Found by class:", cleanId);
-                        Array.from(byClass).forEach(function(el) { found.push(el); });
-                        return found;
-                    }
-                } catch(e) {}
-                
-                console.log("[EGP Frontend] Could not find element:", cleanRef);
+
+                // No CSS ID/class fallback: only exact Elementor data-id matching is allowed.
+                // This prevents hiding unrelated sections that happen to share a DOM id.
+                console.log("[EGP Frontend] Could not find exact Elementor data-id target:", cleanRef);
                 return found;
+            }
+            
+            function egpNormalizeCountry(c) {
+                var x = (c || "").toString().toUpperCase();
+                if (x === "UK") { return "GB"; }
+                return x;
             }
             
             function egpHideTargets(country) {
@@ -1799,12 +1912,12 @@ class EGP_Geo_Rules {
                     return;
                 }
                 
-                var userCountry = (country || "").toUpperCase();
+                var userCountry = egpNormalizeCountry(country);
                 var hidden = new Set();
                 
                 targets.forEach(function(target) {
                     var allowedCountries = (target.countries || []).map(function(c) {
-                        return (c || "").toUpperCase();
+                        return egpNormalizeCountry(c);
                     });
                     
                     console.log("[EGP Frontend] Checking rule for:", target.ref, "| Allowed:", allowedCountries, "| User:", userCountry);
@@ -1871,6 +1984,24 @@ class EGP_Geo_Rules {
         </script>
         <?php
     }
+
+    private function is_elementor_editor_context() {
+        $is_preview = isset($_GET['elementor-preview']) || isset($_GET['elementor_library']);
+        $is_action_editor = isset($_GET['action']) && $_GET['action'] === 'elementor';
+        $is_ajax = function_exists('wp_doing_ajax') ? wp_doing_ajax() : (defined('DOING_AJAX') && DOING_AJAX);
+        $is_elementor_ajax = $is_ajax && isset($_REQUEST['action']) && (strpos((string) $_REQUEST['action'], 'elementor') !== false);
+        $is_edit_mode = false;
+
+        if (class_exists('Elementor\\Plugin')) {
+            try {
+                $is_edit_mode = \Elementor\Plugin::$instance && \Elementor\Plugin::$instance->editor && \Elementor\Plugin::$instance->editor->is_edit_mode();
+            } catch (\Throwable $e) {
+                $is_edit_mode = false;
+            }
+        }
+
+        return ($is_preview || $is_action_editor || $is_elementor_ajax || $is_edit_mode);
+    }
     
     /**
      * Get user country
@@ -1907,88 +2038,39 @@ class EGP_Geo_Rules {
         $is_valid = isset($license_data['valid']) && $license_data['valid'];
         return $is_valid || apply_filters('egp_is_pro_user', false);
     }
+
+    /**
+     * Normalize country codes from forms, Elementor settings, or legacy data to the same ISO 3166-1 alpha-2
+     * values used by visitor detection (e.g. GB for United Kingdom, never UK).
+     *
+     * @param array $codes Raw codes.
+     * @return string[] Unique uppercase canonical codes.
+     */
+    private function normalize_country_codes_array( $codes ) {
+        if ( ! is_array( $codes ) ) {
+            return array();
+        }
+        $out = array();
+        foreach ( $codes as $c ) {
+            $c = strtoupper( trim( (string) $c ) );
+            if ( $c === '' ) {
+                continue;
+            }
+            if ( class_exists( 'EGP_Geo_Detect' ) ) {
+                $c = EGP_Geo_Detect::normalize_iso3166_alpha2( $c );
+            } elseif ( 'UK' === $c ) {
+                $c = 'GB';
+            }
+            $out[] = $c;
+        }
+        return array_values( array_unique( $out ) );
+    }
     
     /**
-     * Get countries list
+     * Get countries list (canonical: includes/egp-country-data.php + assets/data/countries.json).
      */
     private function get_countries_list() {
-        // Load full ISO-3166 list from bundled data file if available
-        $json_path = plugin_dir_path(__FILE__) . '../assets/data/countries.json';
-        $json_path = realpath($json_path);
-        if ($json_path && file_exists($json_path)) {
-            $contents = file_get_contents($json_path);
-            $decoded = json_decode($contents, true);
-            if (is_array($decoded) && !empty($decoded)) {
-                // Convert from array of objects to associative array
-                $countries = array();
-                foreach ($decoded as $country) {
-                    if (isset($country['code']) && isset($country['name'])) {
-                        $countries[$country['code']] = $country['name'];
-                    }
-                }
-                if (!empty($countries)) {
-                    return $countries;
-                }
-            }
-        }
-
-        // Fallback comprehensive list
-        return array(
-            'US' => 'United States',
-            'GB' => 'United Kingdom',
-            'CA' => 'Canada',
-            'AU' => 'Australia',
-            'DE' => 'Germany',
-            'FR' => 'France',
-            'IT' => 'Italy',
-            'ES' => 'Spain',
-            'NL' => 'Netherlands',
-            'BE' => 'Belgium',
-            'SE' => 'Sweden',
-            'NO' => 'Norway',
-            'DK' => 'Denmark',
-            'FI' => 'Finland',
-            'CH' => 'Switzerland',
-            'AT' => 'Austria',
-            'IE' => 'Ireland',
-            'NZ' => 'New Zealand',
-            'JP' => 'Japan',
-            'KR' => 'South Korea',
-            'CN' => 'China',
-            'IN' => 'India',
-            'BR' => 'Brazil',
-            'MX' => 'Mexico',
-            'AR' => 'Argentina',
-            'CL' => 'Chile',
-            'CO' => 'Colombia',
-            'PE' => 'Peru',
-            'VE' => 'Venezuela',
-            'ZA' => 'South Africa',
-            'EG' => 'Egypt',
-            'NG' => 'Nigeria',
-            'KE' => 'Kenya',
-            'MA' => 'Morocco',
-            'SA' => 'Saudi Arabia',
-            'AE' => 'United Arab Emirates',
-            'IL' => 'Israel',
-            'TR' => 'Turkey',
-            'RU' => 'Russia',
-            'PL' => 'Poland',
-            'CZ' => 'Czech Republic',
-            'HU' => 'Hungary',
-            'RO' => 'Romania',
-            'BG' => 'Bulgaria',
-            'HR' => 'Croatia',
-            'SI' => 'Slovenia',
-            'SK' => 'Slovakia',
-            'LT' => 'Lithuania',
-            'LV' => 'Latvia',
-            'EE' => 'Estonia',
-            'MT' => 'Malta',
-            'CY' => 'Cyprus',
-            'GR' => 'Greece',
-            'PT' => 'Portugal'
-        );
+        return function_exists( 'egp_get_country_options' ) ? egp_get_country_options() : array();
     }
 
     /**
@@ -2389,6 +2471,7 @@ class EGP_Geo_Rules {
             
             if ($document_id > 0) {
                 update_post_meta($rule_id, 'egp_document_id', $document_id);
+                update_post_meta($rule_id, 'egp_elementor_document_id', $document_id);
             }
             
             error_log('[EGP Debug] Rule saved successfully - ID: ' . $rule_id . ', target_type: ' . $target_type . ', target_id: ' . $element_id);
@@ -2511,13 +2594,17 @@ class EGP_Geo_Rules {
                 if (!empty($title)) { wp_update_post(array('ID' => $post_id, 'post_title' => $title)); }
                 update_post_meta($post_id, $this->meta_prefix.'target_type', $target_type);
                 update_post_meta($post_id, $this->meta_prefix.'target_id', (string) $target_id);
-                update_post_meta($post_id, $this->meta_prefix.'countries', array_values(array_unique(array_map('strtoupper', (array)$countries))));
+                update_post_meta($post_id, $this->meta_prefix.'countries', $this->normalize_country_codes_array( (array) $countries ));
                 update_post_meta($post_id, $this->meta_prefix.'priority', intval($priority));
                 update_post_meta($post_id, $this->meta_prefix.'active', $active ? '1' : '0');
                 update_post_meta($post_id, $this->meta_prefix.'source', 'elementor');
                 if (!empty($element_type)) { update_post_meta($post_id, $this->meta_prefix.'element_type', $element_type); }
                 if (!empty($tracking_id)) { update_post_meta($post_id, $this->meta_prefix.'tracking_id', $tracking_id); }
                 update_post_meta($post_id, $this->meta_prefix.'element_ref_id', (string) $element_ref_id);
+                if ($document_id > 0) {
+                    update_post_meta($post_id, $this->meta_prefix.'elementor_document_id', $document_id);
+                    update_post_meta($post_id, $this->meta_prefix.'document_id', $document_id);
+                }
                 wp_send_json_success(array('success'=>true, 'rule_id'=>$post_id, 'updated_by'=>'element_ref_id'));
             }
         }
@@ -2533,6 +2620,7 @@ class EGP_Geo_Rules {
             update_post_meta($post_id, $this->meta_prefix.'created_in_elementor', '1');
             if ($document_id > 0) {
                 update_post_meta($post_id, $this->meta_prefix.'elementor_document_id', $document_id);
+                update_post_meta($post_id, $this->meta_prefix.'document_id', $document_id);
             }
             
             error_log('[EGP Debug] Elementor rule saved successfully: ' . $result['rule_id']);
@@ -2665,9 +2753,10 @@ class EGP_Geo_Rules {
         }
         
         // Save meta
+        $normalized_countries = $this->normalize_country_codes_array( (array) $countries );
         update_post_meta($post_id, $this->meta_prefix.'target_type', $target_type);
         update_post_meta($post_id, $this->meta_prefix.'target_id', (string) $target_id);
-        update_post_meta($post_id, $this->meta_prefix.'countries', array_values(array_unique(array_map('strtoupper', (array)$countries))));
+        update_post_meta($post_id, $this->meta_prefix.'countries', $normalized_countries);
         update_post_meta($post_id, $this->meta_prefix.'priority', intval($priority));
         update_post_meta($post_id, $this->meta_prefix.'active', $active ? '1' : '0');
         update_post_meta($post_id, $this->meta_prefix.'source', $source);
@@ -2689,8 +2778,6 @@ class EGP_Geo_Rules {
                 if (!is_array($page_settings)) {
                     $page_settings = array();
                 }
-                // Normalize countries to ISO2 uppercase
-                $normalized_countries = array_values(array_unique(array_map('strtoupper', (array) $countries)));
                 // Reflect rule active state in Elementor popup settings
                 $page_settings['egp_enable_geo_targeting'] = $active ? 'yes' : 'no';
                 // Only persist countries if enabled
@@ -2731,7 +2818,7 @@ class EGP_Geo_Rules {
         // If enabled and countries provided, save or update a Rule to mirror these settings
         if ($enabled && !empty($countries)) {
             $title = get_the_title($post_id);
-            $normalized_countries = array_values(array_unique(array_map('strtoupper', (array) $countries)));
+            $normalized_countries = $this->normalize_country_codes_array( (array) $countries );
             // Use medium priority default and mark active; source is 'elementor'
             $result = $this->save_or_update_rule('popup', (string) $post_id, $normalized_countries, 50, true, 'elementor', $title, 'popup');
             // Align Elementor-created rules with manual path by syncing back to popup settings
@@ -2739,6 +2826,27 @@ class EGP_Geo_Rules {
                 $this->sync_rule_to_popup_settings(intval($result['rule_id']), intval($post_id));
             }
         }
+    }
+
+    public function maybe_sync_rules_from_elementor_document($post_id, $post, $update) {
+        if (!is_admin() || !$post instanceof WP_Post) {
+            return;
+        }
+
+        if (wp_is_post_autosave($post_id) || wp_is_post_revision($post_id)) {
+            return;
+        }
+
+        if ($post->post_type === $this->post_type) {
+            return;
+        }
+
+        $raw = get_post_meta($post_id, '_elementor_data', true);
+        if (empty($raw) || !is_string($raw)) {
+            return;
+        }
+
+        $this->run_elementor_rule_sync();
     }
 
     /**
@@ -2989,7 +3097,7 @@ class EGP_Geo_Rules {
             error_log("EGP Debug: Rule data - target_type: {$target_type}, target_id: {$target_id}, active: {$active}, countries: " . print_r($countries, true));
         }
 
-        $normalized_countries = array_values(array_unique(array_map('strtoupper', (array) $countries)));
+        $normalized_countries = $this->normalize_country_codes_array( (array) $countries );
 
         $page_settings['egp_enable_geo_targeting'] = $active === '1' ? 'yes' : 'no';
         $page_settings['egp_countries'] = $normalized_countries;

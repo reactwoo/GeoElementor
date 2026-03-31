@@ -583,31 +583,10 @@ class EGP_Popup_Hooks {
     }
     
     /**
-     * Get countries list for controls
+     * Get countries list for controls (canonical: egp_get_country_options).
      */
     private function get_countries_list() {
-        return [
-            'US' => 'United States',
-            'CA' => 'Canada',
-            'GB' => 'United Kingdom',
-            'DE' => 'Germany',
-            'FR' => 'France',
-            'AU' => 'Australia',
-            'JP' => 'Japan',
-            'BR' => 'Brazil',
-            'IN' => 'India',
-            'CN' => 'China',
-            'IT' => 'Italy',
-            'ES' => 'Spain',
-            'NL' => 'Netherlands',
-            'SE' => 'Sweden',
-            'NO' => 'Norway',
-            'DK' => 'Denmark',
-            'FI' => 'Finland',
-            'CH' => 'Switzerland',
-            'AT' => 'Austria',
-            'BE' => 'Belgium',
-        ];
+        return function_exists( 'egp_get_country_options' ) ? egp_get_country_options() : array();
     }
     
     /**

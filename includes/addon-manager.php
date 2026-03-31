@@ -153,6 +153,13 @@ class EGP_Addon_Manager {
             'premium' => false,
             'status' => 'available'
         ));
+
+        /**
+         * Allow in-development or third-party add-ons to register (same shape as register_addon()).
+         *
+         * @param EGP_Addon_Manager $manager
+         */
+        do_action( 'egp_register_addons', $this );
     }
     
     /**
@@ -488,12 +495,12 @@ class EGP_Addon_Manager {
         ));
         
         ?>
-        <div class="wrap">
-            <h1><?php echo esc_html__('Geo Elementor Add-Ons', 'elementor-geo-popup'); ?></h1>
+        <div class="wrap egp-settings">
+            <?php if ( class_exists( 'EGP_Admin_Menu' ) ) { EGP_Admin_Menu::render_page_header( esc_html__( 'Geo Elementor Add-Ons', 'elementor-geo-popup' ), 'egp-addons' ); } ?>
             
             <input type="hidden" name="egp_addon_nonce" value="<?php echo wp_create_nonce('egp_addon_nonce'); ?>" />
             
-            <div class="egp-addons-container">
+            <div class="egp-section-card egp-addons-container">
                 <div class="egp-addons-tabs">
                     <a href="#installed" class="nav-tab nav-tab-active"><?php echo esc_html__('Installed', 'elementor-geo-popup'); ?></a>
                     <a href="#available" class="nav-tab"><?php echo esc_html__('Available', 'elementor-geo-popup'); ?></a>

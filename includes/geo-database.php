@@ -522,8 +522,12 @@ class RW_Geo_Router {
      * Constructor
      */
     private function __construct() {
-        add_action('template_redirect', array($this, 'route_current_request'), 0);
-        add_action('wp_footer', array($this, 'inject_frontend_content'));
+        // Safety stop: disable GeoElementor router redirects on frontend.
+        // Cross-plugin routing is handled by Geo Core; this duplicate router can cause page swaps.
+        // add_action('template_redirect', array($this, 'route_current_request'), 0);
+        // Safety stop: frontend variant element injection can hide content when mappings drift.
+        // Keep routing context detection, but disable runtime DOM injection until hardened.
+        // add_action('wp_footer', array($this, 'inject_frontend_content'));
     }
     
     /**
@@ -749,8 +753,8 @@ class RW_Geo_Router {
     }
 }
 
-// Initialize the router
-RW_Geo_Router::get_instance();
+// Router bootstrap disabled for isolation while resolving Geo Core integration conflicts.
+// RW_Geo_Router::get_instance();
 
 /**
  * Enhanced Mapping CRUD Class

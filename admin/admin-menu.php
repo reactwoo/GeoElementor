@@ -9,6 +9,92 @@ if (!defined('ABSPATH')) {
 }
 
 class EGP_Admin_Menu {
+	private $menus_registered = false;
+
+	public static function is_geo_elementor_admin_screen($screen = null) {
+		if (!is_admin()) {
+			return false;
+		}
+
+		if (!$screen && function_exists('get_current_screen')) {
+			$screen = get_current_screen();
+		}
+
+		if ($screen && !empty($screen->id) && strpos((string) $screen->id, 'geo-elementor') !== false) {
+			return true;
+		}
+
+		$page = isset($_GET['page']) ? sanitize_key((string) $_GET['page']) : '';
+		return in_array($page, array(
+			'geo-elementor',
+			'elementor-geo-popup',
+			'geo-content',
+			'geo-elementor-rules',
+			'geo-elementor-variants',
+			'egp-addons',
+			'geo-elementor-license',
+		), true);
+	}
+
+	public static function get_sync_rules_url() {
+		return wp_nonce_url(
+			admin_url('admin-post.php?action=egp_sync_elementor_rules'),
+			'egp_sync_elementor_rules'
+		);
+	}
+
+	public static function render_page_notices() {
+		if (!current_user_can('manage_options') && !current_user_can('manage_woocommerce')) {
+			return;
+		}
+
+		if (!function_exists('rwgc_is_ready')) {
+			echo '<div class="notice notice-warning">';
+			echo '<p>';
+			echo esc_html__('GeoElementor now uses ReactWoo Geo Core for country detection. Please install and activate the free ReactWoo Geo Core plugin to ensure accurate geolocation and shared settings across ReactWoo products.', 'elementor-geo-popup');
+			echo '</p><p>';
+			printf(
+				/* translators: %s: ReactWoo Geo Core docs/download URL. */
+				esc_html__('Download ReactWoo Geo Core: %s', 'elementor-geo-popup'),
+				'https://reactwoo.com/reactwoo-geocore'
+			);
+			echo '</p></div>';
+		}
+
+		$license_status = get_option('egp_license_status', '');
+		if ($license_status === 'invalid' || $license_status === 'expired') {
+			$message = __('Your Geo Elementor license is invalid or expired. Please <a href="%s">activate your license</a> to continue using all features.', 'elementor-geo-popup');
+			$license_page_url = admin_url('admin.php?page=geo-elementor-license');
+			echo '<div class="notice notice-error is-dismissible"><p>' . wp_kses_post(sprintf($message, esc_url($license_page_url))) . '</p></div>';
+		}
+	}
+
+	/**
+	 * @param string $title             Page heading (may contain limited HTML).
+	 * @param string $current           Inner nav slug.
+	 * @param string $extra_notices_html Optional notices HTML (already escaped) appended after core plugin notices.
+	 */
+	public static function render_page_header( $title, $current = 'geo-elementor', $extra_notices_html = '' ) {
+		// UX: identity (logo + H1 on one row) → section nav → full-width notices.
+		// WordPress prints admin_notices before .wrap; see output_relocate_admin_notices_script().
+		echo '<div class="egp-admin-header">';
+		echo '<div class="egp-page-brand">';
+		echo '<span class="egp-admin-logo-wrap">';
+		echo '<img id="egp-admin-logo" src="' . esc_url( EGP_PLUGIN_URL . 'assets/img/GeoElementor.svg' ) . '" alt="" width="40" height="40" decoding="async" />';
+		echo '</span>';
+		echo '<div class="egp-page-title-wrap"><h1 class="egp-page-heading">' . wp_kses_post( $title ) . '</h1></div>';
+		echo '</div>';
+		self::render_inner_nav( $current );
+		echo '<div class="egp-page-notices" role="region" aria-label="' . esc_attr__( 'Geo Elementor notices', 'elementor-geo-popup' ) . '">';
+		self::render_page_notices();
+		if ( is_string( $extra_notices_html ) && $extra_notices_html !== '' ) {
+			echo $extra_notices_html;
+		}
+		echo '</div>';
+		echo '</div>';
+		self::output_relocate_admin_notices_script();
+	}
+
 	public static function render_inner_nav($current = 'geo-elementor') {
 		$items = array(
 			'geo-elementor'          => __('Dashboard', 'elementor-geo-popup'),
@@ -31,28 +117,44 @@ class EGP_Admin_Menu {
 		add_action('admin_menu', array($this, 'register_menus'), 9);
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_menu_icon_css'));
 		add_action('admin_notices', array($this, 'maybe_show_core_notice'));
+		if (did_action('admin_menu')) {
+			$this->register_menus();
+		}
+		if (function_exists('error_log')) {
+			error_log('[EGP Menu] EGP_Admin_Menu constructed');
+		}
 	}
 
 	public function register_menus() {
+		if ($this->menus_registered) {
+			return;
+		}
+		$this->menus_registered = true;
+
 		$default_cap = 'manage_options';
 		if (!current_user_can('manage_options') && current_user_can('manage_woocommerce')) {
 			$default_cap = 'manage_woocommerce';
 		}
 		$capability = apply_filters('egp_required_capability', $default_cap);
-
-		// Top-level: Geo Elementor. Register here unless the Dashboard module is providing it
-		if (!class_exists('Geo_Elementor_Plugin')) {
-			$icon_url = defined('EGP_PLUGIN_URL') ? EGP_PLUGIN_URL . 'assets/img/GeoElementor-icon.svg' : '';
-			add_menu_page(
-				__('Geo Elementor', 'elementor-geo-popup'),
-				__('Geo Elementor', 'elementor-geo-popup'),
-				$capability,
-				'geo-elementor',
-				array($this, 'render_dashboard'),
-				$icon_url ?: 'dashicons-location-alt',
-				58
-			);
+		if (!is_string($capability) || $capability === '') {
+			$capability = $default_cap;
 		}
+		// Harden against third-party filters returning an unusable capability.
+		if (!current_user_can($capability) && current_user_can('manage_options')) {
+			$capability = 'manage_options';
+		}
+
+		// Top-level: Geo Elementor. Always register from this module.
+		$icon_url = defined('EGP_PLUGIN_URL') ? EGP_PLUGIN_URL . 'assets/img/GeoElementor-icon.svg' : '';
+		add_menu_page(
+			__('Geo Elementor', 'elementor-geo-popup'),
+			__('Geo Elementor', 'elementor-geo-popup'),
+			$capability,
+			'geo-elementor',
+			array($this, 'render_dashboard'),
+			$icon_url ?: 'dashicons-location-alt',
+			58
+		);
 
 		// Submenu: Dashboard (renamed from Geo Elementor)
 		add_submenu_page(
@@ -105,6 +207,47 @@ class EGP_Admin_Menu {
 			'geo-elementor-license',
 			array($this, 'render_license')
 		);
+
+		if (defined('WP_DEBUG') && WP_DEBUG && function_exists('error_log')) {
+			error_log('[EGP Menu] register_menus executed with capability: ' . $capability);
+		}
+
+		do_action('egp_admin_menu_registered', $capability);
+	}
+
+	/**
+	 * WP runs admin_notices in admin-header before the page callback. Move direct-child
+	 * notice nodes into .egp-page-notices (inline after header; includes Elementor-style wrappers).
+	 */
+	public static function output_relocate_admin_notices_script() {
+		if ( ! self::is_geo_elementor_admin_screen() ) {
+			return;
+		}
+		?>
+<script>
+(function(){
+	var wpbody = document.getElementById('wpbody-content');
+	var target = document.querySelector('.wrap.egp-settings .egp-page-notices');
+	if (!wpbody || !target) return;
+	function isAdminNoticeNode(el){
+		if (!el || !el.classList) return false;
+		if (el.id === 'message') return true;
+		if (el.classList.contains('notice') || el.classList.contains('updated') || el.classList.contains('error')) return true;
+		if (el.classList.contains('e-admin-message') || el.classList.contains('elementor-message')) return true;
+		return false;
+	}
+	var nodes = [];
+	var i, el;
+	for (i = 0; i < wpbody.children.length; i++) {
+		el = wpbody.children[i];
+		if (isAdminNoticeNode(el)) nodes.push(el);
+	}
+	for (i = nodes.length - 1; i >= 0; i--) {
+		target.insertBefore(nodes[i], target.firstChild);
+	}
+})();
+</script>
+		<?php
 	}
 
 	/**
@@ -112,21 +255,41 @@ class EGP_Admin_Menu {
 	 */
 	public function enqueue_menu_icon_css($hook = '') {
 		$css = '#toplevel_page_geo-elementor .wp-menu-image img{width:18px;height:18px;object-fit:contain;display:block;margin:7px auto;opacity:.6;transition:opacity .15s ease-in-out;padding:0;vertical-align:middle;}#toplevel_page_geo-elementor:hover .wp-menu-image img,#toplevel_page_geo-elementor.wp-has-current-submenu .wp-menu-image img,#toplevel_page_geo-elementor.current .wp-menu-image img{opacity:1;}';
-		wp_register_style('egp-admin-menu-icon-fix', false);
-		wp_enqueue_style('egp-admin-menu-icon-fix');
-		wp_add_inline_style('egp-admin-menu-icon-fix', $css);
+		if ( self::is_geo_elementor_admin_screen() ) {
+			$css .= '
+.egp-admin-header{display:flex;flex-direction:column;align-items:stretch;width:100%;max-width:100%;margin:0 0 16px;box-sizing:border-box;}
+.egp-page-brand{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:flex-start;gap:12px;margin:0 0 12px;min-width:0;width:100%;}
+.egp-page-brand .egp-admin-logo-wrap{flex-shrink:0;line-height:0;}
+.egp-page-brand .egp-admin-logo-wrap img{display:block;height:40px;width:auto;max-width:100%;}
+.egp-page-title-wrap{flex:1;min-width:0;}
+.egp-page-title-wrap .egp-page-heading{margin:0;padding:0;line-height:1.25;font-size:23px;font-weight:400;letter-spacing:normal;}
+.egp-inner-nav{margin:0 0 12px;flex:0 0 auto;width:100%;}
+.egp-page-notices{clear:both;width:100%;max-width:100%;min-width:0;flex:0 0 auto;box-sizing:border-box;}
+.egp-page-notices .notice{margin:0 0 10px;}
+.egp-page-notices .notice:last-child{margin-bottom:0;}
+@media (max-width:600px){.egp-page-brand{flex-wrap:wrap;}}
+.egp-rule-actions{display:inline-flex;align-items:center;gap:4px;flex-wrap:nowrap;vertical-align:middle;}
+.egp-rule-actions .button.egp-icon-btn{min-width:32px;padding:0 8px;line-height:1;display:inline-flex;align-items:center;justify-content:center;}
+.egp-rule-actions .button.egp-icon-btn .dashicons{width:18px;height:18px;font-size:18px;}
+.egp-rule-actions .button.egp-icon-btn .screen-reader-text{clip:rect(1px,1px,1px,1px);position:absolute!important;height:1px;width:1px;overflow:hidden;}
+.wp-list-table .column-actions{width:88px;}
+';
+		}
+		wp_register_style( 'egp-admin-menu-icon-fix', false );
+		wp_enqueue_style( 'egp-admin-menu-icon-fix' );
+		wp_add_inline_style( 'egp-admin-menu-icon-fix', $css );
 	}
 
 	public function render_dashboard() {
-		echo '<div class="wrap">';
-		echo '<h1>' . esc_html__('Geo Rules Dashboard', 'elementor-geo-popup') . '</h1>';
-		self::render_inner_nav('geo-elementor');
+		echo '<div class="wrap egp-settings">';
+		self::render_page_header(esc_html__('Geo Rules Dashboard', 'elementor-geo-popup'), 'geo-elementor');
 		echo '<div class="notice notice-info" style="margin:14px 0;">';
 		echo '<p>';
 		echo esc_html__( 'Geo Core owns the free geo baseline and server-side page routing (Master + one Secondary per master). GeoElementor extends this with advanced variant groups and deeper element-level rules.', 'elementor-geo-popup' );
 		echo '</p>';
 		echo '<p>';
 		echo '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=rwgc-usage' ) ) . '">' . esc_html__( 'Free Routing Guide', 'elementor-geo-popup' ) . '</a> ';
+		echo '<a class="button" href="' . esc_url( self::get_sync_rules_url() ) . '">' . esc_html__( 'Run Sync Now', 'elementor-geo-popup' ) . '</a> ';
 		echo '<a class="button button-primary" href="' . esc_url( admin_url( 'admin.php?page=geo-elementor-variants' ) ) . '">' . esc_html__( 'Manage Variant Groups', 'elementor-geo-popup' ) . '</a>';
 		echo '</p>';
 		echo '</div>';
@@ -138,6 +301,9 @@ class EGP_Admin_Menu {
 	 * Suggest ReactWoo Geo Core when not present so users understand the dependency.
 	 */
 	public function maybe_show_core_notice() {
+		if ( self::is_geo_elementor_admin_screen() ) {
+			return;
+		}
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
@@ -161,8 +327,10 @@ class EGP_Admin_Menu {
 
 	public function render_rules() {
 		echo '<div class="wrap egp-settings">';
-		self::render_inner_nav('geo-elementor-rules');
-
+		self::render_page_header(
+			esc_html__('Geo Rules', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="Rules target a specific Page or Popup with selected countries. If an element is managed by a Group, avoid creating a duplicate Rule for the same element to prevent conflicts."></span>',
+			'geo-elementor-rules'
+		);
 		echo '<div class="notice notice-info" style="margin:14px 0;">';
 		echo '<p>';
 		echo esc_html__( 'Geo Core (free) handles shared geo engine + page-level server-side routing (Master + one Secondary per master).', 'elementor-geo-popup' ) . '<br />';
@@ -170,16 +338,9 @@ class EGP_Admin_Menu {
 		echo '</p>';
 		echo '<p>';
 		echo '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=rwgc-usage' ) ) . '">' . esc_html__( 'Free Routing Guide', 'elementor-geo-popup' ) . '</a> ';
+		echo '<a class="button" href="' . esc_url( self::get_sync_rules_url() ) . '">' . esc_html__( 'Run Sync Now', 'elementor-geo-popup' ) . '</a> ';
 		echo '<a class="button button-primary" href="' . esc_url( admin_url( 'admin.php?page=geo-elementor-variants' ) ) . '">' . esc_html__( 'Variant Groups', 'elementor-geo-popup' ) . '</a>';
 		echo '</p>';
-		echo '</div>';
-
-		echo '<div class="egp-header" style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">';
-		echo '<span class="egp-admin-logo-wrap">';
-		echo '<img id="egp-admin-logo" src="' . esc_url( EGP_PLUGIN_URL . 'assets/img/GeoElementor.svg' ) . '" alt="Geo Elementor" style="height:40px;width:auto;vertical-align:middle;display:block;" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-flex\';" />';
-		echo '<span class="egp-admin-logo-fallback" style="display:none;">GE</span>';
-		echo '</span>';
-		echo '<h1 style="margin:0;line-height:1;">' . esc_html__('Geo Rules', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="Rules target a specific Page or Popup with selected countries. If an element is managed by a Group, avoid creating a duplicate Rule for the same element to prevent conflicts."></span></h1>';
 		echo '</div>';
 		
 		// Add custom CSS for status indicators
@@ -204,7 +365,8 @@ class EGP_Admin_Menu {
 			.wp-list-table .column-status { width: 8%; }
 			.wp-list-table .column-created { width: 12%; }
 			.wp-list-table .column-clicks { width: 8%; }
-			.wp-list-table .column-actions { width: 12%; }
+			.egp-row-actions-icons a.egp-row-icon { text-decoration: none; }
+			.egp-row-actions-icons a.egp-row-icon .dashicons { font-size: 16px; width: 16px; height: 16px; vertical-align: text-bottom; }
 		</style>';
 		
 		// Get all geo rules
@@ -219,6 +381,7 @@ class EGP_Admin_Menu {
 		if (empty($rules)) {
 			echo '<div class="notice notice-info"><p>' . esc_html__('No geo rules found. Create your first rule to get started.', 'elementor-geo-popup') . '</p></div>';
 			echo '<p><a href="' . esc_url(admin_url('post-new.php?post_type=geo_rule')) . '" class="button button-primary">' . esc_html__('Add New Rule', 'elementor-geo-popup') . '</a></p>';
+			echo '</div>';
 			return;
 		}
 		
@@ -299,13 +462,13 @@ class EGP_Admin_Menu {
 			if ($source === 'elementor') {
 				echo ' <span class="egp-elementor-badge">Elementor</span>';
 			}
-			echo '<div class="row-actions">';
+			echo '<div class="row-actions egp-row-actions-icons">';
 			if ($source === 'elementor') {
-				echo '<span class="edit"><a href="#" onclick="egpEditElementorRule(' . $rule->ID . ')">' . esc_html__('Edit in Elementor', 'elementor-geo-popup') . '</a> | </span>';
+				echo '<span class="edit"><a href="#" class="egp-row-icon" onclick="egpEditElementorRule(' . intval( $rule->ID ) . ');return false;" title="' . esc_attr__( 'Edit in Elementor', 'elementor-geo-popup' ) . '"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Edit in Elementor', 'elementor-geo-popup' ) . '</span></a> | </span>';
 			} else {
-				echo '<span class="edit"><a href="' . esc_url(get_edit_post_link($rule->ID)) . '">' . esc_html__('Edit', 'elementor-geo-popup') . '</a> | </span>';
+				echo '<span class="edit"><a href="' . esc_url( get_edit_post_link( $rule->ID ) ) . '" class="egp-row-icon" title="' . esc_attr__( 'Edit', 'elementor-geo-popup' ) . '"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Edit', 'elementor-geo-popup' ) . '</span></a> | </span>';
 			}
-			echo '<span class="trash"><a href="' . esc_url(get_delete_post_link($rule->ID)) . '" onclick="return confirm(\'' . esc_js(__('Are you sure you want to delete this rule?', 'elementor-geo-popup')) . '\')">' . esc_html__('Delete', 'elementor-geo-popup') . '</a></span>';
+			echo '<span class="trash"><a href="' . esc_url( get_delete_post_link( $rule->ID ) ) . '" class="egp-row-icon" title="' . esc_attr__( 'Delete', 'elementor-geo-popup' ) . '" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this rule?', 'elementor-geo-popup' ) ) . '\')"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Delete', 'elementor-geo-popup' ) . '</span></a></span>';
 			echo '</div>';
 			echo '</td>';
 			echo '<td><span class="' . esc_attr($source_class) . '">' . esc_html($source_text) . '</span></td>';
@@ -315,7 +478,8 @@ class EGP_Admin_Menu {
 			echo '<td><span class="' . esc_attr($status_class) . '">' . esc_html($status_text) . '</span></td>';
 			echo '<td>' . esc_html(date('M j, Y', strtotime($rule->post_date))) . '</td>';
 			echo '<td>' . esc_html($clicks) . '</td>';
-			echo '<td>';
+			echo '<td class="egp-rule-actions-cell">';
+			echo '<span class="egp-rule-actions" role="group" aria-label="' . esc_attr__( 'Rule actions', 'elementor-geo-popup' ) . '">';
 			if ($source === 'elementor') {
 				$target_type_val = get_post_meta($rule->ID, 'egp_target_type', true);
 				$target_id_val = get_post_meta($rule->ID, 'egp_target_id', true);
@@ -328,14 +492,15 @@ class EGP_Admin_Menu {
 					}
 				}
 				if ($edit_url) {
-					echo '<a href="' . esc_url($edit_url) . '" target="_blank" class="button button-small">' . esc_html__('Edit in Elementor', 'elementor-geo-popup') . '</a> ';
+					echo '<a href="' . esc_url($edit_url) . '" target="_blank" rel="noopener noreferrer" class="button button-small egp-icon-btn" title="' . esc_attr__( 'Edit in Elementor', 'elementor-geo-popup' ) . '"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Edit in Elementor', 'elementor-geo-popup' ) . '</span></a>';
 				} else {
-					echo '<span class="button button-small" title="' . esc_attr__('Open this popup directly in Elementor from Templates > Popups.', 'elementor-geo-popup') . '" style="opacity:.6;cursor:not-allowed;">' . esc_html__('Edit in Elementor', 'elementor-geo-popup') . '</span> ';
+					echo '<span class="button button-small egp-icon-btn" title="' . esc_attr__( 'Open this popup in Elementor from Templates → Popups.', 'elementor-geo-popup' ) . '" style="opacity:.45;cursor:not-allowed;pointer-events:none;" aria-disabled="true"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Edit in Elementor (unavailable)', 'elementor-geo-popup' ) . '</span></span>';
 				}
 			} else {
-				echo '<a href="' . esc_url(get_edit_post_link($rule->ID)) . '" class="button button-small">' . esc_html__('Edit', 'elementor-geo-popup') . '</a> ';
+				echo '<a href="' . esc_url( get_edit_post_link( $rule->ID ) ) . '" class="button button-small egp-icon-btn" title="' . esc_attr__( 'Edit', 'elementor-geo-popup' ) . '"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Edit', 'elementor-geo-popup' ) . '</span></a>';
 			}
-			echo '<a href="' . esc_url(get_delete_post_link($rule->ID)) . '" class="button button-small button-link-delete" onclick="return confirm(\'' . esc_js(__('Are you sure you want to delete this rule?', 'elementor-geo-popup')) . '\')">' . esc_html__('Delete', 'elementor-geo-popup') . '</a>';
+			echo '<a href="' . esc_url( get_delete_post_link( $rule->ID ) ) . '" class="button button-small button-link-delete egp-icon-btn" title="' . esc_attr__( 'Delete', 'elementor-geo-popup' ) . '" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this rule?', 'elementor-geo-popup' ) ) . '\')"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Delete', 'elementor-geo-popup' ) . '</span></a>';
+			echo '</span>';
 			echo '</td>';
 			echo '</tr>';
 		}
@@ -379,64 +544,11 @@ class EGP_Admin_Menu {
 	 * Get country name from ISO code
 	 */
 	private function get_country_name($code) {
-		$countries = array(
-			'US' => 'United States',
-			'GB' => 'United Kingdom',
-			'CA' => 'Canada',
-			'AU' => 'Australia',
-			'DE' => 'Germany',
-			'FR' => 'France',
-			'IT' => 'Italy',
-			'ES' => 'Spain',
-			'NL' => 'Netherlands',
-			'BE' => 'Belgium',
-			'SE' => 'Sweden',
-			'NO' => 'Norway',
-			'DK' => 'Denmark',
-			'FI' => 'Finland',
-			'CH' => 'Switzerland',
-			'AT' => 'Austria',
-			'IE' => 'Ireland',
-			'NZ' => 'New Zealand',
-			'JP' => 'Japan',
-			'KR' => 'South Korea',
-			'CN' => 'China',
-			'IN' => 'India',
-			'BR' => 'Brazil',
-			'MX' => 'Mexico',
-			'AR' => 'Argentina',
-			'CL' => 'Chile',
-			'CO' => 'Colombia',
-			'PE' => 'Peru',
-			'VE' => 'Venezuela',
-			'ZA' => 'South Africa',
-			'EG' => 'Egypt',
-			'NG' => 'Nigeria',
-			'KE' => 'Kenya',
-			'MA' => 'Morocco',
-			'SA' => 'Saudi Arabia',
-			'AE' => 'United Arab Emirates',
-			'IL' => 'Israel',
-			'TR' => 'Turkey',
-			'RU' => 'Russia',
-			'PL' => 'Poland',
-			'CZ' => 'Czech Republic',
-			'HU' => 'Hungary',
-			'RO' => 'Romania',
-			'BG' => 'Bulgaria',
-			'HR' => 'Croatia',
-			'SI' => 'Slovenia',
-			'SK' => 'Slovakia',
-			'LT' => 'Lithuania',
-			'LV' => 'Latvia',
-			'EE' => 'Estonia',
-			'MT' => 'Malta',
-			'CY' => 'Cyprus',
-			'GR' => 'Greece',
-			'PT' => 'Portugal'
-		);
-		
-		return isset($countries[$code]) ? $countries[$code] : null;
+		if ( function_exists( 'egp_get_country_options' ) ) {
+			$map = egp_get_country_options();
+			return isset( $map[ $code ] ) ? $map[ $code ] : null;
+		}
+		return null;
 	}
 
 	public function render_variants() {

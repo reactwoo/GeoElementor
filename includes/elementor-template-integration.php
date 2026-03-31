@@ -265,47 +265,10 @@ class EGP_Elementor_Template_Integration {
     }
     
     /**
-     * Get countries list
+     * Get countries list (canonical: egp_get_country_options).
      */
     private function get_countries_list() {
-        // Try to load from JSON file
-        $json_path = plugin_dir_path(__FILE__) . '../assets/data/countries.json';
-        $json_path = realpath($json_path);
-        if ($json_path && file_exists($json_path)) {
-            $contents = file_get_contents($json_path);
-            $decoded = json_decode($contents, true);
-            if (is_array($decoded) && !empty($decoded)) {
-                $countries = array();
-                foreach ($decoded as $country) {
-                    if (isset($country['code']) && isset($country['name'])) {
-                        $countries[$country['code']] = $country['name'];
-                    }
-                }
-                if (!empty($countries)) {
-                    return $countries;
-                }
-            }
-        }
-        
-        // Fallback list
-        return array(
-            'US' => 'United States', 'GB' => 'United Kingdom', 'CA' => 'Canada',
-            'AU' => 'Australia', 'DE' => 'Germany', 'FR' => 'France', 'IT' => 'Italy',
-            'ES' => 'Spain', 'NL' => 'Netherlands', 'BE' => 'Belgium', 'SE' => 'Sweden',
-            'NO' => 'Norway', 'DK' => 'Denmark', 'FI' => 'Finland', 'CH' => 'Switzerland',
-            'AT' => 'Austria', 'IE' => 'Ireland', 'NZ' => 'New Zealand', 'JP' => 'Japan',
-            'KR' => 'South Korea', 'CN' => 'China', 'IN' => 'India', 'BR' => 'Brazil',
-            'MX' => 'Mexico', 'AR' => 'Argentina', 'CL' => 'Chile', 'CO' => 'Colombia',
-            'PE' => 'Peru', 'VE' => 'Venezuela', 'ZA' => 'South Africa', 'EG' => 'Egypt',
-            'NG' => 'Nigeria', 'KE' => 'Kenya', 'MA' => 'Morocco', 'SA' => 'Saudi Arabia',
-            'AE' => 'United Arab Emirates', 'IL' => 'Israel', 'TR' => 'Turkey',
-            'RU' => 'Russia', 'PL' => 'Poland', 'CZ' => 'Czech Republic', 'HU' => 'Hungary',
-            'RO' => 'Romania', 'BG' => 'Bulgaria', 'HR' => 'Croatia', 'SI' => 'Slovenia',
-            'SK' => 'Slovakia', 'LT' => 'Lithuania', 'LV' => 'Latvia', 'EE' => 'Estonia',
-            'MT' => 'Malta', 'CY' => 'Cyprus', 'GR' => 'Greece', 'PT' => 'Portugal',
-            'SG' => 'Singapore', 'MY' => 'Malaysia', 'TH' => 'Thailand', 'ID' => 'Indonesia',
-            'PH' => 'Philippines', 'VN' => 'Vietnam', 'PK' => 'Pakistan', 'BD' => 'Bangladesh',
-        );
+        return function_exists( 'egp_get_country_options' ) ? egp_get_country_options() : array();
     }
 }
 

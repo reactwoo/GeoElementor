@@ -128,15 +128,13 @@
     font-style: italic;
 }
 
-/* Tables */
-.egp-content-dashboard table {
-    margin-top: 10px;
-    background: #fff;
-}
-
 .egp-content-dashboard h2 {
     margin-top: 40px;
     margin-bottom: 10px;
+}
+
+.egp-content-dashboard .description {
+    margin-bottom: 12px;
 }
 
 /* Responsive */
