@@ -50,6 +50,10 @@ phpunit.xml*
 
 # CI/config we don’t ship in release packages
 .github/
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
+!.github/workflows/*.yaml
 .gitea/
 .gitlab/
 key.b64
