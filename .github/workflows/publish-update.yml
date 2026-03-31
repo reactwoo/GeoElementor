@@ -93,12 +93,34 @@ jobs:
           aws configure set aws_secret_access_key "${{ secrets.R2_SECRET_ACCESS_KEY }}"
           aws configure set region auto
 
+      - name: Validate and normalize R2 endpoint
+        id: r2
+        shell: bash
+        run: |
+          set -euo pipefail
+          RAW="${{ secrets.R2_ENDPOINT }}"
+          ENDPOINT="$(printf '%s' "${RAW}" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          ENDPOINT="${ENDPOINT%/}"
+
+          if [[ -z "${ENDPOINT}" ]]; then
+            echo "R2_ENDPOINT secret is empty."
+            exit 1
+          fi
+
+          if [[ ! "${ENDPOINT}" =~ ^https?:// ]]; then
+            echo "R2_ENDPOINT must start with http:// or https://"
+            exit 1
+          fi
+
+          echo "::add-mask::${ENDPOINT}"
+          echo "endpoint=${ENDPOINT}" >> "$GITHUB_OUTPUT"
+
       - name: Upload zip to R2
         shell: bash
         run: |
           set -euo pipefail
           aws s3 cp "geo-elementor.zip" "s3://${{ secrets.R2_BUCKET }}/${{ steps.meta.outputs.artifact_key }}" \
-            --endpoint-url "${{ secrets.R2_ENDPOINT }}"
+            --endpoint-url "${{ steps.r2.outputs.endpoint }}"
 
       - name: Publish release metadata to API
         shell: bash
