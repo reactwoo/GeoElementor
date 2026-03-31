@@ -88,8 +88,21 @@ class EGP_City_Targeting_Addon extends EGP_Base_Addon {
      * Initialize Elementor integration
      */
     protected function init_elementor_integration() {
+        // Modern, reliable Elementor hook used by other addon integrations.
+        add_action('elementor/element/common/_section_style/after_section_end', array($this, 'register_city_controls'), 20);
+        // Backward compatibility hooks.
         add_action('elementor/widgets/widgets_registered', array($this, 'add_city_controls_to_widgets'));
         add_action('elementor/elements/elements_registered', array($this, 'add_city_controls_to_containers'));
+    }
+
+    /**
+     * Register city controls for common Elementor elements.
+     */
+    public function register_city_controls($element) {
+        if (!class_exists('\Elementor\Controls_Manager')) {
+            return;
+        }
+        $this->add_city_controls_to_element($element);
     }
     
     /**
