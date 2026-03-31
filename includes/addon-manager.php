@@ -79,12 +79,12 @@ class EGP_Addon_Manager {
         if (!file_exists($this->addon_dir)) {
             wp_mkdir_p($this->addon_dir);
         }
-        
-        // Load active add-ons
-        $this->load_active_addons();
-        
-        // Register core add-ons
+
+        // Register add-ons first so activation metadata can resolve class/file definitions.
         $this->register_core_addons();
+
+        // Load active add-ons after registration.
+        $this->load_active_addons();
     }
     
     /**

@@ -5,6 +5,15 @@ All notable changes to the Geo Elementor plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5.25] - 2026-03-31
+
+### Added
+- Time targeting addon implementation with optional `?egp_time_debug=1` badge for admins.
+
+### Changed
+- City targeting settings now support search-and-add city options for editor selection lists.
+- Addon manager now registers addons before loading active addons to ensure reliable initialization.
+
 ## [1.0.5.23] - 2026-03-31
 
 ### Changed

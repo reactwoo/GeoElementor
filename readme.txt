@@ -4,7 +4,7 @@ Tags: elementor, popup, geolocation, geo-targeting, maxmind, country-specific, w
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.5.23
+Stable tag: 1.0.5.25
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -140,6 +140,11 @@ Yes, the plugin works on all devices and automatically detects mobile IP address
 9. Preferred Countries configuration
 
 == Changelog ==
+
+= 1.0.5.25 =
+* Added time targeting addon implementation with optional runtime debug badge.
+* Improved city targeting UX with search-and-add city options and selection-list controls.
+* Fixed addon manager activation order so active addons initialize reliably.
 
 = 1.0.5.23 =
 * Version bump for release verification.

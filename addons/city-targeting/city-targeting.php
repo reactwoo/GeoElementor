@@ -121,6 +121,7 @@ class EGP_City_Targeting_Addon extends EGP_Base_Addon {
         $api_key = $this->get_setting('openweather_api_key', '');
         $fallback_to_country = $this->get_setting('fallback_to_country', true);
         $cache_duration = $this->get_setting('cache_duration', 3600);
+        $city_options = (array) $this->get_setting('city_options', array());
         
         ?>
         <div class="wrap">
@@ -166,6 +167,27 @@ class EGP_City_Targeting_Addon extends EGP_Base_Addon {
                             </p>
                         </td>
                     </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="city_options"><?php echo esc_html__('City Options', 'elementor-geo-popup'); ?></label>
+                        </th>
+                        <td>
+                            <textarea id="city_options" name="city_options" class="large-text" rows="8" placeholder="New York, US&#10;London, GB&#10;Paris, FR"><?php echo esc_textarea(implode("\n", $city_options)); ?></textarea>
+                            <p class="description">
+                                <?php echo esc_html__('One city per line. Elementor city targeting will use this list as a multi-select (no CSV/manual per element).', 'elementor-geo-popup'); ?>
+                            </p>
+                            <?php if (!empty($api_key)): ?>
+                                <div style="margin-top:10px;padding:10px;border:1px solid #dcdcde;border-radius:4px;background:#fff;">
+                                    <strong><?php echo esc_html__('Search and Add Cities', 'elementor-geo-popup'); ?></strong>
+                                    <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+                                        <input type="text" id="egp-city-search-query" class="regular-text" placeholder="<?php echo esc_attr__('Type city name (e.g. London)', 'elementor-geo-popup'); ?>" />
+                                        <button type="button" id="egp-city-search-btn" class="button button-secondary"><?php echo esc_html__('Search', 'elementor-geo-popup'); ?></button>
+                                    </div>
+                                    <div id="egp-city-search-results" style="margin-top:10px;"></div>
+                                </div>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
                 </table>
                 
                 <?php submit_button(__('Save Settings', 'elementor-geo-popup')); ?>
@@ -185,6 +207,64 @@ class EGP_City_Targeting_Addon extends EGP_Base_Addon {
         
         <script>
         jQuery(document).ready(function($) {
+            function appendCityOption(cityText) {
+                var $area = $('#city_options');
+                var existing = ($area.val() || '').split(/\r?\n/).map(function(v){ return v.trim(); }).filter(Boolean);
+                if (existing.indexOf(cityText) === -1) {
+                    existing.push(cityText);
+                    $area.val(existing.join('\n'));
+                }
+            }
+
+            $('#egp-city-search-btn').on('click', function() {
+                var query = ($('#egp-city-search-query').val() || '').trim();
+                var $results = $('#egp-city-search-results');
+                if (!query) {
+                    $results.html('<em><?php echo esc_js(__('Enter a city name to search.', 'elementor-geo-popup')); ?></em>');
+                    return;
+                }
+
+                $results.html('<em><?php echo esc_js(__('Searching...', 'elementor-geo-popup')); ?></em>');
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'egp_city_get_cities',
+                        nonce: '<?php echo wp_create_nonce('egp_city_nonce'); ?>',
+                        query: query
+                    },
+                    success: function(response) {
+                        if (!response.success || !Array.isArray(response.data) || response.data.length === 0) {
+                            $results.html('<em><?php echo esc_js(__('No cities found.', 'elementor-geo-popup')); ?></em>');
+                            return;
+                        }
+
+                        var html = '<div style="display:flex;flex-direction:column;gap:6px;">';
+                        response.data.forEach(function(row) {
+                            var city = row.display || ((row.name || '') + (row.country ? (', ' + row.country) : ''));
+                            city = city.trim();
+                            if (!city) { return; }
+                            html += '<div style="display:flex;justify-content:space-between;align-items:center;border:1px solid #e5e5e5;border-radius:4px;padding:6px 8px;">'
+                                 +   '<span>' + city.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>'
+                                 +   '<button type="button" class="button button-small egp-add-city-option" data-city="' + city.replace(/"/g, '&quot;') + '"><?php echo esc_js(__('Add', 'elementor-geo-popup')); ?></button>'
+                                 + '</div>';
+                        });
+                        html += '</div>';
+                        $results.html(html);
+                    },
+                    error: function() {
+                        $results.html('<em><?php echo esc_js(__('Search failed. Try again.', 'elementor-geo-popup')); ?></em>');
+                    }
+                });
+            });
+
+            $(document).on('click', '.egp-add-city-option', function() {
+                var city = ($(this).data('city') || '').toString().trim();
+                if (!city) { return; }
+                appendCityOption(city);
+                $(this).prop('disabled', true).text('<?php echo esc_js(__('Added', 'elementor-geo-popup')); ?>');
+            });
+
             $('#egp-test-city-detection').on('click', function() {
                 var $button = $(this);
                 var $result = $('#egp-city-test-result');
@@ -244,10 +324,24 @@ class EGP_City_Targeting_Addon extends EGP_Base_Addon {
      * Save settings from form
      */
     private function save_settings_from_form() {
+        $city_options = array();
+        $city_options_raw = isset($_POST['city_options']) ? (string) wp_unslash($_POST['city_options']) : '';
+        if ($city_options_raw !== '') {
+            $lines = preg_split('/\r\n|\r|\n/', $city_options_raw);
+            foreach ((array) $lines as $line) {
+                $line = trim(wp_strip_all_tags($line));
+                if ($line !== '') {
+                    $city_options[] = $line;
+                }
+            }
+            $city_options = array_values(array_unique($city_options));
+        }
+
         $settings = array(
             'openweather_api_key' => sanitize_text_field($_POST['openweather_api_key']),
             'fallback_to_country' => isset($_POST['fallback_to_country']),
-            'cache_duration' => intval($_POST['cache_duration'])
+            'cache_duration' => intval($_POST['cache_duration']),
+            'city_options' => $city_options,
         );
         
         $this->save_settings($settings);
@@ -336,13 +430,15 @@ class EGP_City_Targeting_Addon extends EGP_Base_Addon {
             );
             
             $element->add_control(
-                'egp_city_targets',
+                'egp_city_targets_list',
                 array(
                     'label' => __('Target Cities', 'elementor-geo-popup'),
-                    'type' => \Elementor\Controls_Manager::TEXTAREA,
-                    'description' => __('Enter city names, one per line. Use format: "City, Country" for better accuracy.', 'elementor-geo-popup'),
+                    'type' => \Elementor\Controls_Manager::SELECT2,
+                    'multiple' => true,
+                    'label_block' => true,
+                    'options' => $this->get_city_options_for_controls(),
+                    'description' => __('Select from configured city options in City Settings.', 'elementor-geo-popup'),
                     'condition' => array('egp_city_enabled' => 'yes'),
-                    'placeholder' => "New York, US\nLondon, GB\nParis, FR",
                 )
             );
             
@@ -809,12 +905,19 @@ class EGP_City_Targeting_Addon extends EGP_Base_Addon {
             }
         }
         
-        $target_cities = $settings['egp_city_targets'] ?? '';
-        if (empty($target_cities)) {
+        $target_values = array();
+        if (!empty($settings['egp_city_targets_list']) && is_array($settings['egp_city_targets_list'])) {
+            $target_values = array_map('strval', $settings['egp_city_targets_list']);
+        } elseif (!empty($settings['egp_city_targets']) && is_string($settings['egp_city_targets'])) {
+            // Backward compatibility for older control format.
+            $target_values = array_map('trim', explode("\n", $settings['egp_city_targets']));
+        }
+
+        if (empty($target_values)) {
             return true; // No specific cities targeted
         }
-        
-        $target_list = array_map('trim', explode("\n", $target_cities));
+
+        $target_list = array_filter(array_map('trim', $target_values));
         $visitor_city = strtolower($city_data['city']);
         
         foreach ($target_list as $target) {
@@ -827,6 +930,18 @@ class EGP_City_Targeting_Addon extends EGP_Base_Addon {
         }
         
         return false;
+    }
+
+    private function get_city_options_for_controls() {
+        $stored = (array) $this->get_setting('city_options', array());
+        $options = array();
+        foreach ($stored as $entry) {
+            $entry = trim((string) $entry);
+            if ($entry !== '') {
+                $options[$entry] = $entry;
+            }
+        }
+        return $options;
     }
     
     /**

@@ -1,0 +1,19 @@
+{
+  "id": "time-targeting",
+  "name": "Time-Based Targeting",
+  "description": "Target content based on time windows and business hours",
+  "version": "1.0.0",
+  "author": "ReactWoo",
+  "author_uri": "https://reactwoo.com",
+  "plugin_uri": "https://reactwoo.com",
+  "requires": "1.0.0",
+  "tested": "1.0.1",
+  "file": "time-targeting.php",
+  "class": "EGP_Time_Targeting_Addon",
+  "category": "temporal",
+  "tags": ["time", "date", "business-hours", "timezone"],
+  "screenshot": "",
+  "icon": "eicon-clock",
+  "premium": false,
+  "status": "available"
+}
