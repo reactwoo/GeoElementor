@@ -145,10 +145,10 @@ class EGP_Geo_Form_Widget extends \Elementor\Widget_Base {
             return;
         }
         
-        // Get user's country
-        $user_country = 'US';
-        if (class_exists('EGP_Geo_Detect')) {
-            $user_country = EGP_Geo_Detect::get_instance()->get_visitor_country();
+        // Get user's country (Geo Core + EGP detect via egp_get_visitor_country_for_targeting)
+        $user_country = egp_get_visitor_country_for_targeting();
+        if ((false === $user_country || '' === $user_country) && ! class_exists('EGP_Geo_Detect') && ! (function_exists('rwgc_is_ready') && rwgc_is_ready())) {
+            $user_country = 'US';
         }
         
         // Get countries

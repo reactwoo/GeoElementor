@@ -3,7 +3,7 @@
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
  * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration via ReactWoo Geo Core and MaxMind GeoLite2 database.
- * Version: 1.0.5.26
+ * Version: 1.0.5.28
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
  * License: GPL v2 or later
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('EGP_VERSION', '1.0.5.26');
+define('EGP_VERSION', '1.0.5.28');
 define('EGP_PLUGIN_FILE', __FILE__);
 define('EGP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EGP_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -39,7 +39,7 @@ if (function_exists('error_log')) {
 }
 if (!is_admin() && function_exists('add_action')) {
     add_action('wp_head', function () {
-        echo '<script>window.__EGP_BUILD__="1.0.5.26-admin-header-ux";console.log("[EGP BUILD]",window.__EGP_BUILD__);</script>';
+        echo '<script>window.__EGP_BUILD__="1.0.5.27-admin-header-ux";console.log("[EGP BUILD]",window.__EGP_BUILD__);</script>';
     }, 1);
 }
 
@@ -303,7 +303,7 @@ class ElementorGeoPopup {
                 add_action('admin_notices', function(){
                     if (!current_user_can('manage_options')) { return; }
                     if ( function_exists( 'rwgc_is_ready' ) ) {
-                        $url  = esc_url( admin_url( 'admin.php?page=reactwoo-geocore-settings' ) );
+                        $url  = esc_url( admin_url( 'admin.php?page=rwgc-settings' ) );
                         echo '<div class="notice notice-warning"><p>'
                            . esc_html__( 'GeoElementor is waiting for ReactWoo Geo Core to finish setup (MaxMind license and database).', 'elementor-geo-popup' )
                            . ' <a href="' . $url . '">' . esc_html__( 'Open Geo Core settings', 'elementor-geo-popup' ) . '</a>.</p></div>';
@@ -363,9 +363,11 @@ class ElementorGeoPopup {
         EGP_AB_Testing::init();
         EGP_AI_Translation::init();
         EGP_Pro_Migration::init();
-        // Safety stop: disable Geo Core route decision extension to prevent
-        // unintended variant page swaps on frontend.
-        // $this->register_rwgc_extensions();
+        // Geo Core route extension (Pro variant resolution). Off by default; enable with:
+        // add_filter( 'egp_enable_rwgc_route_variant_extension', '__return_true' );
+        if ( apply_filters( 'egp_enable_rwgc_route_variant_extension', false ) ) {
+            $this->register_rwgc_extensions();
+        }
         // Geo Rules system is auto-initialized
     }
 
@@ -377,17 +379,19 @@ class ElementorGeoPopup {
             return;
         }
 
-        add_filter('rwgc_route_variant_decision', array($this, 'extend_rwgc_route_variant_decision'), 20, 2);
+        add_filter('rwgc_route_variant_decision', array($this, 'extend_rwgc_route_variant_decision'), 20, 4);
     }
 
     /**
      * Extend Geo Core free routing decision for Pro users.
      *
-     * @param array $decision Current decision payload.
-     * @param array $config   Geo Core page config.
+     * @param array               $decision Current decision payload.
+     * @param array               $config   Geo Core page config.
+     * @param int|null            $page_id  Page ID (Geo Core 4-arg filter).
+     * @param \RWGC_Context|null  $context  Visitor context when available.
      * @return array
      */
-    public function extend_rwgc_route_variant_decision($decision, $config) {
+    public function extend_rwgc_route_variant_decision($decision, $config, $page_id = null, $context = null) {
         if (!$this->is_license_valid() || !class_exists('RW_Geo_Router')) {
             return $decision;
         }
@@ -401,11 +405,11 @@ class ElementorGeoPopup {
         try {
             $router = RW_Geo_Router::get_instance();
             $master_page_id = isset($decision['page_id']) ? absint($decision['page_id']) : 0;
-            if (class_exists('RWGC_Routing') && $master_page_id > 0) {
-                $cfg = RWGC_Routing::get_page_route_config($master_page_id);
-                if (!empty($cfg['enabled']) && isset($cfg['role']) && $cfg['role'] === 'variant' && !empty($cfg['master_page_id'])) {
-                    $master_page_id = absint($cfg['master_page_id']);
-                }
+            if ($master_page_id <= 0 && null !== $page_id) {
+                $master_page_id = absint($page_id);
+            }
+            if ($master_page_id > 0) {
+                $master_page_id = egp_resolve_rwgc_master_page_id($master_page_id);
             }
             $variant = $router->get_active_variant_group_for_route($master_page_id);
             if (!$variant) {

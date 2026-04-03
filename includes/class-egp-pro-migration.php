@@ -2,6 +2,11 @@
 /**
  * Free -> Pro routing migration utility.
  *
+ * Reads **ReactWoo Geo Core** page routing metadata via `RWGC_Routing::get_page_route_config()`
+ * (same `_rwgc_route_*` post meta the Core engine uses). Geo Core resolves legacy storage into
+ * bundles internally (`RWGC_Legacy_Route_Mapper`); this class only maps those configs into
+ * Geo Elementor Pro variant groups — it does not replace Core migrations.
+ *
  * @package ElementorGeoPopup
  */
 

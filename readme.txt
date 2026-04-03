@@ -4,7 +4,7 @@ Tags: elementor, popup, geolocation, geo-targeting, maxmind, country-specific, w
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.5.26
+Stable tag: 1.0.5.28
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -228,6 +228,11 @@ For developers, the plugin provides several action and filter hooks for customiz
 == Roadmap ==
 
 == Changelog ==
+
+= 1.0.5.28 =
+* **ReactWoo Geo Core:** Admin notice link when Core is not ready now points to **`admin.php?page=rwgc-settings`** (Geo Core Settings), matching the live menu slug.
+* **Documentation:** `EGP_Pro_Migration` docblock clarifies that free→Pro variant migration reads **`RWGC_Routing::get_page_route_config()`**; Geo Core owns legacy meta and internal **`RWGC_Legacy_Route_Mapper`** / resolver plumbing — Geo Elementor only maps into Pro variant groups.
+* **Compatibility:** Use with **ReactWoo Geo Core 0.1.10.x** or newer for the current routing engine and REST/capabilities surface.
 
 = 1.0.2 =
 * **NEW: Modern Analytics Dashboard** - Complete rewrite with Google Analytics-style interface

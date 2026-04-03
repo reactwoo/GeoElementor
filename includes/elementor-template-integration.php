@@ -210,11 +210,10 @@ class EGP_Elementor_Template_Integration {
             return $data; // No geo targeting, show normally
         }
         
-        // Get user's country
-        $user_country = 'US'; // Default
-        if (class_exists('EGP_Geo_Detect')) {
-            $geo_detect = EGP_Geo_Detect::get_instance();
-            $user_country = $geo_detect->get_visitor_country();
+        // Get user's country (Geo Core + EGP detect via egp_get_visitor_country_for_targeting)
+        $user_country = egp_get_visitor_country_for_targeting();
+        if ((false === $user_country || '' === $user_country) && ! class_exists('EGP_Geo_Detect') && ! (function_exists('rwgc_is_ready') && rwgc_is_ready())) {
+            $user_country = 'US';
         }
         
         // Get target countries
