@@ -982,11 +982,26 @@ class EGP_Geo_Detect {
         $ip = $this->get_visitor_ip();
         $country = $this->get_visitor_country();
         $country_name = $country ? self::get_country_name($country) : __('Unknown', 'elementor-geo-popup');
+        $city = '';
+        $region = '';
+        $rwgc_ok = function_exists('rwgc_is_ready') && rwgc_is_ready();
+        if ($rwgc_ok) {
+            if (function_exists('rwgc_get_visitor_city')) {
+                $city = (string) rwgc_get_visitor_city();
+            }
+            if (function_exists('rwgc_get_visitor_region')) {
+                $region = (string) rwgc_get_visitor_region();
+            }
+        }
         ?>
         <div style="position:fixed;z-index:2147483647;right:12px;bottom:12px;background:#111827;color:#f9fafb;border-radius:6px;padding:8px 10px;font:12px/1.4 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.2);opacity:.9;">
             <span style="opacity:.8;">EGP</span> · <strong><?php echo esc_html($country ?: '—'); ?></strong>
             <span style="opacity:.8;">(<?php echo esc_html($country_name); ?>)</span>
-            <span style="margin-left:8px;opacity:.8;">IP:</span> <?php echo esc_html($ip ?: '—'); ?>
+            <?php if ($rwgc_ok) : ?>
+                <br><span style="opacity:.85;"><?php echo esc_html__('City', 'elementor-geo-popup'); ?>:</span> <?php echo esc_html($city !== '' ? $city : '—'); ?>
+                &nbsp;<span style="opacity:.85;"><?php echo esc_html__('Region', 'elementor-geo-popup'); ?>:</span> <?php echo esc_html($region !== '' ? $region : '—'); ?>
+            <?php endif; ?>
+            <br><span style="opacity:.8;"><?php echo esc_html__('IP', 'elementor-geo-popup'); ?>:</span> <?php echo esc_html($ip ?: '—'); ?>
         </div>
         <?php
     }

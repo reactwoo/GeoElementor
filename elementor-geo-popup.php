@@ -3,7 +3,7 @@
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
  * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration via ReactWoo Geo Core and MaxMind GeoLite2 database.
- * Version: 1.0.5.28
+ * Version: 1.0.5.29
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
  * License: GPL v2 or later
@@ -15,6 +15,7 @@
  * Requires PHP: 7.4
  * Elementor requires at least: 3.0.0
  * Elementor tested up to: 3.18.0
+ * Requires Plugins: elementor, reactwoo-geocore
  */
 
 // Prevent direct access
@@ -23,7 +24,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('EGP_VERSION', '1.0.5.28');
+define('EGP_VERSION', '1.0.5.29');
 define('EGP_PLUGIN_FILE', __FILE__);
 define('EGP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EGP_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -39,7 +40,7 @@ if (function_exists('error_log')) {
 }
 if (!is_admin() && function_exists('add_action')) {
     add_action('wp_head', function () {
-        echo '<script>window.__EGP_BUILD__="1.0.5.27-admin-header-ux";console.log("[EGP BUILD]",window.__EGP_BUILD__);</script>';
+        echo '<script>window.__EGP_BUILD__="1.0.5.29-release";console.log("[EGP BUILD]",window.__EGP_BUILD__);</script>';
     }, 1);
 }
 
@@ -601,6 +602,34 @@ class ElementorGeoPopup {
     }
 
     /**
+     * Markup for Geo Core visitor city/region/IP in the Elementor panel (Pro geo section).
+     *
+     * @return string Empty when Geo Core is not active or not ready.
+     */
+    private function get_rwgc_visitor_preview_html() {
+        if (!function_exists('rwgc_is_ready') || !rwgc_is_ready() || !function_exists('rwgc_get_visitor_data')) {
+            return '';
+        }
+        $d = rwgc_get_visitor_data();
+        $ip = isset($d['ip']) ? (string) $d['ip'] : '';
+        $cc = isset($d['country_code']) ? strtoupper((string) $d['country_code']) : '';
+        $cn = isset($d['country_name']) ? (string) $d['country_name'] : '';
+        $city = isset($d['city']) ? (string) $d['city'] : '';
+        $region = isset($d['region']) ? (string) $d['region'] : '';
+        $line1 = $cc;
+        if ($cn !== '') {
+            $line1 .= ' (' . $cn . ')';
+        }
+        return '<div style="margin-bottom:10px;padding:8px;border:1px solid #bbf7d0;border-radius:4px;background:#f0fdf4;font-size:12px;line-height:1.5;color:#166534;">'
+            . '<strong>' . esc_html__('Detected for your connection', 'elementor-geo-popup') . '</strong><br>'
+            . esc_html($line1 !== '' ? $line1 : '—') . '<br>'
+            . esc_html__('City', 'elementor-geo-popup') . ': ' . esc_html($city !== '' ? $city : '—') . '<br>'
+            . esc_html__('Region', 'elementor-geo-popup') . ': ' . esc_html($region !== '' ? $region : '—') . '<br>'
+            . esc_html__('IP', 'elementor-geo-popup') . ': ' . esc_html($ip !== '' ? $ip : '—')
+            . '</div>';
+    }
+
+    /**
      * Register Geo Targeting controls for Elementor elements
      * Following the if-so pattern which is proven to work with Elementor
      */
@@ -690,6 +719,18 @@ class ElementorGeoPopup {
                 'content_classes' => 'egp-element-info',
             )
         );
+
+        $rwgc_preview = $this->get_rwgc_visitor_preview_html();
+        if ($rwgc_preview !== '') {
+            $element->add_control(
+                'egp_visitor_geo_preview',
+                array(
+                    'type' => \Elementor\Controls_Manager::RAW_HTML,
+                    'raw' => $rwgc_preview,
+                    'content_classes' => 'egp-visitor-geo-preview',
+                )
+            );
+        }
 
         if ($is_pro) {
             $element->add_control(

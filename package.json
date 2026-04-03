@@ -1,8 +1,13 @@
 {
   "name": "geo-elementor-dashboard",
-  "version": "1.0.5.28",
+  "version": "1.0.5.29",
   "description": "Lightweight dashboard for Geo Elementor plugin",
   "main": "index.js",
+  "reactwooBuild": {
+    "pluginFolder": "geo-elementor",
+    "zipFile": "geo-elementor.zip",
+    "geoCoreDependencySlug": "reactwoo-geocore"
+  },
   "scripts": {
     "build": "node build.js",
     "dev": "node build.js --watch",

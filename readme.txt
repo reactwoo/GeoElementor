@@ -4,7 +4,7 @@ Tags: elementor, popup, geolocation, geo-targeting, maxmind, country-specific, w
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.5.28
+Stable tag: 1.0.5.29
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -17,6 +17,7 @@ Advanced geo-targeting solution for Elementor. Create location-based rules for p
 = Key Features =
 
 * **Built on ReactWoo Geo Core**: Reuses shared IP/country engine and MaxMind management from Geo Core
+* **City targeting (Geo Elementor)**: City-level matching and Elementor routing are provided here (City Targeting add-on). Geo Core may expose a city string in visitor data for display/API, but **city-based routing rules** are implemented in Geo Elementor — not in Geo Core’s free country routing
 * **Clear free vs advanced split**: Geo Core handles page/popup baseline, GeoElementor adds advanced targeting depth
 * **Geo Rules Management**: Create and manage complex geo-targeting rules from a dedicated admin interface
 * **Multi-Target Support**: Advanced targeting for sections, containers, widgets, and grouped experiences
@@ -228,6 +229,10 @@ For developers, the plugin provides several action and filter hooks for customiz
 == Roadmap ==
 
 == Changelog ==
+
+= 1.0.5.29 =
+* **Dependencies:** Plugin header **`Requires Plugins: elementor, reactwoo-geocore`** (canonical Geo Core slug). **`package.json`** documents **`reactwooBuild.geoCoreDependencySlug`** for release parity.
+* **Build:** Zip packaging reads **`reactwooBuild`** (`pluginFolder`, `zipFile`, `geoCoreDependencySlug`).
 
 = 1.0.5.28 =
 * **ReactWoo Geo Core:** Admin notice link when Core is not ready now points to **`admin.php?page=rwgc-settings`** (Geo Core Settings), matching the live menu slug.
