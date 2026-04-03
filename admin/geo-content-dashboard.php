@@ -70,7 +70,7 @@ class EGP_Geo_Content_Dashboard {
         ));
         
         ?>
-        <div class="wrap egp-settings egp-content-dashboard">
+        <div class="wrap egp-settings egp-content-dashboard rwgc-wrap rwgc-suite">
 			<?php if ( class_exists( 'EGP_Admin_Menu' ) ) { EGP_Admin_Menu::render_page_header( esc_html__( 'Geo Content Management', 'elementor-geo-popup' ), 'geo-content' ); } ?>
 
 			<div class="notice notice-info" style="margin:14px 0;">

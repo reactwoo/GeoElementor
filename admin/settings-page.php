@@ -210,7 +210,7 @@ class EGP_Admin_Settings {
         }
         
         ?>
-        <div class="wrap egp-settings">
+        <div class="wrap egp-settings rwgc-wrap rwgc-suite">
             <?php if (isset($_GET['settings-updated'])) : ?>
                 <div class="notice notice-success is-dismissible">
                     <p><?php _e('Settings saved successfully!', 'elementor-geo-popup'); ?></p>

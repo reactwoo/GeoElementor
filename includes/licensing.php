@@ -352,7 +352,7 @@ class EGP_Licensing {
         }
         
         ?>
-        <div class="wrap egp-settings">
+        <div class="wrap egp-settings rwgc-wrap rwgc-suite">
             <?php if (isset($_GET['license_updated'])) : ?>
                 <div class="notice notice-success is-dismissible">
                     <p><?php _e('License settings updated successfully!', 'elementor-geo-popup'); ?></p>

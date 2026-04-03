@@ -95,6 +95,94 @@ class EGP_Admin_Menu {
 		self::output_relocate_admin_notices_script();
 	}
 
+	/**
+	 * Geo Core suite quick links: Core + optional AI, Commerce, Optimise.
+	 *
+	 * @param string $variant `full` (dashboard) or `compact` (e.g. Rules — lighter card).
+	 * @return void
+	 */
+	public static function render_geo_suite_quick_links( $variant = 'full' ) {
+		if ( ! class_exists( 'RWGC_Admin_UI', false ) ) {
+			return;
+		}
+		$variant = ( 'compact' === $variant ) ? 'compact' : 'full';
+		$actions = array(
+			array(
+				'url'     => admin_url( 'admin.php?page=rwgc-dashboard' ),
+				'label'   => __( 'Geo Core', 'elementor-geo-popup' ),
+				'primary' => true,
+			),
+		);
+		if ( RWGC_Admin_UI::is_plugin_active( 'reactwoo-geo-ai/reactwoo-geo-ai.php' ) ) {
+			$actions[] = array(
+				'url'   => admin_url( 'admin.php?page=rwga-dashboard' ),
+				'label' => __( 'Geo AI', 'elementor-geo-popup' ),
+			);
+		}
+		if ( RWGC_Admin_UI::is_plugin_active( 'reactwoo-geo-commerce/reactwoo-geo-commerce.php' ) ) {
+			$actions[] = array(
+				'url'   => admin_url( 'admin.php?page=rwgcm-dashboard' ),
+				'label' => __( 'Geo Commerce', 'elementor-geo-popup' ),
+			);
+		}
+		if ( RWGC_Admin_UI::is_plugin_active( 'reactwoo-geo-optimise/reactwoo-geo-optimise.php' ) ) {
+			$actions[] = array(
+				'url'   => admin_url( 'admin.php?page=rwgo-dashboard' ),
+				'label' => __( 'Geo Optimise', 'elementor-geo-popup' ),
+			);
+		}
+		if ( 'compact' === $variant ) {
+			$wrap_classes = 'rwgc-card egp-geo-suite-links egp-geo-suite-links--compact';
+			/* translators: subsection title above suite quick links */
+			$title = __( 'Suite links', 'elementor-geo-popup' );
+			$desc  = __( 'Other ReactWoo Geo plugins when installed.', 'elementor-geo-popup' );
+		} else {
+			$wrap_classes = 'rwgc-card rwgc-card--highlight egp-geo-suite-links';
+			$title        = __( 'Geo suite', 'elementor-geo-popup' );
+			$desc         = __( 'Jump to other ReactWoo Geo plugins. Geo Elementor extends Geo Core with Elementor rules and variant groups.', 'elementor-geo-popup' );
+		}
+		?>
+		<div class="<?php echo esc_attr( $wrap_classes ); ?>" role="region" aria-label="<?php echo esc_attr__( 'ReactWoo Geo suite', 'elementor-geo-popup' ); ?>">
+			<h2 class="egp-geo-suite-links__title"><?php echo esc_html( $title ); ?></h2>
+			<p class="description"><?php echo esc_html( $desc ); ?></p>
+			<?php RWGC_Admin_UI::render_quick_actions( $actions ); ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Enqueue Geo Core admin + suite CSS when available, then EGP bridge styles.
+	 *
+	 * @param string $hook Current admin hook (unused).
+	 * @return void
+	 */
+	public function enqueue_geo_suite_assets( $hook = '' ) {
+		if ( ! self::is_geo_elementor_admin_screen() ) {
+			return;
+		}
+		if ( ! defined( 'RWGC_URL' ) || ! defined( 'RWGC_VERSION' ) ) {
+			return;
+		}
+		wp_enqueue_style(
+			'rwgc-admin',
+			RWGC_URL . 'admin/css/admin.css',
+			array(),
+			RWGC_VERSION
+		);
+		wp_enqueue_style(
+			'rwgc-suite',
+			RWGC_URL . 'admin/css/rwgc-suite.css',
+			array( 'rwgc-admin' ),
+			RWGC_VERSION
+		);
+		wp_enqueue_style(
+			'egp-geo-suite',
+			EGP_PLUGIN_URL . 'admin/css/egp-geo-suite.css',
+			array( 'rwgc-suite' ),
+			EGP_VERSION
+		);
+	}
+
 	public static function render_inner_nav($current = 'geo-elementor') {
 		$items = array(
 			'geo-elementor'          => __('Dashboard', 'elementor-geo-popup'),
@@ -116,6 +204,7 @@ class EGP_Admin_Menu {
 	public function __construct() {
 		add_action('admin_menu', array($this, 'register_menus'), 9);
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_menu_icon_css'));
+		add_action('admin_enqueue_scripts', array($this, 'enqueue_geo_suite_assets'), 15);
 		add_action('admin_notices', array($this, 'maybe_show_core_notice'));
 		if (did_action('admin_menu')) {
 			$this->register_menus();
@@ -281,8 +370,9 @@ class EGP_Admin_Menu {
 	}
 
 	public function render_dashboard() {
-		echo '<div class="wrap egp-settings">';
+		echo '<div class="wrap egp-settings rwgc-wrap rwgc-suite">';
 		self::render_page_header(esc_html__('Geo Rules Dashboard', 'elementor-geo-popup'), 'geo-elementor');
+		self::render_geo_suite_quick_links();
 		echo '<div class="notice notice-info" style="margin:14px 0;">';
 		echo '<p>';
 		echo esc_html__( 'Geo Core owns the free geo baseline and server-side page routing (Master + one Secondary per master). GeoElementor extends this with advanced variant groups and deeper element-level rules.', 'elementor-geo-popup' );
@@ -326,11 +416,12 @@ class EGP_Admin_Menu {
 	}
 
 	public function render_rules() {
-		echo '<div class="wrap egp-settings">';
+		echo '<div class="wrap egp-settings rwgc-wrap rwgc-suite">';
 		self::render_page_header(
 			esc_html__('Geo Rules', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="Rules target a specific Page or Popup with selected countries. If an element is managed by a Group, avoid creating a duplicate Rule for the same element to prevent conflicts."></span>',
 			'geo-elementor-rules'
 		);
+		self::render_geo_suite_quick_links( 'compact' );
 		echo '<div class="notice notice-info" style="margin:14px 0;">';
 		echo '<p>';
 		echo esc_html__( 'Geo Core (free) handles shared geo engine + page-level server-side routing (Master + one Secondary per master).', 'elementor-geo-popup' ) . '<br />';

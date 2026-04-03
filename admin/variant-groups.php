@@ -173,7 +173,7 @@ class RW_Geo_Variant_Groups_Admin {
     public function render_admin_page() {
         $action = $_GET['action'] ?? 'list';
         
-        echo '<div class="wrap egp-settings">';
+        echo '<div class="wrap egp-settings rwgc-wrap rwgc-suite">';
         if ( class_exists( 'EGP_Admin_Menu' ) ) {
             $routing_notice  = '<div class="notice notice-info egp-routing-context-notice">';
             $routing_notice .= '<p>' . esc_html__( 'Routing ownership: Geo Core controls free Master/Secondary routing, while this screen controls Pro groups layered on top for country-first matching.', 'elementor-geo-popup' ) . '</p>';

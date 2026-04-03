@@ -495,7 +495,7 @@ class EGP_Addon_Manager {
         ));
         
         ?>
-        <div class="wrap egp-settings">
+        <div class="wrap egp-settings rwgc-wrap rwgc-suite">
             <?php if ( class_exists( 'EGP_Admin_Menu' ) ) { EGP_Admin_Menu::render_page_header( esc_html__( 'Geo Elementor Add-Ons', 'elementor-geo-popup' ), 'egp-addons' ); } ?>
             
             <input type="hidden" name="egp_addon_nonce" value="<?php echo wp_create_nonce('egp_addon_nonce'); ?>" />

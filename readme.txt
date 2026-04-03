@@ -4,7 +4,7 @@ Tags: elementor, popup, geolocation, geo-targeting, maxmind, country-specific, w
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.5.29
+Stable tag: 1.0.5.31
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -229,6 +229,14 @@ For developers, the plugin provides several action and filter hooks for customiz
 == Roadmap ==
 
 == Changelog ==
+
+= 1.0.5.31 =
+* **Rules:** Compact **Suite links** card (same targets as the dashboard) under the page header — lighter **`rwgc-card`** + **`egp-geo-suite-links--compact`** styles.
+
+= 1.0.5.30 =
+* **Admin:** Enqueue Geo Core **`admin.css`** + **`rwgc-suite.css`** when Core is active; bridge stylesheet **`admin/css/egp-geo-suite.css`**.
+* **Dashboard:** **Geo suite** quick links (Geo Core, optional Geo AI / Commerce / Optimise) using **`RWGC_Admin_UI::render_quick_actions`**.
+* **Layout:** **`rwgc-wrap`** + **`rwgc-suite`** on main admin wrappers for alignment with the shared Geo suite.
 
 = 1.0.5.29 =
 * **Dependencies:** Plugin header **`Requires Plugins: elementor, reactwoo-geocore`** (canonical Geo Core slug). **`package.json`** documents **`reactwooBuild.geoCoreDependencySlug`** for release parity.
