@@ -4,7 +4,7 @@ Tags: elementor, popup, geolocation, geo-targeting, maxmind, country-specific, w
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.5.31
+Stable tag: 1.0.5.32
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -229,6 +229,9 @@ For developers, the plugin provides several action and filter hooks for customiz
 == Roadmap ==
 
 == Changelog ==
+
+= 1.0.5.32 =
+* **Release:** Patch bump for remote update pipeline (rebuilt dashboard assets / lockfile alignment).
 
 = 1.0.5.31 =
 * **Rules:** Compact **Suite links** card (same targets as the dashboard) under the page header — lighter **`rwgc-card`** + **`egp-geo-suite-links--compact`** styles.
