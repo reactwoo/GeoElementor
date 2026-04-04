@@ -302,6 +302,11 @@ class EGP_Geo_Widget extends \Elementor\Widget_Base {
      */
     protected function render() {
         $settings = $this->get_settings_for_display();
+
+        if (class_exists('EGP_Editor_Context', false) && EGP_Editor_Context::should_bypass_geo_rules()) {
+            $this->render_main_content($settings);
+            return;
+        }
         
         // Check if geo targeting is enabled
         if ($settings['geo_targeting_enabled'] !== 'yes') {

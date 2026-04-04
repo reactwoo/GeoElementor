@@ -1,9 +1,10 @@
 <?php
 /**
- * Geo Elementor — updates via ReactWoo API (same contract as ReactWoo WHMCS Bridge).
+ * Geo Elementor — commercial product; updates via ReactWoo API (license JWT required, same as other paid Geo plugins).
  *
  * Server: POST {API_BASE}/api/v5/updates/check
  * Body:   { slug, current_version, channel, site_host }
+ * Authorization: Bearer (from egp_license_access_token or {@see RWGC_Platform_Client::get_access_token()})
  * Expect: { update: true, version, download_url, tested_up_to?, min_wp?, min_php?, changelog_html? }
  *
  * @package ElementorGeoPopup
@@ -49,6 +50,12 @@ function egp_updates_request_headers() {
 		'Content-Type' => 'application/json',
 	);
 	$token = get_option( 'egp_license_access_token', '' );
+	if ( ( ! is_string( $token ) || '' === $token ) && class_exists( 'RWGC_Platform_Client', false ) ) {
+		$jwt = RWGC_Platform_Client::get_access_token();
+		if ( ! is_wp_error( $jwt ) && is_string( $jwt ) && '' !== $jwt ) {
+			$token = $jwt;
+		}
+	}
 	if ( is_string( $token ) && $token !== '' ) {
 		$headers['Authorization'] = 'Bearer ' . $token;
 	}
@@ -87,11 +94,16 @@ function egp_check_for_updates( $transient ) {
 		return $transient;
 	}
 
+	$headers = egp_updates_request_headers();
+	if ( empty( $headers['Authorization'] ) ) {
+		return $transient;
+	}
+
 	$response = wp_remote_post(
 		trailingslashit( $api_base ) . 'api/v5/updates/check',
 		array(
 			'timeout' => 10,
-			'headers' => egp_updates_request_headers(),
+			'headers' => $headers,
 			'body'    => wp_json_encode( $body ),
 		)
 	);
@@ -161,11 +173,16 @@ function egp_plugin_information( $result, $action, $args ) {
 		return $result;
 	}
 
+	$headers = egp_updates_request_headers();
+	if ( empty( $headers['Authorization'] ) ) {
+		return $result;
+	}
+
 	$response = wp_remote_post(
 		trailingslashit( $api_base ) . 'api/v5/updates/check',
 		array(
 			'timeout' => 10,
-			'headers' => egp_updates_request_headers(),
+			'headers' => $headers,
 			'body'    => wp_json_encode( $body ),
 		)
 	);

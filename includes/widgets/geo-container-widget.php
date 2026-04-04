@@ -158,8 +158,14 @@ class EGP_Geo_Container_Widget extends \Elementor\Widget_Base {
         }
         
         $is_editor = \Elementor\Plugin::$instance->editor->is_edit_mode();
-        $should_show = ($is_editor && $settings['show_in_editor'] === 'yes') || 
-                       (!$is_editor && in_array($user_country, (array)$countries));
+        $bypass_geo = class_exists('EGP_Editor_Context', false) && EGP_Editor_Context::should_bypass_geo_rules();
+        if ($bypass_geo) {
+            $should_show = true;
+            $is_editor = true;
+        } else {
+            $should_show = ($is_editor && $settings['show_in_editor'] === 'yes') ||
+                           (!$is_editor && in_array($user_country, (array)$countries));
+        }
         
         if (!$should_show) {
             return;

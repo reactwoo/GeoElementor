@@ -51,20 +51,10 @@ class EGP_Popup_Hooks {
      * Detect Elementor editor/preview contexts to avoid interfering while editing
      */
     private function is_editor_context() {
-        if (is_admin()) { return true; }
-        $is_preview = isset($_GET['elementor-preview']);
-        $is_action_editor = isset($_GET['action']) && $_GET['action'] === 'elementor';
-        $is_ajax = function_exists('wp_doing_ajax') ? wp_doing_ajax() : (defined('DOING_AJAX') && DOING_AJAX);
-        $is_elementor_ajax = $is_ajax && isset($_REQUEST['action']) && (strpos((string) $_REQUEST['action'], 'elementor') !== false);
-        $is_edit_mode = false;
-        if (class_exists('Elementor\\Plugin')) {
-            try {
-                $is_edit_mode = \Elementor\Plugin::$instance && \Elementor\Plugin::$instance->editor && \Elementor\Plugin::$instance->editor->is_edit_mode();
-            } catch (\Throwable $e) {
-                $is_edit_mode = false;
-            }
+        if (is_admin()) {
+            return true;
         }
-        return ($is_preview || $is_action_editor || $is_elementor_ajax || $is_edit_mode);
+        return class_exists('EGP_Editor_Context', false) && EGP_Editor_Context::should_bypass_geo_rules();
     }
     
     /**
@@ -127,20 +117,6 @@ class EGP_Popup_Hooks {
      * Filter popup display based on geo conditions
      */
     public function filter_popup_display($should_show, $popup) {
-        // Detect editor/preview contexts early
-        $is_admin_ctx = is_admin();
-        $is_elementor_preview = (isset($_GET['elementor-preview']) || isset($_GET['elementor_library']) || (isset($_GET['action']) && $_GET['action'] === 'elementor'));
-        $is_elementor_edit_mode = false;
-        if (class_exists('Elementor\\Plugin')) {
-            try {
-                $is_elementor_edit_mode = \Elementor\Plugin::$instance && \Elementor\Plugin::$instance->editor && \Elementor\Plugin::$instance->editor->is_edit_mode();
-            } catch (\Throwable $e) {
-                $is_elementor_edit_mode = false;
-            }
-        }
-        $is_ajax = function_exists('wp_doing_ajax') ? wp_doing_ajax() : (defined('DOING_AJAX') && DOING_AJAX);
-        $is_elementor_ajax = $is_ajax && isset($_REQUEST['action']) && (strpos((string) $_REQUEST['action'], 'elementor') !== false);
-
         // Resolve popup ID from different possible types
         $popup_id = null;
         if (is_object($popup) && method_exists($popup, 'get_id')) {
@@ -150,10 +126,9 @@ class EGP_Popup_Hooks {
         } elseif (is_numeric($popup)) {
             $popup_id = (int) $popup;
         }
-        $can_edit_popup = $popup_id ? (current_user_can('edit_post', $popup_id) || current_user_can('edit_pages') || current_user_can('manage_options')) : current_user_can('edit_pages');
 
-        // Always allow in admin/editor/preview/editable contexts so users can edit popups regardless of geo or other conditions
-        if ($is_admin_ctx || $is_elementor_preview || $is_elementor_edit_mode || $is_elementor_ajax || $can_edit_popup) {
+        // Editor / preview / builder: bypass geo so templates stay editable (not live traffic).
+        if (class_exists('EGP_Editor_Context', false) && EGP_Editor_Context::should_bypass_geo_rules($popup_id)) {
             return true;
         }
         if (!$popup_id) { return $should_show; }

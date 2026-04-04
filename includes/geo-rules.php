@@ -1790,7 +1790,8 @@ class EGP_Geo_Rules {
      * Hide Sections/Containers/Widgets on the frontend when visitor country is not targeted by rules.
      */
     public function add_element_geo_filter_script() {
-        if (is_admin() || $this->is_elementor_editor_context()) { return; }
+        if (is_admin()) { return; }
+        if (class_exists('EGP_Editor_Context', false) && EGP_Editor_Context::should_bypass_geo_rules()) { return; }
         $user_country_raw = $this->get_user_country();
         $user_country = is_string( $user_country_raw ) ? strtoupper( $user_country_raw ) : $user_country_raw;
         if ( class_exists( 'EGP_Geo_Detect' ) ) {
@@ -1987,21 +1988,7 @@ class EGP_Geo_Rules {
     }
 
     private function is_elementor_editor_context() {
-        $is_preview = isset($_GET['elementor-preview']) || isset($_GET['elementor_library']);
-        $is_action_editor = isset($_GET['action']) && $_GET['action'] === 'elementor';
-        $is_ajax = function_exists('wp_doing_ajax') ? wp_doing_ajax() : (defined('DOING_AJAX') && DOING_AJAX);
-        $is_elementor_ajax = $is_ajax && isset($_REQUEST['action']) && (strpos((string) $_REQUEST['action'], 'elementor') !== false);
-        $is_edit_mode = false;
-
-        if (class_exists('Elementor\\Plugin')) {
-            try {
-                $is_edit_mode = \Elementor\Plugin::$instance && \Elementor\Plugin::$instance->editor && \Elementor\Plugin::$instance->editor->is_edit_mode();
-            } catch (\Throwable $e) {
-                $is_edit_mode = false;
-            }
-        }
-
-        return ($is_preview || $is_action_editor || $is_elementor_ajax || $is_edit_mode);
+        return class_exists('EGP_Editor_Context', false) && EGP_Editor_Context::should_bypass_geo_rules();
     }
     
     /**
@@ -3122,6 +3109,9 @@ class EGP_Geo_Rules {
      */
     public function add_popup_geo_filter() {
         if (is_admin()) {
+            return;
+        }
+        if (class_exists('EGP_Editor_Context', false) && EGP_Editor_Context::should_bypass_geo_rules()) {
             return;
         }
 

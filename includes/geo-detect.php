@@ -50,14 +50,8 @@ class EGP_Geo_Detect {
         // Only inject on real frontend pages (never in wp-admin, AJAX, or Elementor editor/preview)
         $is_admin_ctx = is_admin();
         $is_ajax_ctx  = wp_doing_ajax();
-        $is_elementor_preview = (isset($_GET['elementor-preview']) || isset($_GET['elementor_library']) || (isset($_GET['action']) && $_GET['action'] === 'elementor'));
-        $is_elementor_edit_mode = false;
-        if (class_exists('Elementor\\Plugin')) {
-            try {
-                $is_elementor_edit_mode = \Elementor\Plugin::$instance && \Elementor\Plugin::$instance->editor && \Elementor\Plugin::$instance->editor->is_edit_mode();
-            } catch (\Throwable $e) { $is_elementor_edit_mode = false; }
-        }
-        if ($is_admin_ctx || $is_ajax_ctx || $is_elementor_preview || $is_elementor_edit_mode) {
+        $bypass_editor = class_exists('EGP_Editor_Context', false) && EGP_Editor_Context::should_bypass_geo_rules();
+        if ($is_admin_ctx || $is_ajax_ctx || $bypass_editor) {
             if (get_option('egp_debug_mode')) { error_log('EGP: Skipping guard injection (admin/ajax/elementor-editor)'); }
             return;
         }

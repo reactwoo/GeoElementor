@@ -225,11 +225,16 @@ class EGP_Geo_Section_Widget extends \Elementor\Widget_Base {
         
         // Check if editor mode
         $is_editor = \Elementor\Plugin::$instance->editor->is_edit_mode();
+
+        $bypass_geo = class_exists('EGP_Editor_Context', false) && EGP_Editor_Context::should_bypass_geo_rules();
         
         // Should we show the content?
         $should_show = false;
         
-        if ($is_editor && $settings['show_in_editor'] === 'yes') {
+        if ($bypass_geo) {
+            $should_show = true;
+            $is_editor = true;
+        } elseif ($is_editor && $settings['show_in_editor'] === 'yes') {
             // Always show in editor if enabled
             $should_show = true;
         } elseif (!$is_editor && in_array($user_country, (array)$countries)) {
