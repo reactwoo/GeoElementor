@@ -3,7 +3,7 @@
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
  * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration via ReactWoo Geo Core and MaxMind GeoLite2 database.
- * Version: 1.0.5.32
+ * Version: 1.0.5.33
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
  * License: GPL v2 or later
@@ -24,7 +24,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('EGP_VERSION', '1.0.5.32');
+define('EGP_VERSION', '1.0.5.33');
 define('EGP_PLUGIN_FILE', __FILE__);
 define('EGP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EGP_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -40,7 +40,7 @@ if (function_exists('error_log')) {
 }
 if (!is_admin() && function_exists('add_action')) {
     add_action('wp_head', function () {
-        echo '<script>window.__EGP_BUILD__="1.0.5.32-release";console.log("[EGP BUILD]",window.__EGP_BUILD__);</script>';
+        echo '<script>window.__EGP_BUILD__="1.0.5.33-release";console.log("[EGP BUILD]",window.__EGP_BUILD__);</script>';
     }, 1);
 }
 
@@ -68,6 +68,11 @@ class ElementorGeoPopup {
      * Prevent duplicate init when bootstrap runs late.
      */
     private $initialized = false;
+
+    /**
+     * Register Elementor integration hooks only once (avoids duplicate work and duplicate downstream notices).
+     */
+    private $elementor_hooks_registered = false;
     
     /**
      * Get single instance of this class
@@ -114,6 +119,10 @@ class ElementorGeoPopup {
     public function filter_known_elementor_dependency_notices($trigger, $function, $message, $version) {
         if (!is_admin()) {
             return $trigger;
+        }
+
+        if ('map_meta_cap' === $function && is_string($message) && strpos($message, 'delete_post') !== false) {
+            return false;
         }
 
         if (!in_array($function, array('WP_Styles::add', 'WP_Scripts::add'), true)) {
@@ -523,6 +532,11 @@ class ElementorGeoPopup {
      * Register Elementor hooks when Elementor is initialized
      */
     public function register_elementor_hooks() {
+        if ($this->elementor_hooks_registered) {
+            return;
+        }
+        $this->elementor_hooks_registered = true;
+
         // Debug logging
         if ($this->should_log_info()) { error_log('[EGP] register_elementor_hooks() called - Elementor loaded: ' . (did_action('elementor/loaded') ? 'YES' : 'NO')); }
         

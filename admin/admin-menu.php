@@ -43,6 +43,25 @@ class EGP_Admin_Menu {
 		);
 	}
 
+	/**
+	 * Delete/trash URL for a geo_rule post (valid ID + type + delete_post with post context).
+	 *
+	 * @param int $post_id Rule post ID.
+	 * @return string Non-empty when the current user may trash this rule.
+	 */
+	public static function get_geo_rule_trash_link( $post_id ) {
+		$post_id = (int) $post_id;
+		if ( $post_id <= 0 ) {
+			return '';
+		}
+		$post = get_post( $post_id );
+		if ( ! $post || 'geo_rule' !== $post->post_type ) {
+			return '';
+		}
+		$link = get_delete_post_link( $post_id );
+		return is_string( $link ) ? $link : '';
+	}
+
 	public static function render_page_notices() {
 		if (!current_user_can('manage_options') && !current_user_can('manage_woocommerce')) {
 			return;
@@ -559,7 +578,10 @@ class EGP_Admin_Menu {
 			} else {
 				echo '<span class="edit"><a href="' . esc_url( get_edit_post_link( $rule->ID ) ) . '" class="egp-row-icon" title="' . esc_attr__( 'Edit', 'elementor-geo-popup' ) . '"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Edit', 'elementor-geo-popup' ) . '</span></a> | </span>';
 			}
-			echo '<span class="trash"><a href="' . esc_url( get_delete_post_link( $rule->ID ) ) . '" class="egp-row-icon" title="' . esc_attr__( 'Delete', 'elementor-geo-popup' ) . '" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this rule?', 'elementor-geo-popup' ) ) . '\')"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Delete', 'elementor-geo-popup' ) . '</span></a></span>';
+			$trash_link = self::get_geo_rule_trash_link( $rule->ID );
+			if ( $trash_link !== '' ) {
+				echo '<span class="trash"><a href="' . esc_url( $trash_link ) . '" class="egp-row-icon" title="' . esc_attr__( 'Delete', 'elementor-geo-popup' ) . '" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this rule?', 'elementor-geo-popup' ) ) . '\')"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Delete', 'elementor-geo-popup' ) . '</span></a></span>';
+			}
 			echo '</div>';
 			echo '</td>';
 			echo '<td><span class="' . esc_attr($source_class) . '">' . esc_html($source_text) . '</span></td>';
@@ -590,7 +612,10 @@ class EGP_Admin_Menu {
 			} else {
 				echo '<a href="' . esc_url( get_edit_post_link( $rule->ID ) ) . '" class="button button-small egp-icon-btn" title="' . esc_attr__( 'Edit', 'elementor-geo-popup' ) . '"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Edit', 'elementor-geo-popup' ) . '</span></a>';
 			}
-			echo '<a href="' . esc_url( get_delete_post_link( $rule->ID ) ) . '" class="button button-small button-link-delete egp-icon-btn" title="' . esc_attr__( 'Delete', 'elementor-geo-popup' ) . '" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this rule?', 'elementor-geo-popup' ) ) . '\')"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Delete', 'elementor-geo-popup' ) . '</span></a>';
+			$trash_link_btn = self::get_geo_rule_trash_link( $rule->ID );
+			if ( $trash_link_btn !== '' ) {
+				echo '<a href="' . esc_url( $trash_link_btn ) . '" class="button button-small button-link-delete egp-icon-btn" title="' . esc_attr__( 'Delete', 'elementor-geo-popup' ) . '" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this rule?', 'elementor-geo-popup' ) ) . '\')"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text">' . esc_html__( 'Delete', 'elementor-geo-popup' ) . '</span></a>';
+			}
 			echo '</span>';
 			echo '</td>';
 			echo '</tr>';

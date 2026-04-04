@@ -123,6 +123,7 @@ class EGP_Geo_Rules {
             'show_ui' => true,
             'show_in_menu' => false, // Don't show in menu - handled manually
             'capability_type' => 'post',
+            'map_meta_cap' => true,
             'hierarchical' => false,
             'rewrite' => false,
             'supports' => array('title', 'editor'),
