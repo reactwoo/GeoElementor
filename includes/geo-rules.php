@@ -1898,8 +1898,13 @@ class EGP_Geo_Rules {
         ?>
         <script>
         document.addEventListener("DOMContentLoaded", function() {
+            var __egpFeDbg = <?php echo wp_json_encode( (bool) get_option( 'egp_debug_mode' ) ); ?>;
+            function __egpLog() {
+                if (!__egpFeDbg || !window.console || !console.log) { return; }
+                try { console.log.apply(console, arguments); } catch (e) {}
+            }
             var targets = <?php echo wp_json_encode($targets); ?>;
-            console.log("[EGP Frontend] Loaded", targets.length, "geo targeting rules:", targets);
+            __egpLog("[EGP Frontend] Loaded", targets.length, "geo targeting rules:", targets);
             
             function egpFindElement(ref) {
                 // Strict matching only: avoid broad ID/class fallbacks that can hide unrelated content.
@@ -1910,13 +1915,13 @@ class EGP_Geo_Rules {
                 var byDataId = document.querySelectorAll('.elementor-element[data-id="' + cleanRef + '"]');
                 if (byDataId.length > 0) {
                     byDataId.forEach(function(el) { found.push(el); });
-                    console.log("[EGP Frontend] Found", byDataId.length, "elements by exact data-id:", cleanRef);
+                    __egpLog("[EGP Frontend] Found", byDataId.length, "elements by exact data-id:", cleanRef);
                     return found;
                 }
 
                 // No CSS ID/class fallback: only exact Elementor data-id matching is allowed.
                 // This prevents hiding unrelated sections that happen to share a DOM id.
-                console.log("[EGP Frontend] Could not find exact Elementor data-id target:", cleanRef);
+                __egpLog("[EGP Frontend] Could not find exact Elementor data-id target:", cleanRef);
                 return found;
             }
             
@@ -1927,10 +1932,10 @@ class EGP_Geo_Rules {
             }
             
             function egpHideTargets(country) {
-                console.log("[EGP Frontend] Processing geo rules for country:", country);
+                __egpLog("[EGP Frontend] Processing geo rules for country:", country);
                 
                 if (!country) {
-                    console.log("[EGP Frontend] No country provided, skipping");
+                    __egpLog("[EGP Frontend] No country provided, skipping");
                     return;
                 }
                 
@@ -1942,15 +1947,15 @@ class EGP_Geo_Rules {
                         return egpNormalizeCountry(c);
                     });
                     
-                    console.log("[EGP Frontend] Checking rule for:", target.ref, "| Allowed:", allowedCountries, "| User:", userCountry);
+                    __egpLog("[EGP Frontend] Checking rule for:", target.ref, "| Allowed:", allowedCountries, "| User:", userCountry);
                     
                     // If user's country is NOT in the allowed list, hide the element
                     if (allowedCountries.indexOf(userCountry) === -1) {
-                        console.log("[EGP Frontend] ❌ User country NOT allowed - HIDING:", target.ref);
+                        __egpLog("[EGP Frontend] ❌ User country NOT allowed - HIDING:", target.ref);
                         
                         var elements = egpFindElement(target.ref);
                         if (elements.length === 0) {
-                            console.log("[EGP Frontend] ⚠️ Element not found to hide:", target.ref);
+                            __egpLog("[EGP Frontend] ⚠️ Element not found to hide:", target.ref);
                         }
                         
                         elements.forEach(function(el) {
@@ -1958,15 +1963,15 @@ class EGP_Geo_Rules {
                                 el.style.display = "none";
                                 el.classList.add("egp-geo-hidden");
                                 hidden.add(target.ref);
-                                console.log("[EGP Frontend] ✓ Hidden element:", target.ref, el);
+                                __egpLog("[EGP Frontend] ✓ Hidden element:", target.ref, el);
                             }
                         });
                     } else {
-                        console.log("[EGP Frontend] ✓ User country allowed - SHOWING:", target.ref);
+                        __egpLog("[EGP Frontend] ✓ User country allowed - SHOWING:", target.ref);
                     }
                 });
                 
-                console.log("[EGP Frontend] Completed. Hidden", hidden.size, "elements");
+                __egpLog("[EGP Frontend] Completed. Hidden", hidden.size, "elements");
             }
             
             // Debug: List all available elements
@@ -1974,16 +1979,16 @@ class EGP_Geo_Rules {
             document.querySelectorAll("[data-id]").forEach(function(el) {
                 allDataIds.push(el.getAttribute("data-id"));
             });
-            console.log("[EGP Frontend] Available Elementor elements (data-id):", allDataIds);
+            __egpLog("[EGP Frontend] Available Elementor elements (data-id):", allDataIds);
             
             // Run geo targeting
             var initialCountry = <?php echo wp_json_encode($user_country); ?>;
-            console.log("[EGP Frontend] User country:", initialCountry);
+            __egpLog("[EGP Frontend] User country:", initialCountry);
             
             if (initialCountry) {
                 egpHideTargets(initialCountry);
             } else {
-                console.log("[EGP Frontend] No initial country, trying AJAX detection...");
+                __egpLog("[EGP Frontend] No initial country, trying AJAX detection...");
                 var xhr = new XMLHttpRequest();
                 xhr.open("POST", <?php echo wp_json_encode($ajax_url); ?>, true);
                 xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
@@ -1991,12 +1996,12 @@ class EGP_Geo_Rules {
                     if (xhr.readyState === 4) {
                         try {
                             var resp = JSON.parse(xhr.responseText);
-                            console.log("[EGP Frontend] AJAX country detection response:", resp);
+                            __egpLog("[EGP Frontend] AJAX country detection response:", resp);
                             if (resp && resp.success && resp.data && resp.data.country) {
                                 egpHideTargets(resp.data.country);
                             }
                         } catch(e) {
-                            console.log("[EGP Frontend] AJAX error:", e);
+                            __egpLog("[EGP Frontend] AJAX error:", e);
                         }
                     }
                 };
@@ -3136,7 +3141,9 @@ class EGP_Geo_Rules {
         }
 
         $user_country = $this->get_user_country();
-        error_log('[EGP Debug] Popup geo-filter - User country: ' . $user_country);
+        if (function_exists('egp_debug_log')) {
+            egp_debug_log('[EGP Debug] Popup geo-filter - User country: ' . $user_country);
+        }
         
         // Get fallback popup setting
         $fallback_popup_id = get_option('egp_default_popup_id', '');
@@ -3160,14 +3167,18 @@ class EGP_Geo_Rules {
             'posts_per_page' => -1
         ));
         
-        error_log('[EGP Debug] Found ' . count($popups) . ' popups with geo-targeting');
+        if (function_exists('egp_debug_log')) {
+            egp_debug_log('[EGP Debug] Found ' . count($popups) . ' popups with geo-targeting');
+        }
         
         $popup_data = array();
         foreach ($popups as $popup) {
             $page_settings = get_post_meta($popup->ID, '_elementor_page_settings', true);
             if (is_array($page_settings) && isset($page_settings['egp_enable_geo_targeting']) && $page_settings['egp_enable_geo_targeting'] === 'yes') {
                 $countries = isset($page_settings['egp_countries']) ? $page_settings['egp_countries'] : array();
-                error_log('[EGP Debug] Popup ' . $popup->ID . ' geo-enabled with countries: ' . implode(',', $countries));
+                if (function_exists('egp_debug_log')) {
+                    egp_debug_log('[EGP Debug] Popup ' . $popup->ID . ' geo-enabled with countries: ' . implode(',', $countries));
+                }
                 $popup_data[$popup->ID] = array(
                     'id' => $popup->ID,
                     'title' => $popup->post_title,
@@ -3180,84 +3191,61 @@ class EGP_Geo_Rules {
             return;
         }
         
+        $egp_popup_dbg = wp_json_encode( (bool) get_option( 'egp_debug_mode' ) );
         echo '<script>
         document.addEventListener("DOMContentLoaded", function() {
+            var __egpPopupDbg = ' . $egp_popup_dbg . ';
+            function __egpPopupLog() {
+                if (!__egpPopupDbg || !window.console || !console.log) { return; }
+                try { console.log.apply(console, arguments); } catch (e) {}
+            }
             var userCountry = "' . esc_js($user_country) . '";
             var popupData = ' . wp_json_encode($popup_data) . ';
             var fallbackPopupId = "' . esc_js($fallback_popup_id) . '";
             var fallbackBehavior = "' . esc_js($fallback_behavior) . '";
             
-            // Add geo-targeting as an additional condition to Elementor popups
             if (typeof elementorFrontend !== "undefined") {
-                // Store original popup show method
-                var originalShowPopup = elementorFrontend.documents.manager.documents[0].showPopup;
-                
-                // Override the showPopup method to add geo-targeting check
-                elementorFrontend.documents.manager.documents[0].showPopup = function(popupId) {
-                    // Check if this popup has geo-targeting enabled
+                var docRoot = elementorFrontend.documents && elementorFrontend.documents.manager && elementorFrontend.documents.manager.documents && elementorFrontend.documents.manager.documents[0];
+                if (docRoot && typeof docRoot.showPopup === "function" && typeof docRoot.triggerPopup === "function") {
+                var originalShowPopup = docRoot.showPopup;
+                docRoot.showPopup = function(popupId) {
                     if (popupData[popupId]) {
                         var allowedCountries = popupData[popupId].countries;
                         if (allowedCountries && allowedCountries.length > 0) {
-                            // Check if user\'s country is in the allowed list
                             if (!allowedCountries.includes(userCountry.toUpperCase())) {
-                                // Country doesn\'t match - handle based on fallback behavior
-                                if (window.console && console.log) {
-                                    console.log("EGP: Popup " + popupId + " blocked - user country " + userCountry + " not in allowed list: " + allowedCountries.join(", "));
-                                }
-                                
-                                // If fallback popup is configured and behavior allows it, show fallback
+                                __egpPopupLog("EGP: Popup " + popupId + " blocked - user country " + userCountry + " not in allowed list: " + allowedCountries.join(", "));
                                 if (fallbackPopupId && fallbackPopupId !== "" && fallbackBehavior === "show_fallback") {
-                                    if (window.console && console.log) {
-                                        console.log("EGP: Showing fallback popup " + fallbackPopupId + " instead");
-                                    }
+                                    __egpPopupLog("EGP: Showing fallback popup " + fallbackPopupId + " instead");
                                     return originalShowPopup.call(this, fallbackPopupId);
                                 }
-                                
-                                // Otherwise, don\'t show any popup
                                 return false;
                             }
                         }
-                        // Allowed → track a view
                         try { if (window.egpTrackView) { window.egpTrackView(null, popupId); } } catch(e) {}
                     }
-                    
-                    // Country check passed (or no geo-targeting) - proceed with original popup logic
                     return originalShowPopup.call(this, popupId);
                 };
-                
-                // Also override the popup trigger method
-                var originalTriggerPopup = elementorFrontend.documents.manager.documents[0].triggerPopup;
-                elementorFrontend.documents.manager.documents[0].triggerPopup = function(popupId) {
-                    // Check if this popup has geo-targeting enabled
+                var originalTriggerPopup = docRoot.triggerPopup;
+                docRoot.triggerPopup = function(popupId) {
                     if (popupData[popupId]) {
                         var allowedCountries = popupData[popupId].countries;
                         if (allowedCountries && allowedCountries.length > 0) {
-                            // Check if user\'s country is in the allowed list
                             if (!allowedCountries.includes(userCountry.toUpperCase())) {
-                                // Country doesn\'t match - handle based on fallback behavior
-                                if (window.console && console.log) {
-                                    console.log("EGP: Popup " + popupId + " trigger blocked - user country " + userCountry + " not in allowed list: " + allowedCountries.join(", "));
-                                }
-                                
-                                // If fallback popup is configured and behavior allows it, trigger fallback
+                                __egpPopupLog("EGP: Popup " + popupId + " trigger blocked - user country " + userCountry + " not in allowed list: " + allowedCountries.join(", "));
                                 if (fallbackPopupId && fallbackPopupId !== "" && fallbackBehavior === "show_fallback") {
-                                    if (window.console && console.log) {
-                                        console.log("EGP: Triggering fallback popup " + fallbackPopupId + " instead");
-                                    }
+                                    __egpPopupLog("EGP: Triggering fallback popup " + fallbackPopupId + " instead");
                                     return originalTriggerPopup.call(this, fallbackPopupId);
                                 }
-                                
-                                // Otherwise, don\'t trigger any popup
                                 return false;
                             }
                         }
-                        // Allowed → track a view on trigger as well (covers direct triggers)
                         try { if (window.egpTrackView) { window.egpTrackView(null, popupId); } } catch(e) {}
                     }
-                    
-                    // Country check passed (or no geo-targeting) - proceed with original trigger logic
                     return originalTriggerPopup.call(this, popupId);
                 };
+                } else if (window.console && console.warn) {
+                    console.warn("[EGP] Popup geo filter skipped: elementorFrontend.documents.manager.documents[0] not available (Elementor version or load order).");
+                }
             }
         });
         </script>';
