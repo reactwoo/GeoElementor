@@ -3203,50 +3203,109 @@ class EGP_Geo_Rules {
             var popupData = ' . wp_json_encode($popup_data) . ';
             var fallbackPopupId = "' . esc_js($fallback_popup_id) . '";
             var fallbackBehavior = "' . esc_js($fallback_behavior) . '";
-            
-            if (typeof elementorFrontend !== "undefined") {
-                var docRoot = elementorFrontend.documents && elementorFrontend.documents.manager && elementorFrontend.documents.manager.documents && elementorFrontend.documents.manager.documents[0];
-                if (docRoot && typeof docRoot.showPopup === "function" && typeof docRoot.triggerPopup === "function") {
-                var originalShowPopup = docRoot.showPopup;
-                docRoot.showPopup = function(popupId) {
-                    if (popupData[popupId]) {
-                        var allowedCountries = popupData[popupId].countries;
-                        if (allowedCountries && allowedCountries.length > 0) {
-                            if (!allowedCountries.includes(userCountry.toUpperCase())) {
-                                __egpPopupLog("EGP: Popup " + popupId + " blocked - user country " + userCountry + " not in allowed list: " + allowedCountries.join(", "));
-                                if (fallbackPopupId && fallbackPopupId !== "" && fallbackBehavior === "show_fallback") {
-                                    __egpPopupLog("EGP: Showing fallback popup " + fallbackPopupId + " instead");
-                                    return originalShowPopup.call(this, fallbackPopupId);
-                                }
-                                return false;
-                            }
-                        }
-                        try { if (window.egpTrackView) { window.egpTrackView(null, popupId); } } catch(e) {}
-                    }
-                    return originalShowPopup.call(this, popupId);
-                };
-                var originalTriggerPopup = docRoot.triggerPopup;
-                docRoot.triggerPopup = function(popupId) {
-                    if (popupData[popupId]) {
-                        var allowedCountries = popupData[popupId].countries;
-                        if (allowedCountries && allowedCountries.length > 0) {
-                            if (!allowedCountries.includes(userCountry.toUpperCase())) {
-                                __egpPopupLog("EGP: Popup " + popupId + " trigger blocked - user country " + userCountry + " not in allowed list: " + allowedCountries.join(", "));
-                                if (fallbackPopupId && fallbackPopupId !== "" && fallbackBehavior === "show_fallback") {
-                                    __egpPopupLog("EGP: Triggering fallback popup " + fallbackPopupId + " instead");
-                                    return originalTriggerPopup.call(this, fallbackPopupId);
-                                }
-                                return false;
-                            }
-                        }
-                        try { if (window.egpTrackView) { window.egpTrackView(null, popupId); } } catch(e) {}
-                    }
-                    return originalTriggerPopup.call(this, popupId);
-                };
-                } else if (window.console && console.warn) {
-                    console.warn("[EGP] Popup geo filter skipped: elementorFrontend.documents.manager.documents[0] not available (Elementor version or load order).");
-                }
+
+            function __egpPopupMeta(pid) {
+                if (pid == null) { return null; }
+                var k = String(pid);
+                return popupData[pid] || popupData[k] || null;
             }
+            function __egpNormalizePopupArg(v) {
+                if (v == null) { return null; }
+                if (typeof v === "number") { return v; }
+                if (typeof v === "string") { var n = parseInt(v, 10); return isNaN(n) ? v : n; }
+                if (typeof v === "object") {
+                    if (v.id != null) { return __egpNormalizePopupArg(v.id); }
+                    if (v.popup && v.popup.id != null) { return __egpNormalizePopupArg(v.popup.id); }
+                }
+                return v;
+            }
+            function __egpTrackPopupView(pid) {
+                try { if (window.egpTrackView) { window.egpTrackView(null, pid); } } catch (e) {}
+            }
+            function __egpApplyPopupGeo(origFn, scope, args) {
+                var raw = args.length ? args[0] : null;
+                var pid = __egpNormalizePopupArg(raw);
+                var meta = __egpPopupMeta(pid);
+                if (meta) {
+                    var allowedCountries = meta.countries;
+                    if (allowedCountries && allowedCountries.length > 0) {
+                        if (!allowedCountries.includes(userCountry.toUpperCase())) {
+                            __egpPopupLog("EGP: Popup " + pid + " blocked - user country " + userCountry + " not in allowed list: " + allowedCountries.join(", "));
+                            if (fallbackPopupId && fallbackPopupId !== "" && fallbackBehavior === "show_fallback") {
+                                __egpPopupLog("EGP: Showing fallback popup " + fallbackPopupId + " instead");
+                                var fb = parseInt(fallbackPopupId, 10);
+                                if (typeof raw === "object" && raw !== null) {
+                                    var next = Object.assign({}, raw);
+                                    if ("id" in next) { next.id = fb; }
+                                    if (raw.popup && typeof raw.popup === "object") {
+                                        next.popup = Object.assign({}, raw.popup);
+                                        next.popup.id = fb;
+                                    }
+                                    return origFn.call(scope, next);
+                                }
+                                return origFn.call(scope, fb);
+                            }
+                            return false;
+                        }
+                    }
+                    __egpTrackPopupView(pid);
+                }
+                return origFn.apply(scope, args);
+            }
+
+            function __egpPatchPopupGeo() {
+                if (window.__egpPopupGeoRulesApplied) { return true; }
+                var mod = window.elementorProFrontend && elementorProFrontend.modules && elementorProFrontend.modules.popup;
+                if (mod && typeof mod.showPopup === "function" && !mod.__egpPopupGeoRulesPatch) {
+                    var oShow = mod.showPopup;
+                    mod.showPopup = function() {
+                        return __egpApplyPopupGeo(oShow, this, arguments);
+                    };
+                    if (typeof mod.triggerPopup === "function") {
+                        var oTr = mod.triggerPopup;
+                        mod.triggerPopup = function() {
+                            return __egpApplyPopupGeo(oTr, this, arguments);
+                        };
+                    }
+                    mod.__egpPopupGeoRulesPatch = true;
+                    window.__egpPopupGeoRulesApplied = true;
+                    __egpPopupLog("[EGP] Popup geo rules attached (Elementor Pro popup module).");
+                    return true;
+                }
+                if (typeof elementorFrontend !== "undefined") {
+                    var docRoot = elementorFrontend.documents && elementorFrontend.documents.manager && elementorFrontend.documents.manager.documents && elementorFrontend.documents.manager.documents[0];
+                    if (docRoot && typeof docRoot.showPopup === "function" && !docRoot.__egpPopupGeoRulesPatch) {
+                        var ds = docRoot.showPopup;
+                        var dt = typeof docRoot.triggerPopup === "function" ? docRoot.triggerPopup : null;
+                        docRoot.showPopup = function() {
+                            return __egpApplyPopupGeo(ds, this, arguments);
+                        };
+                        if (dt) {
+                            docRoot.triggerPopup = function() {
+                                return __egpApplyPopupGeo(dt, this, arguments);
+                            };
+                        }
+                        docRoot.__egpPopupGeoRulesPatch = true;
+                        window.__egpPopupGeoRulesApplied = true;
+                        __egpPopupLog("[EGP] Popup geo rules attached (documents[0]).");
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            var __egpTries = 0;
+            (function __egpRetryPopupGeo() {
+                if (__egpPatchPopupGeo()) { return; }
+                __egpTries++;
+                if (__egpTries > 60) {
+                    if (__egpPopupDbg && window.console && console.warn) {
+                        console.warn("[EGP] Popup geo rules could not attach: Elementor Pro popup module and documents[0] were unavailable after waiting.");
+                    }
+                    return;
+                }
+                setTimeout(__egpRetryPopupGeo, 100);
+            })();
         });
         </script>';
     }

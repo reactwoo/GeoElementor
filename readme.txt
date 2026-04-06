@@ -4,7 +4,7 @@ Tags: elementor, popup, geolocation, geo-targeting, maxmind, country-specific, w
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.5.37
+Stable tag: 1.0.5.38
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -141,6 +141,9 @@ Yes, the plugin works on all devices and automatically detects mobile IP address
 9. Preferred Countries configuration
 
 == Changelog ==
+
+= 1.0.5.38 =
+* Popup geo rules (library popups): attach to **Elementor Pro** `elementorProFrontend.modules.popup` first (with short retry while Pro loads), then fall back to `documents[0]`. Normalizes `{ id: … }` vs numeric popup ids. Removes reliance on an empty `documents[0]` array on newer Elementor.
 
 = 1.0.5.37 =
 * Frontend geo rules: gate `[EGP Frontend]` console output behind **Geo Elementor → Debug mode** (`egp_debug_mode`).
