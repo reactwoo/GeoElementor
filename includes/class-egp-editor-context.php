@@ -50,19 +50,23 @@ class EGP_Editor_Context {
 		if ( ! empty( $_GET['elementor-preview'] ) || ! empty( $_GET['elementor_library'] ) || ( ! empty( $_GET['action'] ) && 'elementor' === $_GET['action'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$inner = self::user_can_edit_resolved( $post_id );
 			self::$memo_bypass[ $key ] = (bool) apply_filters( 'egp_should_bypass_geo_rules', $inner, $resolved );
-			self::maybe_log_egp_bypass_branch(
-				'egp_bypass_get_elementor',
-				array(
-					'resolved'           => $resolved,
-					'editor_bypass'      => $inner,
-					'after_filter'       => self::$memo_bypass[ $key ],
-					'geo_rules_skipped'  => (bool) self::$memo_bypass[ $key ],
-				)
-			);
 			return self::$memo_bypass[ $key ];
 		}
 
-		// 2) Geo Core consolidated builder bypass (does not run deep Elementor on plain frontend GETs).
+		// 2) Elementor editor object (admin / AJAX) — hard bypass so geo rules never run in the builder (debug-independent).
+		if ( ( is_admin() || ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() ) ) && defined( 'ELEMENTOR_VERSION' ) && class_exists( '\Elementor\Plugin', false ) ) {
+			try {
+				$pl = \Elementor\Plugin::$instance;
+				if ( $pl && isset( $pl->editor ) && is_object( $pl->editor ) && method_exists( $pl->editor, 'is_edit_mode' ) && $pl->editor->is_edit_mode() ) {
+					self::$memo_bypass[ $key ] = (bool) apply_filters( 'egp_should_bypass_geo_rules', true, $resolved );
+					return self::$memo_bypass[ $key ];
+				}
+			} catch ( \Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+				// Fall through to Geo Core heuristics.
+			}
+		}
+
+		// 3) Geo Core consolidated builder bypass (does not run deep Elementor on plain frontend GETs).
 		if ( function_exists( 'rwgc_is_builder_edit_request' ) && rwgc_is_builder_edit_request( $post_id ) ) {
 			$inner = true;
 		} else {
@@ -70,46 +74,7 @@ class EGP_Editor_Context {
 		}
 
 		self::$memo_bypass[ $key ] = (bool) apply_filters( 'egp_should_bypass_geo_rules', $inner, $resolved );
-		self::maybe_log_egp_bypass_branch(
-			'egp_bypass_delegated',
-			array(
-				'resolved'           => $resolved,
-				'editor_bypass'      => $inner,
-				'after_filter'       => self::$memo_bypass[ $key ],
-				'geo_rules_skipped'  => self::$memo_bypass[ $key ],
-			)
-		);
 		return self::$memo_bypass[ $key ];
-	}
-
-	/**
-	 * One debug line per branch per request when Geo Core debug mode is on.
-	 *
-	 * @param string               $where Logical branch.
-	 * @param array<string, mixed> $extra Fields.
-	 * @return void
-	 */
-	private static function maybe_log_egp_bypass_branch( $where, $extra = array() ) {
-		if ( ! class_exists( 'RWGC_Settings', false ) || ! RWGC_Settings::get( 'debug_mode', 0 ) ) {
-			return;
-		}
-		static $logged = array();
-		if ( isset( $logged[ $where ] ) ) {
-			return;
-		}
-		$logged[ $where ] = true;
-
-		$base = array(
-			'branch'                  => $where,
-			'request_uri'             => isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '',
-			'is_admin'                => is_admin(),
-			'wp_doing_ajax'           => function_exists( 'wp_doing_ajax' ) && wp_doing_ajax(),
-			'REST_REQUEST'            => defined( 'REST_REQUEST' ) && REST_REQUEST,
-			'GET_elementor_preview'   => isset( $_GET['elementor-preview'] ),
-			'GET_action_is_elementor' => isset( $_GET['action'] ) && 'elementor' === $_GET['action'],
-		);
-		$line = array_merge( $base, is_array( $extra ) ? $extra : array() );
-		error_log( '[EGP bypass] ' . wp_json_encode( $line ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 	}
 
 	/**

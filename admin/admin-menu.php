@@ -228,8 +228,8 @@ class EGP_Admin_Menu {
 		if (did_action('admin_menu')) {
 			$this->register_menus();
 		}
-		if (function_exists('error_log')) {
-			error_log('[EGP Menu] EGP_Admin_Menu constructed');
+		if (function_exists('egp_is_verbose_log_enabled') && egp_is_verbose_log_enabled()) {
+			error_log('[EGP Menu] EGP_Admin_Menu constructed'); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- gated.
 		}
 	}
 
@@ -316,8 +316,8 @@ class EGP_Admin_Menu {
 			array($this, 'render_license')
 		);
 
-		if (defined('WP_DEBUG') && WP_DEBUG && function_exists('error_log')) {
-			error_log('[EGP Menu] register_menus executed with capability: ' . $capability);
+		if (function_exists('egp_is_verbose_log_enabled') && egp_is_verbose_log_enabled()) {
+			error_log('[EGP Menu] register_menus executed with capability: ' . $capability); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- gated.
 		}
 
 		do_action('egp_admin_menu_registered', $capability);

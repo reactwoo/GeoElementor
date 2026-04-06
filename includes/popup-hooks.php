@@ -77,7 +77,9 @@ class EGP_Popup_Hooks {
         // Add geo targeting controls to popup editor
         add_action('elementor/element/popup/section_popup_layout/before_section_end', array($this, 'add_geo_targeting_controls'));
         
-        error_log('[EGP] Elementor Pro popup system initialized');
+        if (function_exists('egp_is_verbose_log_enabled') && egp_is_verbose_log_enabled()) {
+            error_log('[EGP] Elementor Pro popup system initialized'); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- gated.
+        }
     }
     
     /**
@@ -87,7 +89,9 @@ class EGP_Popup_Hooks {
         add_action('wp_footer', array($this, 'render_popup_html'));
         add_action('wp_enqueue_scripts', array($this, 'enqueue_fallback_popup_scripts'));
         
-        error_log('[EGP] Fallback popup system initialized');
+        if (function_exists('egp_is_verbose_log_enabled') && egp_is_verbose_log_enabled()) {
+            error_log('[EGP] Fallback popup system initialized'); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- gated.
+        }
     }
     
     /**

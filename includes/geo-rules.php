@@ -1810,22 +1810,30 @@ class EGP_Geo_Rules {
             'posts_per_page' => -1
         ));
         
-        error_log('[EGP Debug] Found ' . count($rules) . ' active rules in database');
+        if (function_exists('egp_debug_log')) {
+            egp_debug_log('[EGP Debug] Found ' . count($rules) . ' active rules in database');
+        }
 
         $targets = array();
         $targets_by_ref = array();
         foreach ($rules as $rule) {
             $type = get_post_meta($rule->ID, $this->meta_prefix . 'target_type', true);
-            error_log('[EGP Debug] Processing rule ' . $rule->ID . ' with type: ' . $type);
+            if (function_exists('egp_debug_log')) {
+                egp_debug_log('[EGP Debug] Processing rule ' . $rule->ID . ' with type: ' . $type);
+            }
             // Include all valid Elementor element types, including legacy "elementor" rules.
             $valid_types = array('section', 'widget', 'container', 'column', 'elementor');
             if (!in_array($type, $valid_types, true)) { 
-                error_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - wrong type: ' . $type);
+                if (function_exists('egp_debug_log')) {
+                    egp_debug_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - wrong type: ' . $type);
+                }
                 continue; 
             }   
             $target_id = trim((string) get_post_meta($rule->ID, $this->meta_prefix . 'target_id', true));
             if ($target_id === '' || strpos($target_id, 'template:') === 0) { 
-                error_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - invalid target_id: ' . $target_id);
+                if (function_exists('egp_debug_log')) {
+                    egp_debug_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - invalid target_id: ' . $target_id);
+                }
                 continue; 
             }
             $rule_document_id = intval(get_post_meta($rule->ID, $this->meta_prefix . 'elementor_document_id', true));
@@ -1835,12 +1843,16 @@ class EGP_Geo_Rules {
             // Strict document scoping when document ID exists.
             // For legacy rules without stored document ID, allow strict DOM ref matching to decide applicability.
             if ($rule_document_id > 0 && $current_page_id > 0 && $rule_document_id !== intval($current_page_id)) {
-                error_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - document mismatch: rule=' . $rule_document_id . ' current=' . $current_page_id);
+                if (function_exists('egp_debug_log')) {
+                    egp_debug_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - document mismatch: rule=' . $rule_document_id . ' current=' . $current_page_id);
+                }
                 continue;
             }
             $countries = get_post_meta($rule->ID, $this->meta_prefix . 'countries', true);
             if (!is_array($countries) || empty($countries)) { 
-                error_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - no countries');
+                if (function_exists('egp_debug_log')) {
+                    egp_debug_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - no countries');
+                }
                 continue; 
             }  
             $countries = $this->normalize_country_codes_array( $countries );
@@ -1854,22 +1866,30 @@ class EGP_Geo_Rules {
                 );
             }
             $targets_by_ref[$target_id]['countries'] = array_values(array_unique(array_merge($targets_by_ref[$target_id]['countries'], $countries)));
-            error_log('[EGP Debug] Merged target: ' . $target_id . ' countries now: ' . implode(',', $targets_by_ref[$target_id]['countries']));
+            if (function_exists('egp_debug_log')) {
+                egp_debug_log('[EGP Debug] Merged target: ' . $target_id . ' countries now: ' . implode(',', $targets_by_ref[$target_id]['countries']));
+            }
         }
         $targets = array_values($targets_by_ref);
 
-        error_log('[EGP Debug] Frontend script - Found ' . count($targets) . ' targets: ' . wp_json_encode($targets));
+        if (function_exists('egp_debug_log')) {
+            egp_debug_log('[EGP Debug] Frontend script - Found ' . count($targets) . ' targets: ' . wp_json_encode($targets));
+        }
         
         // Also log all rules for debugging
-        foreach ($rules as $rule) {
-            $type = get_post_meta($rule->ID, $this->meta_prefix . 'target_type', true);
-            $target_id = get_post_meta($rule->ID, $this->meta_prefix . 'target_id', true);
-            $countries = get_post_meta($rule->ID, $this->meta_prefix . 'countries', true);
-            $active = get_post_meta($rule->ID, $this->meta_prefix . 'active', true);
-            error_log('[EGP Debug] Rule ' . $rule->ID . ': ' . $rule->post_title . ' (type: ' . $type . ', target: ' . $target_id . ', countries: ' . implode(',', (array)$countries) . ', active: ' . $active . ')');
+        if (function_exists('egp_is_debug_mode') && egp_is_debug_mode()) {
+            foreach ($rules as $rule) {
+                $type = get_post_meta($rule->ID, $this->meta_prefix . 'target_type', true);
+                $target_id = get_post_meta($rule->ID, $this->meta_prefix . 'target_id', true);
+                $countries = get_post_meta($rule->ID, $this->meta_prefix . 'countries', true);
+                $active = get_post_meta($rule->ID, $this->meta_prefix . 'active', true);
+                egp_debug_log('[EGP Debug] Rule ' . $rule->ID . ': ' . $rule->post_title . ' (type: ' . $type . ', target: ' . $target_id . ', countries: ' . implode(',', (array)$countries) . ', active: ' . $active . ')');
+            }
         }
         if (empty($targets)) { 
-            error_log('[EGP Debug] No targets found, returning early');
+            if (function_exists('egp_debug_log')) {
+                egp_debug_log('[EGP Debug] No targets found, returning early');
+            }
             return; 
         }
 

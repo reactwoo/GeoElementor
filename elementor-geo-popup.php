@@ -3,7 +3,7 @@
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
  * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration via ReactWoo Geo Core and MaxMind GeoLite2 database.
- * Version: 1.0.5.35
+ * Version: 1.0.5.36
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
  * License: GPL v2 or later
@@ -24,24 +24,25 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('EGP_VERSION', '1.0.5.35');
+define('EGP_VERSION', '1.0.5.36');
 define('EGP_PLUGIN_FILE', __FILE__);
 define('EGP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EGP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('EGP_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
+require_once EGP_PLUGIN_DIR . 'includes/egp-debug.php';
 require_once EGP_PLUGIN_DIR . 'includes/egp-country-data.php';
 require_once EGP_PLUGIN_DIR . 'includes/class-egp-editor-context.php';
 // WordPress.org-style updates via ReactWoo API (api.reactwoo.com) — same contract as WHMCS Bridge.
 require_once EGP_PLUGIN_DIR . 'includes/plugin-updater.php';
 
-// Always-on bootstrap marker for staging diagnostics.
-if (function_exists('error_log')) {
+// Bootstrap marker only when verbose debug is explicitly enabled (WP_DEBUG + egp_debug_mode).
+if (function_exists('egp_is_verbose_log_enabled') && egp_is_verbose_log_enabled() && function_exists('error_log')) {
     error_log('[EGP BOOT] Loaded Geo Elementor ' . EGP_VERSION . ' from ' . EGP_PLUGIN_FILE);
 }
-if (!is_admin() && function_exists('add_action')) {
+if (!is_admin() && function_exists('add_action') && function_exists('egp_is_debug_mode') && egp_is_debug_mode()) {
     add_action('wp_head', function () {
-        echo '<script>window.__EGP_BUILD__="1.0.5.34-release";console.log("[EGP BUILD]",window.__EGP_BUILD__);</script>';
+        echo '<script>window.__EGP_BUILD__="' . esc_js(EGP_VERSION) . '";if(window.console&&console.log){console.log("[EGP BUILD]",window.__EGP_BUILD__);}</script>';
     }, 1);
 }
 
@@ -144,9 +145,7 @@ class ElementorGeoPopup {
      * Whether to emit verbose info logs
      */
     private function should_log_info() {
-        // Only log info when explicit debug option enabled and WP_DEBUG true
-        $debug_opt = get_option('egp_debug_mode');
-        return (defined('WP_DEBUG') && WP_DEBUG && !empty($debug_opt));
+        return function_exists('egp_is_verbose_log_enabled') && egp_is_verbose_log_enabled();
     }
     
     /**
@@ -164,9 +163,11 @@ class ElementorGeoPopup {
         $this->initialized = true;
 
         if ($this->should_log_info()) { error_log('[EGP] Plugin init() called'); }
-        add_action('admin_footer', function() {
-            echo '<script>console.log("[EGP] Plugin init() called");</script>';
-        });
+        if ($this->should_log_info()) {
+            add_action('admin_footer', function() {
+                echo '<script>if(window.console&&console.log){console.log("[EGP] Plugin init() called");}</script>';
+            });
+        }
 
         // Always load admin settings, dashboard, menu, and licensing so settings are visible even if Elementor isn't active
         if (is_admin()) {
@@ -237,9 +238,11 @@ class ElementorGeoPopup {
         // Also try to register immediately if Elementor is already loaded
         if (did_action('elementor/loaded')) {
             if ($this->should_log_info()) { error_log('[EGP] Elementor already loaded, registering hooks immediately'); }
-            add_action('admin_footer', function() {
-                echo '<script>console.log("[EGP] Elementor already loaded - registering hooks immediately");</script>';
-            });
+            if ($this->should_log_info()) {
+                add_action('admin_footer', function() {
+                    echo '<script>if(window.console&&console.log){console.log("[EGP] Elementor already loaded - registering hooks immediately");}</script>';
+                });
+            }
             $this->register_elementor_hooks();
         }
 
