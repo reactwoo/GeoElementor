@@ -1923,9 +1923,24 @@ class EGP_Geo_Rules {
                     return found;
                 }
 
-                // Numeric ref: Elementor popup template post ID — match lightbox triggers / popup open links.
+                // Numeric ref: Elementor popup template post ID — modal nodes, lightbox JSON, elementor-action (settings often base64).
                 if (/^\d+$/.test(cleanRef)) {
                     var pid = cleanRef;
+                    function hrefSettingsPopupId(href) {
+                        if (!href || href.indexOf("elementor-action") === -1) { return null; }
+                        try {
+                            var frag = (href.split("#").pop() || href);
+                            var dec = frag.indexOf("%") !== -1 ? decodeURIComponent(frag.replace(/\+/g, " ")) : frag;
+                            var m = dec.match(/settings(?:%3D|=)([A-Za-z0-9+/=_-]+)/i);
+                            if (!m || !m[1]) { return null; }
+                            var b64 = m[1];
+                            if (typeof atob !== "function") { return null; }
+                            var json = JSON.parse(atob(b64));
+                            if (json && json.id != null) { return String(json.id); }
+                        } catch (e2) { /* ignore */ }
+                        return null;
+                    }
+                    document.querySelectorAll('[data-elementor-id="' + pid + '"]').forEach(function(el) { add(el); });
                     document.querySelectorAll("[data-elementor-lightbox]").forEach(function(el) {
                         var raw = el.getAttribute("data-elementor-lightbox");
                         if (!raw) { return; }
@@ -1938,14 +1953,17 @@ class EGP_Geo_Rules {
                             }
                         } catch (e1) { /* ignore */ }
                     });
-                    document.querySelectorAll('a[href*="elementor-action"], a[href*="lightbox"]').forEach(function(el) {
+                    document.querySelectorAll('a[href*="elementor-action"], [data-elementor-open-lightbox], a[href*="lightbox"]').forEach(function(el) {
                         var h = el.getAttribute("href") || "";
-                        if (h.indexOf(pid) !== -1 && (h.indexOf("popup") !== -1 || h.indexOf("lightbox") !== -1 || h.indexOf("elementor-action") !== -1)) {
+                        if (h.indexOf(pid) !== -1 && (h.indexOf("popup") !== -1 || h.indexOf("elementor-action") !== -1)) {
                             add(el);
+                            return;
                         }
+                        var sid = hrefSettingsPopupId(h);
+                        if (sid === pid) { add(el); }
                     });
                     if (found.length > 0) {
-                        __egpLog("[EGP Frontend] Found", found.length, "popup trigger(s) for template post id:", cleanRef);
+                        __egpLog("[EGP Frontend] Found", found.length, "popup node(s)/trigger(s) for template post id:", cleanRef);
                         return found;
                     }
                 }
