@@ -1821,8 +1821,8 @@ class EGP_Geo_Rules {
             if (function_exists('egp_debug_log')) {
                 egp_debug_log('[EGP Debug] Processing rule ' . $rule->ID . ' with type: ' . $type);
             }
-            // Include all valid Elementor element types, including legacy "elementor" rules.
-            $valid_types = array('section', 'widget', 'container', 'column', 'elementor');
+            // Include popup (template post id targets — resolved in JS) and legacy "elementor" rules.
+            $valid_types = array( 'section', 'widget', 'container', 'column', 'elementor', 'popup' );
             if (!in_array($type, $valid_types, true)) { 
                 if (function_exists('egp_debug_log')) {
                     egp_debug_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - wrong type: ' . $type);
@@ -1907,21 +1907,50 @@ class EGP_Geo_Rules {
             __egpLog("[EGP Frontend] Loaded", targets.length, "geo targeting rules:", targets);
             
             function egpFindElement(ref) {
-                // Strict matching only: avoid broad ID/class fallbacks that can hide unrelated content.
                 var found = [];
+                function add(el) {
+                    if (!el || !el.nodeType) { return; }
+                    if (found.indexOf(el) !== -1) { return; }
+                    found.push(el);
+                }
                 var cleanRef = (ref || "").trim();
                 if (!cleanRef) { return found; }
 
                 var byDataId = document.querySelectorAll('.elementor-element[data-id="' + cleanRef + '"]');
                 if (byDataId.length > 0) {
-                    byDataId.forEach(function(el) { found.push(el); });
-                    __egpLog("[EGP Frontend] Found", byDataId.length, "elements by exact data-id:", cleanRef);
+                    byDataId.forEach(function(el) { add(el); });
+                    __egpLog("[EGP Frontend] Found", found.length, "elements by exact data-id:", cleanRef);
                     return found;
                 }
 
-                // No CSS ID/class fallback: only exact Elementor data-id matching is allowed.
-                // This prevents hiding unrelated sections that happen to share a DOM id.
-                __egpLog("[EGP Frontend] Could not find exact Elementor data-id target:", cleanRef);
+                // Numeric ref: Elementor popup template post ID — match lightbox triggers / popup open links.
+                if (/^\d+$/.test(cleanRef)) {
+                    var pid = cleanRef;
+                    document.querySelectorAll("[data-elementor-lightbox]").forEach(function(el) {
+                        var raw = el.getAttribute("data-elementor-lightbox");
+                        if (!raw) { return; }
+                        try {
+                            var j = JSON.parse(raw);
+                            var jid = j && j.id != null ? String(j.id) : "";
+                            var jt = j && j.type ? String(j.type) : "";
+                            if (jid === pid && (jt === "popup" || jt === "")) {
+                                add(el);
+                            }
+                        } catch (e1) { /* ignore */ }
+                    });
+                    document.querySelectorAll('a[href*="elementor-action"], a[href*="lightbox"]').forEach(function(el) {
+                        var h = el.getAttribute("href") || "";
+                        if (h.indexOf(pid) !== -1 && (h.indexOf("popup") !== -1 || h.indexOf("lightbox") !== -1 || h.indexOf("elementor-action") !== -1)) {
+                            add(el);
+                        }
+                    });
+                    if (found.length > 0) {
+                        __egpLog("[EGP Frontend] Found", found.length, "popup trigger(s) for template post id:", cleanRef);
+                        return found;
+                    }
+                }
+
+                __egpLog("[EGP Frontend] Could not find Elementor target (data-id or popup template id):", cleanRef);
                 return found;
             }
             
