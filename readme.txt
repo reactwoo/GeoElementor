@@ -4,7 +4,7 @@ Tags: elementor, popup, geolocation, geo-targeting, maxmind, country-specific, w
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.5.40
+Stable tag: 1.0.5.41
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -141,6 +141,9 @@ Yes, the plugin works on all devices and automatically detects mobile IP address
 9. Preferred Countries configuration
 
 == Changelog ==
+
+= 1.0.5.41 =
+* **CI:** Publish workflow preflights `GET /health` and retries the update API `POST` on transient 502/503 (aligned with ReactWoo Geo Core).
 
 = 1.0.5.40 =
 * **Popup template targets (numeric ref):** Match **`[data-elementor-id]`** nodes (footer popup HTML), decode **elementor-action** hash `settings=` base64 for popup id, and keep lightbox JSON matching. Fixes “Could not find … popup template id” when triggers use encoded links without plain `12354` in the URL.
