@@ -648,6 +648,13 @@ class ElementorGeoPopup {
     }
 
     /**
+     * Get country options array for Elementor CHOOSE control
+     */
+    private function get_country_options_choose() {
+        return $this->get_country_options();
+    }
+
+    /**
      * Register Geo Targeting controls for Elementor elements
      * Following the if-so pattern which is proven to work with Elementor
      */
