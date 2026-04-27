@@ -3,7 +3,7 @@
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
  * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration via ReactWoo Geo Core and MaxMind GeoLite2 database.
- * Version: 1.0.5.41
+ * Version: 1.0.5.42
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
  * License: GPL v2 or later
@@ -24,7 +24,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('EGP_VERSION', '1.0.5.41');
+define('EGP_VERSION', '1.0.5.42');
 define('EGP_PLUGIN_FILE', __FILE__);
 define('EGP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EGP_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -1013,6 +1013,117 @@ class ElementorGeoPopup {
         return isset($license_data['valid']) && $license_data['valid'];
     }
 }
+
+/**
+ * Count active GeoElementor rules/targets for Geo Core dashboard cards.
+ *
+ * Includes:
+ * - Active geo_rule posts.
+ * - Geo-enabled Elementor popups.
+ * - Variant group mappings when available.
+ *
+ * @return int
+ */
+function egp_get_active_rule_count_for_geocore_dashboard() {
+    $count = 0;
+
+    // Active Geo Rules CPT entries.
+    $active_rules = get_posts(array(
+        'post_type'      => 'geo_rule',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+        'meta_query'     => array(
+            array(
+                'key'     => 'egp_active',
+                'value'   => '1',
+                'compare' => '=',
+            ),
+        ),
+    ));
+    $count += is_array($active_rules) ? count($active_rules) : 0;
+
+    // Geo-enabled Elementor popups (page settings).
+    $popups = get_posts(array(
+        'post_type'      => 'elementor_library',
+        'post_status'    => array('publish', 'draft', 'private'),
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+        'meta_query'     => array(
+            array(
+                'key'   => '_elementor_template_type',
+                'value' => 'popup',
+            ),
+        ),
+    ));
+    if (is_array($popups)) {
+        foreach ($popups as $popup_id) {
+            $settings = get_post_meta((int) $popup_id, '_elementor_page_settings', true);
+            if (is_array($settings) && isset($settings['egp_enable_geo_targeting']) && 'yes' === $settings['egp_enable_geo_targeting']) {
+                $count++;
+            }
+        }
+    }
+
+    // Variant-group mappings (popup/section/widget/page targets).
+    if (class_exists('RW_Geo_Mapping_CRUD')) {
+        $mapping_crud = new RW_Geo_Mapping_CRUD();
+        $mappings = $mapping_crud->get_all();
+        if (is_array($mappings)) {
+            $count += count($mappings);
+        }
+    }
+
+    return max(0, (int) $count);
+}
+
+/**
+ * Get total match/impression count for Geo Core dashboard card.
+ *
+ * @return int
+ */
+function egp_get_rule_match_count_for_geocore_dashboard() {
+    global $wpdb;
+    if (!($wpdb instanceof wpdb)) {
+        return 0;
+    }
+
+    // Prefer impressions when present.
+    $impressions = (int) $wpdb->get_var(
+        "SELECT SUM(CAST(meta_value AS UNSIGNED)) FROM {$wpdb->postmeta} WHERE meta_key = 'egp_impressions'"
+    );
+    if ($impressions > 0) {
+        return $impressions;
+    }
+
+    // Fallback for older installs still writing views.
+    $views = (int) $wpdb->get_var(
+        "SELECT SUM(CAST(meta_value AS UNSIGNED)) FROM {$wpdb->postmeta} WHERE meta_key = 'egp_views'"
+    );
+    return max(0, $views);
+}
+
+/**
+ * Contribute GeoElementor rule totals into Geo Core dashboard cards.
+ *
+ * @param int $current_count Current count provided by Geo Core or earlier filters.
+ * @return int
+ */
+function egp_filter_rwgc_dashboard_active_rules_count($current_count) {
+    return max(0, (int) $current_count) + egp_get_active_rule_count_for_geocore_dashboard();
+}
+add_filter('rwgc_dashboard_active_rules_count', 'egp_filter_rwgc_dashboard_active_rules_count');
+
+/**
+ * Contribute GeoElementor match totals into Geo Core dashboard cards.
+ *
+ * @param int $current_count Current count provided by Geo Core or earlier filters.
+ * @return int
+ */
+function egp_filter_rwgc_dashboard_rule_matches_count($current_count) {
+    return max(0, (int) $current_count) + egp_get_rule_match_count_for_geocore_dashboard();
+}
+add_filter('rwgc_dashboard_rule_matches_count', 'egp_filter_rwgc_dashboard_rule_matches_count');
 
 // Initialize the plugin
 ElementorGeoPopup::get_instance();
