@@ -224,6 +224,57 @@ class EGP_Geo_Rules {
                     <p class="description"><?php _e('Hold Ctrl/Cmd to select multiple countries', 'elementor-geo-popup'); ?></p>
                 </td>
             </tr>
+
+            <tr>
+                <th scope="row">
+                    <label for="egp_portable_targeting"><?php esc_html_e( 'Portable targeting (Geo Core)', 'elementor-geo-popup' ); ?></label>
+                </th>
+                <td>
+                    <?php
+                    $portable_raw = get_post_meta( $post->ID, $this->meta_prefix . 'portable_targeting', true );
+                    $portable_raw = is_string( $portable_raw ) ? $portable_raw : '';
+                    $egp_ctx      = function_exists( 'rwgc_get_portable_targeting_editor_context' ) ? rwgc_get_portable_targeting_editor_context() : array(
+                        'pro'       => false,
+                        'audiences' => array(),
+                        'campaigns' => array(),
+                    );
+                    ?>
+                    <textarea name="egp_portable_targeting" id="egp_portable_targeting" rows="8" class="large-text code" placeholder="<?php echo esc_attr__( 'Optional JSON (enabled, mode, match, rules) — same schema as Geo Core portable rules.', 'elementor-geo-popup' ); ?>"><?php echo esc_textarea( $portable_raw ); ?></textarea>
+                    <p class="description">
+                        <?php esc_html_e( 'When set, visitors must match this rule set and the country list above (either can be left empty only if the other defines the rule). Requires ReactWoo Geo Core; audiences/campaigns need GeoCore Pro + sync.', 'elementor-geo-popup' ); ?>
+                    </p>
+                    <?php if ( ! empty( $egp_ctx['pro'] ) && ( ! empty( $egp_ctx['audiences'] ) || ! empty( $egp_ctx['campaigns'] ) ) ) : ?>
+                        <p style="margin:8px 0 4px;"><strong><?php esc_html_e( 'Quick insert (fills JSON)', 'elementor-geo-popup' ); ?></strong></p>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                            <?php foreach ( (array) $egp_ctx['audiences'] as $ar ) : ?>
+                                <?php
+                                if ( ! is_array( $ar ) ) {
+                                    continue;
+                                }
+                                $aid = isset( $ar['id'] ) ? (string) $ar['id'] : '';
+                                $anm = isset( $ar['name'] ) ? (string) $ar['name'] : $aid;
+                                if ( '' === $aid ) {
+                                    continue;
+                                }
+                                ?>
+                                <button type="button" class="button button-small egp-portable-insert-audience" data-audience-id="<?php echo esc_attr( $aid ); ?>"><?php echo esc_html( $anm ); ?></button>
+                            <?php endforeach; ?>
+                            <?php foreach ( (array) $egp_ctx['campaigns'] as $cr ) : ?>
+                                <?php
+                                if ( ! is_array( $cr ) ) {
+                                    continue;
+                                }
+                                $ctok = isset( $cr['name'] ) && (string) $cr['name'] !== '' ? (string) $cr['name'] : (string) ( $cr['id'] ?? '' );
+                                if ( '' === $ctok ) {
+                                    continue;
+                                }
+                                ?>
+                                <button type="button" class="button button-small egp-portable-insert-campaign" data-campaign="<?php echo esc_attr( $ctok ); ?>"><?php echo esc_html( $ctok ); ?></button>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </td>
+            </tr>
             
             <tr>
                 <th scope="row">
@@ -249,6 +300,49 @@ class EGP_Geo_Rules {
         </table>
         
         <script>
+        (function () {
+            function egpPortableAudienceJson(id) {
+                return JSON.stringify({
+                    schema_version: 1,
+                    enabled: true,
+                    mode: 'show',
+                    match: 'any',
+                    rules: [{
+                        id: 'rule_audience',
+                        label: '',
+                        match: 'all',
+                        conditions: [{ type: 'audience', operator: 'in', value: [String(id)] }]
+                    }]
+                }, null, 2);
+            }
+            function egpPortableCampaignJson(token) {
+                return JSON.stringify({
+                    schema_version: 1,
+                    enabled: true,
+                    mode: 'show',
+                    match: 'any',
+                    rules: [{
+                        id: 'rule_campaign',
+                        label: '',
+                        match: 'all',
+                        conditions: [{ type: 'campaign', operator: 'in', value: [String(token)] }]
+                    }]
+                }, null, 2);
+            }
+            document.addEventListener('click', function (e) {
+                var aud = e.target.closest('.egp-portable-insert-audience');
+                var cmp = e.target.closest('.egp-portable-insert-campaign');
+                if (!aud && !cmp) { return; }
+                e.preventDefault();
+                var ta = document.getElementById('egp_portable_targeting');
+                if (!ta) { return; }
+                if (aud) {
+                    ta.value = egpPortableAudienceJson(aud.getAttribute('data-audience-id') || '');
+                } else {
+                    ta.value = egpPortableCampaignJson(cmp.getAttribute('data-campaign') || '');
+                }
+            });
+        })();
         var egpProGranularEnabled = <?php echo apply_filters('egp_enable_element_granularity', $this->is_pro_user()) ? 'true' : 'false'; ?>;
         function egpUpdateTargetOptions() {
             var targetType = document.getElementById('egp_target_type').value;
@@ -643,6 +737,10 @@ class EGP_Geo_Rules {
                 error_log("EGP Debug: Saving countries for rule {$post_id}: " . print_r($countries, true));
             }
             update_post_meta($post_id, $this->meta_prefix . 'countries', $countries);
+        }
+
+        if (array_key_exists('egp_portable_targeting', $_POST)) {
+            update_post_meta($post_id, $this->meta_prefix . 'portable_targeting', wp_unslash((string) wp_check_invalid_utf8((string) $_POST['egp_portable_targeting'], true)));
         }
         
         if (isset($_POST['egp_priority'])) {
@@ -1787,6 +1885,28 @@ class EGP_Geo_Rules {
     }
 
     /**
+     * Evaluate Geo Core portable targeting JSON for a geo_rule (null = not used / invalid).
+     *
+     * @param int $rule_id Rule post ID.
+     * @return bool|null True/false when a valid set exists; null when absent or invalid JSON.
+     */
+    private function rule_portable_should_show($rule_id) {
+        $raw = get_post_meta((int) $rule_id, $this->meta_prefix . 'portable_targeting', true);
+        if (!is_string($raw) || trim($raw) === '') {
+            return null;
+        }
+        if (!class_exists('RWGC_Targeting_Rule_Set_Schema', false) || !class_exists('RWGC_Targeting_Rule_Set_Evaluator', false) || !class_exists('RWGC_Context_Resolver', false)) {
+            return null;
+        }
+        $set = RWGC_Targeting_Rule_Set_Schema::sanitize($raw);
+        if (!is_array($set)) {
+            return null;
+        }
+        $snapshot = RWGC_Context_Resolver::resolve_current();
+        return RWGC_Targeting_Rule_Set_Evaluator::should_render_content($set, $snapshot);
+    }
+
+    /**
      * Hide Sections/Containers/Widgets on the frontend when visitor country is not targeted by rules.
      */
     public function add_element_geo_filter_script() {
@@ -1814,8 +1934,7 @@ class EGP_Geo_Rules {
             egp_debug_log('[EGP Debug] Found ' . count($rules) . ' active rules in database');
         }
 
-        $targets = array();
-        $targets_by_ref = array();
+        $rule_targets = array();
         foreach ($rules as $rule) {
             $type = get_post_meta($rule->ID, $this->meta_prefix . 'target_type', true);
             if (function_exists('egp_debug_log')) {
@@ -1849,31 +1968,31 @@ class EGP_Geo_Rules {
                 continue;
             }
             $countries = get_post_meta($rule->ID, $this->meta_prefix . 'countries', true);
-            if (!is_array($countries) || empty($countries)) { 
-                if (function_exists('egp_debug_log')) {
-                    egp_debug_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - no countries');
-                }
-                continue; 
-            }  
-            $countries = $this->normalize_country_codes_array( $countries );
-
-            // Store both the original ID and potential variations
-            // We'll check multiple possibilities on the frontend
-            if (!isset($targets_by_ref[$target_id])) {
-                $targets_by_ref[$target_id] = array(
-                    'ref' => $target_id,
-                    'countries' => array(),
-                );
+            if (!is_array($countries)) {
+                $countries = array();
             }
-            $targets_by_ref[$target_id]['countries'] = array_values(array_unique(array_merge($targets_by_ref[$target_id]['countries'], $countries)));
+            $countries = $this->normalize_country_codes_array( $countries );
+            $portable_pass = $this->rule_portable_should_show( $rule->ID );
+
+            if ( $portable_pass === null && ( ! is_array( $countries ) || count( $countries ) === 0 ) ) {
+                if (function_exists('egp_debug_log')) {
+                    egp_debug_log('[EGP Debug] Skipping rule ' . $rule->ID . ' - no countries and no portable rules');
+                }
+                continue;
+            }
+
+            $rule_targets[] = array(
+                'ref'            => $target_id,
+                'countries'      => array_values( $countries ),
+                'portable_pass'  => $portable_pass,
+            );
             if (function_exists('egp_debug_log')) {
-                egp_debug_log('[EGP Debug] Merged target: ' . $target_id . ' countries now: ' . implode(',', $targets_by_ref[$target_id]['countries']));
+                egp_debug_log('[EGP Debug] Rule target slice: ' . $target_id . ' countries=' . implode( ',', (array) $countries ) . ' portable=' . ( null === $portable_pass ? 'null' : ( $portable_pass ? '1' : '0' ) ) );
             }
         }
-        $targets = array_values($targets_by_ref);
 
         if (function_exists('egp_debug_log')) {
-            egp_debug_log('[EGP Debug] Frontend script - Found ' . count($targets) . ' targets: ' . wp_json_encode($targets));
+            egp_debug_log('[EGP Debug] Frontend script - Found ' . count($rule_targets) . ' rule target slices: ' . wp_json_encode($rule_targets));
         }
         
         // Also log all rules for debugging
@@ -1886,7 +2005,7 @@ class EGP_Geo_Rules {
                 egp_debug_log('[EGP Debug] Rule ' . $rule->ID . ': ' . $rule->post_title . ' (type: ' . $type . ', target: ' . $target_id . ', countries: ' . implode(',', (array)$countries) . ', active: ' . $active . ')');
             }
         }
-        if (empty($targets)) { 
+        if (empty($rule_targets)) { 
             if (function_exists('egp_debug_log')) {
                 egp_debug_log('[EGP Debug] No targets found, returning early');
             }
@@ -1903,8 +2022,8 @@ class EGP_Geo_Rules {
                 if (!__egpFeDbg || !window.console || !console.log) { return; }
                 try { console.log.apply(console, arguments); } catch (e) {}
             }
-            var targets = <?php echo wp_json_encode($targets); ?>;
-            __egpLog("[EGP Frontend] Loaded", targets.length, "geo targeting rules:", targets);
+            var ruleTargets = <?php echo wp_json_encode($rule_targets); ?>;
+            __egpLog("[EGP Frontend] Loaded", ruleTargets.length, "geo rule slices:", ruleTargets);
             
             function egpFindElement(ref) {
                 var found = [];
@@ -1980,44 +2099,55 @@ class EGP_Geo_Rules {
             
             function egpHideTargets(country) {
                 __egpLog("[EGP Frontend] Processing geo rules for country:", country);
-                
-                if (!country) {
-                    __egpLog("[EGP Frontend] No country provided, skipping");
-                    return;
-                }
-                
-                var userCountry = egpNormalizeCountry(country);
-                var hidden = new Set();
-                
-                targets.forEach(function(target) {
-                    var allowedCountries = (target.countries || []).map(function(c) {
+
+                var userCountry = country ? egpNormalizeCountry(country) : "";
+
+                function sliceVisible(slice) {
+                    var okP = (slice.portable_pass === null || slice.portable_pass === true);
+                    if (!userCountry) {
+                        if (slice.countries && slice.countries.length) {
+                            return true;
+                        }
+                        return okP;
+                    }
+                    var allowed = (slice.countries || []).map(function (c) {
                         return egpNormalizeCountry(c);
                     });
-                    
-                    __egpLog("[EGP Frontend] Checking rule for:", target.ref, "| Allowed:", allowedCountries, "| User:", userCountry);
-                    
-                    // If user's country is NOT in the allowed list, hide the element
-                    if (allowedCountries.indexOf(userCountry) === -1) {
-                        __egpLog("[EGP Frontend] ❌ User country NOT allowed - HIDING:", target.ref);
-                        
-                        var elements = egpFindElement(target.ref);
+                    var okC = !allowed.length || allowed.indexOf(userCountry) !== -1;
+                    return okC && okP;
+                }
+
+                var byRef = {};
+                ruleTargets.forEach(function (slice) {
+                    if (!byRef[slice.ref]) {
+                        byRef[slice.ref] = [];
+                    }
+                    byRef[slice.ref].push(slice);
+                });
+
+                var hidden = new Set();
+                Object.keys(byRef).forEach(function (ref) {
+                    var show = byRef[ref].some(function (s) {
+                        return sliceVisible(s);
+                    });
+                    __egpLog("[EGP Frontend] Ref", ref, "show=", show, "slices=", byRef[ref]);
+                    if (!show) {
+                        __egpLog("[EGP Frontend] Hiding ref:", ref);
+                        var elements = egpFindElement(ref);
                         if (elements.length === 0) {
-                            __egpLog("[EGP Frontend] ⚠️ Element not found to hide:", target.ref);
+                            __egpLog("[EGP Frontend] Element not found to hide:", ref);
                         }
-                        
-                        elements.forEach(function(el) {
-                            if (el && !hidden.has(target.ref)) {
+                        elements.forEach(function (el) {
+                            if (el && !hidden.has(ref)) {
                                 el.style.display = "none";
                                 el.classList.add("egp-geo-hidden");
-                                hidden.add(target.ref);
-                                __egpLog("[EGP Frontend] ✓ Hidden element:", target.ref, el);
+                                hidden.add(ref);
+                                __egpLog("[EGP Frontend] Hidden element:", ref, el);
                             }
                         });
-                    } else {
-                        __egpLog("[EGP Frontend] ✓ User country allowed - SHOWING:", target.ref);
                     }
                 });
-                
+
                 __egpLog("[EGP Frontend] Completed. Hidden", hidden.size, "elements");
             }
             
@@ -2035,7 +2165,8 @@ class EGP_Geo_Rules {
             if (initialCountry) {
                 egpHideTargets(initialCountry);
             } else {
-                __egpLog("[EGP Frontend] No initial country, trying AJAX detection...");
+                __egpLog("[EGP Frontend] No initial country — still applying portable-only slices, then AJAX detection…");
+                egpHideTargets("");
                 var xhr = new XMLHttpRequest();
                 xhr.open("POST", <?php echo wp_json_encode($ajax_url); ?>, true);
                 xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
