@@ -44,6 +44,7 @@ class EGP_Geo_Rules {
         // Add meta boxes
         add_action('add_meta_boxes', array($this, 'add_meta_boxes'));
         add_action('save_post', array($this, 'save_meta_boxes'));
+        add_action('admin_enqueue_scripts', array($this, 'enqueue_geo_rule_admin_assets'));
         
         // Frontend targeting
         add_action('wp_head', array($this, 'add_tracking_data'));
@@ -227,52 +228,17 @@ class EGP_Geo_Rules {
 
             <tr>
                 <th scope="row">
-                    <label for="egp_portable_targeting"><?php esc_html_e( 'Portable targeting (Geo Core)', 'elementor-geo-popup' ); ?></label>
+                    <label for="egp_portable_targeting"><?php esc_html_e( 'Advanced visibility (Geo Core)', 'elementor-geo-popup' ); ?></label>
                 </th>
                 <td>
                     <?php
                     $portable_raw = get_post_meta( $post->ID, $this->meta_prefix . 'portable_targeting', true );
                     $portable_raw = is_string( $portable_raw ) ? $portable_raw : '';
-                    $egp_ctx      = function_exists( 'rwgc_get_portable_targeting_editor_context' ) ? rwgc_get_portable_targeting_editor_context() : array(
-                        'pro'       => false,
-                        'audiences' => array(),
-                        'campaigns' => array(),
-                    );
                     ?>
-                    <textarea name="egp_portable_targeting" id="egp_portable_targeting" rows="8" class="large-text code" placeholder="<?php echo esc_attr__( 'Optional JSON (enabled, mode, match, rules) — same schema as Geo Core portable rules.', 'elementor-geo-popup' ); ?>"><?php echo esc_textarea( $portable_raw ); ?></textarea>
-                    <p class="description">
-                        <?php esc_html_e( 'When set, visitors must match this rule set and the country list above (either can be left empty only if the other defines the rule). Requires ReactWoo Geo Core; audiences/campaigns need GeoCore Pro + sync.', 'elementor-geo-popup' ); ?>
+                    <p class="description" style="margin-bottom:8px;">
+                        <?php esc_html_e( 'Optional. When set, visitors must match this rule set and the country list above (either can be left empty only if the other defines the rule). Requires ReactWoo Geo Core; synced GA4 and Google Ads lists need GeoCore Pro.', 'elementor-geo-popup' ); ?>
                     </p>
-                    <?php if ( ! empty( $egp_ctx['pro'] ) && ( ! empty( $egp_ctx['audiences'] ) || ! empty( $egp_ctx['campaigns'] ) ) ) : ?>
-                        <p style="margin:8px 0 4px;"><strong><?php esc_html_e( 'Quick insert (fills JSON)', 'elementor-geo-popup' ); ?></strong></p>
-                        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-                            <?php foreach ( (array) $egp_ctx['audiences'] as $ar ) : ?>
-                                <?php
-                                if ( ! is_array( $ar ) ) {
-                                    continue;
-                                }
-                                $aid = isset( $ar['id'] ) ? (string) $ar['id'] : '';
-                                $anm = isset( $ar['name'] ) ? (string) $ar['name'] : $aid;
-                                if ( '' === $aid ) {
-                                    continue;
-                                }
-                                ?>
-                                <button type="button" class="button button-small egp-portable-insert-audience" data-audience-id="<?php echo esc_attr( $aid ); ?>"><?php echo esc_html( $anm ); ?></button>
-                            <?php endforeach; ?>
-                            <?php foreach ( (array) $egp_ctx['campaigns'] as $cr ) : ?>
-                                <?php
-                                if ( ! is_array( $cr ) ) {
-                                    continue;
-                                }
-                                $ctok = isset( $cr['name'] ) && (string) $cr['name'] !== '' ? (string) $cr['name'] : (string) ( $cr['id'] ?? '' );
-                                if ( '' === $ctok ) {
-                                    continue;
-                                }
-                                ?>
-                                <button type="button" class="button button-small egp-portable-insert-campaign" data-campaign="<?php echo esc_attr( $ctok ); ?>"><?php echo esc_html( $ctok ); ?></button>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
+                    <textarea name="egp_portable_targeting" id="egp_portable_targeting" rows="6" class="large-text code"><?php echo esc_textarea( $portable_raw ); ?></textarea>
                 </td>
             </tr>
             
@@ -300,49 +266,6 @@ class EGP_Geo_Rules {
         </table>
         
         <script>
-        (function () {
-            function egpPortableAudienceJson(id) {
-                return JSON.stringify({
-                    schema_version: 1,
-                    enabled: true,
-                    mode: 'show',
-                    match: 'any',
-                    rules: [{
-                        id: 'rule_audience',
-                        label: '',
-                        match: 'all',
-                        conditions: [{ type: 'audience', operator: 'in', value: [String(id)] }]
-                    }]
-                }, null, 2);
-            }
-            function egpPortableCampaignJson(token) {
-                return JSON.stringify({
-                    schema_version: 1,
-                    enabled: true,
-                    mode: 'show',
-                    match: 'any',
-                    rules: [{
-                        id: 'rule_campaign',
-                        label: '',
-                        match: 'all',
-                        conditions: [{ type: 'campaign', operator: 'in', value: [String(token)] }]
-                    }]
-                }, null, 2);
-            }
-            document.addEventListener('click', function (e) {
-                var aud = e.target.closest('.egp-portable-insert-audience');
-                var cmp = e.target.closest('.egp-portable-insert-campaign');
-                if (!aud && !cmp) { return; }
-                e.preventDefault();
-                var ta = document.getElementById('egp_portable_targeting');
-                if (!ta) { return; }
-                if (aud) {
-                    ta.value = egpPortableAudienceJson(aud.getAttribute('data-audience-id') || '');
-                } else {
-                    ta.value = egpPortableCampaignJson(cmp.getAttribute('data-campaign') || '');
-                }
-            });
-        })();
         var egpProGranularEnabled = <?php echo apply_filters('egp_enable_element_granularity', $this->is_pro_user()) ? 'true' : 'false'; ?>;
         function egpUpdateTargetOptions() {
             var targetType = document.getElementById('egp_target_type').value;
@@ -3206,6 +3129,31 @@ class EGP_Geo_Rules {
             return !empty($exists_map);
         }
         return false;
+    }
+
+    /**
+     * Geo Core rule builder on geo_rule edit screen.
+     *
+     * @param string $hook Current admin hook.
+     * @return void
+     */
+    public function enqueue_geo_rule_admin_assets( $hook ) {
+        if ( ! in_array( $hook, array( 'post.php', 'post-new.php' ), true ) ) {
+            return;
+        }
+        $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+        if ( ! $screen || $screen->post_type !== $this->post_type ) {
+            return;
+        }
+        if ( ! class_exists( 'RWGC_Targeting_Rule_Builder_Assets', false ) ) {
+            return;
+        }
+        RWGC_Targeting_Rule_Builder_Assets::enqueue_admin();
+        wp_add_inline_script(
+            RWGC_Targeting_Rule_Builder_Assets::SCRIPT_HANDLE,
+            "(function(){function m(){var t=document.getElementById('egp_portable_targeting');if(!t||!window.ReactWooRuleBuilder||t.getAttribute('data-rwgc-rb-mounted'))return;window.ReactWooRuleBuilder.mount({textarea:t,getMode:function(){return 'show';}});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',m);else setTimeout(m,0);})();",
+            'after'
+        );
     }
     
     /**
