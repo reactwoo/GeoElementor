@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin Main Menu for Geo Elementor (Top-level menu)
+ * Admin menus for Geo Elementor (submenus under ReactWoo Geo Core when active).
  */
 
 // Prevent direct access
@@ -34,6 +34,67 @@ class EGP_Admin_Menu {
 			'egp-addons',
 			'geo-elementor-license',
 		), true);
+	}
+
+	/**
+	 * WordPress admin menu parent slug (Geo Core hub or legacy top-level).
+	 *
+	 * @return string
+	 */
+	public static function admin_menu_parent() {
+		$parent = 'geo-elementor';
+		if ( function_exists( 'rwgc_is_geo_core_active' ) && rwgc_is_geo_core_active() ) {
+			$parent = 'rwgc-dashboard';
+		}
+		/**
+		 * Filter the parent slug for Geo Elementor wp-admin submenus.
+		 *
+		 * @param string $parent Parent menu slug.
+		 */
+		return (string) apply_filters( 'egp_admin_menu_parent', $parent );
+	}
+
+	/**
+	 * Whether Geo Elementor registers under Geo Core (not its own top-level menu).
+	 *
+	 * @return bool
+	 */
+	public static function uses_geo_core_menu_parent() {
+		return 'rwgc-dashboard' === self::admin_menu_parent();
+	}
+
+	/**
+	 * Whether an admin_enqueue_scripts hook suffix is a Geo Elementor screen.
+	 *
+	 * @param string $hook_suffix Hook from admin_enqueue_scripts.
+	 * @return bool
+	 */
+	public static function is_geo_elementor_admin_hook( $hook_suffix ) {
+		$hook_suffix = is_string( $hook_suffix ) ? $hook_suffix : '';
+		if ( '' === $hook_suffix ) {
+			return false;
+		}
+		if ( self::is_geo_elementor_admin_screen() ) {
+			return true;
+		}
+		$slugs = array(
+			'geo-elementor',
+			'elementor-geo-popup',
+			'geo-content',
+			'geo-elementor-rules',
+			'geo-elementor-variants',
+			'egp-addons',
+			'geo-elementor-license',
+			'geo-templates',
+			'egp-city-settings',
+			'egp-time-settings',
+		);
+		foreach ( $slugs as $slug ) {
+			if ( false !== strpos( $hook_suffix, $slug ) ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public static function get_sync_rules_url() {
@@ -252,68 +313,74 @@ class EGP_Admin_Menu {
 			$capability = 'manage_options';
 		}
 
-		// Top-level: Geo Elementor. Always register from this module.
-		$icon_url = defined('EGP_PLUGIN_URL') ? EGP_PLUGIN_URL . 'assets/img/GeoElementor-icon.svg' : '';
-		add_menu_page(
-			__('Geo Elementor', 'elementor-geo-popup'),
-			__('Geo Elementor', 'elementor-geo-popup'),
+		$parent = self::admin_menu_parent();
+
+		if ( ! self::uses_geo_core_menu_parent() ) {
+			$icon_url = defined( 'EGP_PLUGIN_URL' ) ? EGP_PLUGIN_URL . 'assets/img/GeoElementor-icon.svg' : '';
+			add_menu_page(
+				__( 'Geo Elementor', 'elementor-geo-popup' ),
+				__( 'Geo Elementor', 'elementor-geo-popup' ),
+				$capability,
+				'geo-elementor',
+				array( $this, 'render_dashboard' ),
+				$icon_url ? $icon_url : 'dashicons-location-alt',
+				58
+			);
+			add_submenu_page(
+				'geo-elementor',
+				__( 'Dashboard', 'elementor-geo-popup' ),
+				__( 'Dashboard', 'elementor-geo-popup' ),
+				$capability,
+				'geo-elementor',
+				array( $this, 'render_dashboard' )
+			);
+		}
+
+		add_submenu_page(
+			$parent,
+			__( 'Geo Elementor', 'elementor-geo-popup' ),
+			self::uses_geo_core_menu_parent() ? __( 'Elementor', 'elementor-geo-popup' ) : __( 'Dashboard', 'elementor-geo-popup' ),
 			$capability,
 			'geo-elementor',
-			array($this, 'render_dashboard'),
-			$icon_url ?: 'dashicons-location-alt',
-			58
+			array( $this, 'render_dashboard' )
 		);
 
-		// Submenu: Dashboard (renamed from Geo Elementor)
 		add_submenu_page(
-			'geo-elementor',
-			__('Dashboard', 'elementor-geo-popup'),
-			__('Dashboard', 'elementor-geo-popup'),
-			$capability,
-			'geo-elementor',
-			array($this, 'render_dashboard')
-		);
-
-		// Submenu: Rules (renamed from Geo Rules)
-		add_submenu_page(
-			'geo-elementor',
-			__('Rules', 'elementor-geo-popup'),
-			__('Rules', 'elementor-geo-popup'),
+			$parent,
+			__( 'Rules', 'elementor-geo-popup' ),
+			__( 'Rules', 'elementor-geo-popup' ),
 			$capability,
 			'geo-elementor-rules',
-			array($this, 'render_rules')
+			array( $this, 'render_rules' )
 		);
 
 		// Variant Groups submenu is registered in RW_Geo_Variant_Groups_Admin
 
-		// Submenu: Settings
 		add_submenu_page(
-			'geo-elementor',
-			__('Settings', 'elementor-geo-popup'),
-			__('Settings', 'elementor-geo-popup'),
+			$parent,
+			__( 'Settings', 'elementor-geo-popup' ),
+			__( 'Settings', 'elementor-geo-popup' ),
 			$capability,
 			'elementor-geo-popup',
-			array($this, 'render_settings')
+			array( $this, 'render_settings' )
 		);
 
-		// Submenu: Add-Ons
 		add_submenu_page(
-			'geo-elementor',
-			__('Add-Ons', 'elementor-geo-popup'),
-			__('Add-Ons', 'elementor-geo-popup'),
+			$parent,
+			__( 'Add-Ons', 'elementor-geo-popup' ),
+			__( 'Add-Ons', 'elementor-geo-popup' ),
 			$capability,
 			'egp-addons',
-			array($this, 'render_addons')
+			array( $this, 'render_addons' )
 		);
 
-		// Submenu: License
 		add_submenu_page(
-			'geo-elementor',
-			__('License', 'elementor-geo-popup'),
-			__('License', 'elementor-geo-popup'),
+			$parent,
+			__( 'License', 'elementor-geo-popup' ),
+			__( 'License', 'elementor-geo-popup' ),
 			$capability,
 			'geo-elementor-license',
-			array($this, 'render_license')
+			array( $this, 'render_license' )
 		);
 
 		if (function_exists('egp_is_verbose_log_enabled') && egp_is_verbose_log_enabled()) {
@@ -362,7 +429,10 @@ class EGP_Admin_Menu {
 	 * Ensure custom admin menu icon matches core dimensions (20x20)
 	 */
 	public function enqueue_menu_icon_css($hook = '') {
-		$css = '#toplevel_page_geo-elementor .wp-menu-image img{width:18px;height:18px;object-fit:contain;display:block;margin:7px auto;opacity:.6;transition:opacity .15s ease-in-out;padding:0;vertical-align:middle;}#toplevel_page_geo-elementor:hover .wp-menu-image img,#toplevel_page_geo-elementor.wp-has-current-submenu .wp-menu-image img,#toplevel_page_geo-elementor.current .wp-menu-image img{opacity:1;}';
+		$css = '';
+		if ( ! self::uses_geo_core_menu_parent() ) {
+			$css = '#toplevel_page_geo-elementor .wp-menu-image img{width:18px;height:18px;object-fit:contain;display:block;margin:7px auto;opacity:.6;transition:opacity .15s ease-in-out;padding:0;vertical-align:middle;}#toplevel_page_geo-elementor:hover .wp-menu-image img,#toplevel_page_geo-elementor.wp-has-current-submenu .wp-menu-image img,#toplevel_page_geo-elementor.current .wp-menu-image img{opacity:1;}';
+		}
 		if ( self::is_geo_elementor_admin_screen() ) {
 			$css .= '
 .egp-admin-header{display:flex;flex-direction:column;align-items:stretch;width:100%;max-width:100%;margin:0 0 16px;box-sizing:border-box;}
@@ -417,7 +487,7 @@ class EGP_Admin_Menu {
 			return;
 		}
 		$screen = get_current_screen();
-		if ( ! $screen || strpos( $screen->id, 'geo-elementor' ) === false ) {
+		if ( ! self::is_geo_elementor_admin_screen( $screen ) ) {
 			return;
 		}
 		if ( function_exists( 'rwgc_is_ready' ) ) {

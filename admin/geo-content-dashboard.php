@@ -29,8 +29,9 @@ class EGP_Geo_Content_Dashboard {
     }
     
     public function add_menu() {
+        $parent = class_exists( 'EGP_Admin_Menu', false ) ? EGP_Admin_Menu::admin_menu_parent() : 'geo-elementor';
         add_submenu_page(
-            'geo-elementor',
+            $parent,
             __('Geo Content', 'elementor-geo-popup'),
             __('Geo Content', 'elementor-geo-popup'),
             'edit_posts',
@@ -40,7 +41,11 @@ class EGP_Geo_Content_Dashboard {
     }
     
     public function enqueue_scripts($hook) {
-        if ($hook !== 'geo-elementor_page_geo-content') {
+        if ( class_exists( 'EGP_Admin_Menu', false ) ) {
+            if ( ! EGP_Admin_Menu::is_geo_elementor_admin_hook( $hook ) || false === strpos( $hook, 'geo-content' ) ) {
+                return;
+            }
+        } elseif ( $hook !== 'geo-elementor_page_geo-content' ) {
             return;
         }
         

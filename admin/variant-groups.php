@@ -49,12 +49,23 @@ class RW_Geo_Variant_Groups_Admin {
      * Add admin page to menu
      */
     public function add_admin_page() {
-        // Register Groups submenu and move above Rules by giving a higher priority hook
+        $parent = class_exists( 'EGP_Admin_Menu', false ) ? EGP_Admin_Menu::admin_menu_parent() : 'geo-elementor';
+        $cap    = 'manage_options';
+        if ( class_exists( 'EGP_Admin_Menu', false ) ) {
+            $default_cap = 'manage_options';
+            if ( ! current_user_can( 'manage_options' ) && current_user_can( 'manage_woocommerce' ) ) {
+                $default_cap = 'manage_woocommerce';
+            }
+            $cap = apply_filters( 'egp_required_capability', $default_cap );
+            if ( ! is_string( $cap ) || '' === $cap ) {
+                $cap = $default_cap;
+            }
+        }
         add_submenu_page(
-            'geo-elementor',
+            $parent,
             __('Groups', 'elementor-geo-popup'),
             __('Groups', 'elementor-geo-popup'),
-            'manage_options',
+            $cap,
             'geo-elementor-variants',
             array($this, 'render_admin_page'),
             1
@@ -65,7 +76,11 @@ class RW_Geo_Variant_Groups_Admin {
      * Enqueue admin scripts and styles
      */
     public function enqueue_admin_scripts($hook) {
-        if ($hook !== 'geo-elementor_page_geo-elementor-variants') {
+        if ( class_exists( 'EGP_Admin_Menu', false ) ) {
+            if ( ! EGP_Admin_Menu::is_geo_elementor_admin_hook( $hook ) || false === strpos( $hook, 'geo-elementor-variants' ) ) {
+                return;
+            }
+        } elseif ( $hook !== 'geo-elementor_page_geo-elementor-variants' ) {
             return;
         }
         

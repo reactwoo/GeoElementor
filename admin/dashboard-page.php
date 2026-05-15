@@ -24,7 +24,11 @@ class EGP_Admin_Dashboard {
 
 	public function enqueue_assets($hook) {
 		// Only load on our dashboard page
-		if ($hook !== 'toplevel_page_geo-elementor') {
+		if ( class_exists( 'EGP_Admin_Menu', false ) ) {
+			if ( ! EGP_Admin_Menu::is_geo_elementor_admin_hook( $hook ) || false === strpos( $hook, 'geo-elementor' ) ) {
+				return;
+			}
+		} elseif ( $hook !== 'toplevel_page_geo-elementor' ) {
 			return;
 		}
 

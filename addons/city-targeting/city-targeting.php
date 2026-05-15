@@ -117,8 +117,9 @@ class EGP_City_Targeting_Addon extends EGP_Base_Addon {
      * Add admin menu
      */
     public function add_admin_menu() {
+        $parent = class_exists( 'EGP_Admin_Menu', false ) ? EGP_Admin_Menu::admin_menu_parent() : 'elementor-geo-popup';
         add_submenu_page(
-            'elementor-geo-popup',
+            $parent,
             __('City Targeting Settings', 'elementor-geo-popup'),
             __('City Settings', 'elementor-geo-popup'),
             'manage_options',

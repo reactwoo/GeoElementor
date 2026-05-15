@@ -161,13 +161,18 @@ class EGP_Admin_Settings {
      */
     public function enqueue_admin_scripts($hook) {
         // Load styles on our top-level and sub pages
-        $allowed = array(
-            'toplevel_page_geo-elementor',
-            'geo-elementor_page_elementor-geo-popup',
-            'geo-elementor_page_geo-elementor-rules',
-        );
-        if (!in_array($hook, $allowed, true) && strpos($hook, 'geo-elementor_page_') === false) {
+        if ( class_exists( 'EGP_Admin_Menu', false ) && ! EGP_Admin_Menu::is_geo_elementor_admin_hook( $hook ) ) {
             return;
+        }
+        if ( ! class_exists( 'EGP_Admin_Menu', false ) ) {
+            $allowed = array(
+                'toplevel_page_geo-elementor',
+                'geo-elementor_page_elementor-geo-popup',
+                'geo-elementor_page_geo-elementor-rules',
+            );
+            if ( ! in_array( $hook, $allowed, true ) && strpos( $hook, 'geo-elementor_page_' ) === false ) {
+                return;
+            }
         }
         
         wp_enqueue_script(

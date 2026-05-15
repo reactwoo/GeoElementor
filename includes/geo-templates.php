@@ -82,8 +82,9 @@ class EGP_Geo_Templates {
      * Add admin menu page
      */
     public function add_admin_menu() {
+        $parent = class_exists( 'EGP_Admin_Menu', false ) ? EGP_Admin_Menu::admin_menu_parent() : 'geo-elementor';
         add_submenu_page(
-            'geo-elementor',
+            $parent,
             __('Geo Templates', 'elementor-geo-popup'),
             __('Geo Templates', 'elementor-geo-popup'),
             'edit_posts',
@@ -96,7 +97,11 @@ class EGP_Geo_Templates {
      * Enqueue admin scripts
      */
     public function enqueue_admin_scripts($hook) {
-        if ($hook !== 'geo-elementor_page_geo-templates') {
+        if ( class_exists( 'EGP_Admin_Menu', false ) ) {
+            if ( ! EGP_Admin_Menu::is_geo_elementor_admin_hook( $hook ) || false === strpos( $hook, 'geo-templates' ) ) {
+                return;
+            }
+        } elseif ( $hook !== 'geo-elementor_page_geo-templates' ) {
             return;
         }
         
