@@ -4,7 +4,7 @@ Tags: elementor, popup, geolocation, geo-targeting, maxmind, country-specific, w
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.5.45
+Stable tag: 1.0.5.46
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -141,6 +141,9 @@ Yes, the plugin works on all devices and automatically detects mobile IP address
 9. Preferred Countries configuration
 
 == Changelog ==
+
+= 1.0.5.46 =
+* **Geo rules:** Use Geo Core’s shared rule-builder mount helper on the geo rule edit screen (requires Geo Core 1.3.38+).
 
 = 1.0.5.45 =
 * **Admin:** Geo Elementor screens register as **submenus under Geo Core** (`rwgc-dashboard`) when Geo Core is active, matching Commerce / AI / Optimise. Legacy top-level menu remains only if Geo Core is inactive. `?page=geo-elementor*` URLs unchanged; asset hooks use `EGP_Admin_Menu::is_geo_elementor_admin_hook()`.
