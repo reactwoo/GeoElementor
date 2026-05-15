@@ -61,15 +61,26 @@ class RW_Geo_Variant_Groups_Admin {
                 $cap = $default_cap;
             }
         }
-        add_submenu_page(
-            $parent,
-            __('Groups', 'elementor-geo-popup'),
-            __('Groups', 'elementor-geo-popup'),
-            $cap,
-            'geo-elementor-variants',
-            array($this, 'render_admin_page'),
-            1
-        );
+        if ( class_exists( 'EGP_Admin_Menu', false ) ) {
+            EGP_Admin_Menu::register_hub_submenu(
+                __( 'Groups', 'elementor-geo-popup' ),
+                __( 'Groups', 'elementor-geo-popup' ),
+                'geo-elementor-variants',
+                array( $this, 'render_admin_page' ),
+                $cap,
+                1
+            );
+        } else {
+            add_submenu_page(
+                $parent,
+                __( 'Groups', 'elementor-geo-popup' ),
+                __( 'Groups', 'elementor-geo-popup' ),
+                $cap,
+                'geo-elementor-variants',
+                array( $this, 'render_admin_page' ),
+                1
+            );
+        }
     }
     
     /**

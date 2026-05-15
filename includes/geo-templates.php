@@ -83,14 +83,24 @@ class EGP_Geo_Templates {
      */
     public function add_admin_menu() {
         $parent = class_exists( 'EGP_Admin_Menu', false ) ? EGP_Admin_Menu::admin_menu_parent() : 'geo-elementor';
-        add_submenu_page(
-            $parent,
-            __('Geo Templates', 'elementor-geo-popup'),
-            __('Geo Templates', 'elementor-geo-popup'),
-            'edit_posts',
-            'geo-templates',
-            array($this, 'render_admin_page')
-        );
+        if ( class_exists( 'EGP_Admin_Menu', false ) ) {
+            EGP_Admin_Menu::register_hub_submenu(
+                __( 'Geo Templates', 'elementor-geo-popup' ),
+                __( 'Geo Templates', 'elementor-geo-popup' ),
+                'geo-templates',
+                array( $this, 'render_admin_page' ),
+                'edit_posts'
+            );
+        } else {
+            add_submenu_page(
+                $parent,
+                __( 'Geo Templates', 'elementor-geo-popup' ),
+                __( 'Geo Templates', 'elementor-geo-popup' ),
+                'edit_posts',
+                'geo-templates',
+                array( $this, 'render_admin_page' )
+            );
+        }
     }
     
     /**

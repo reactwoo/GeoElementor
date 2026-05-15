@@ -58,14 +58,24 @@ class EGP_Time_Targeting_Addon extends EGP_Base_Addon {
 
     public function add_admin_menu() {
         $parent = class_exists( 'EGP_Admin_Menu', false ) ? EGP_Admin_Menu::admin_menu_parent() : 'elementor-geo-popup';
-        add_submenu_page(
-            $parent,
-            __('Time Targeting Settings', 'elementor-geo-popup'),
-            __('Time Settings', 'elementor-geo-popup'),
-            'manage_options',
-            'egp-time-settings',
-            array($this, 'render_admin_settings')
-        );
+        if ( class_exists( 'EGP_Admin_Menu', false ) ) {
+            EGP_Admin_Menu::register_hub_submenu(
+                __( 'Time Targeting Settings', 'elementor-geo-popup' ),
+                __( 'Time Settings', 'elementor-geo-popup' ),
+                'egp-time-settings',
+                array( $this, 'render_admin_settings' ),
+                'manage_options'
+            );
+        } else {
+            add_submenu_page(
+                $parent,
+                __( 'Time Targeting Settings', 'elementor-geo-popup' ),
+                __( 'Time Settings', 'elementor-geo-popup' ),
+                'manage_options',
+                'egp-time-settings',
+                array( $this, 'render_admin_settings' )
+            );
+        }
     }
 
     public function render_admin_settings() {

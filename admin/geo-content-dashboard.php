@@ -30,14 +30,24 @@ class EGP_Geo_Content_Dashboard {
     
     public function add_menu() {
         $parent = class_exists( 'EGP_Admin_Menu', false ) ? EGP_Admin_Menu::admin_menu_parent() : 'geo-elementor';
-        add_submenu_page(
-            $parent,
-            __('Geo Content', 'elementor-geo-popup'),
-            __('Geo Content', 'elementor-geo-popup'),
-            'edit_posts',
-            'geo-content',
-            array($this, 'render_page')
-        );
+        if ( class_exists( 'EGP_Admin_Menu', false ) ) {
+            EGP_Admin_Menu::register_hub_submenu(
+                __( 'Geo Content', 'elementor-geo-popup' ),
+                __( 'Geo Content', 'elementor-geo-popup' ),
+                'geo-content',
+                array( $this, 'render_page' ),
+                'edit_posts'
+            );
+        } else {
+            add_submenu_page(
+                $parent,
+                __( 'Geo Content', 'elementor-geo-popup' ),
+                __( 'Geo Content', 'elementor-geo-popup' ),
+                'edit_posts',
+                'geo-content',
+                array( $this, 'render_page' )
+            );
+        }
     }
     
     public function enqueue_scripts($hook) {

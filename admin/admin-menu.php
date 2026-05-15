@@ -267,6 +267,89 @@ class EGP_Admin_Menu {
 		);
 	}
 
+	/**
+	 * Register one submenu under the Geo Core hub (or legacy parent).
+	 *
+	 * @param string   $page_title  Screen title.
+	 * @param string   $menu_title  Sidebar label.
+	 * @param string   $slug        Page slug.
+	 * @param callable $callback    Render callback.
+	 * @param string   $capability  Required capability.
+	 * @param int|null $position    Optional menu position.
+	 * @return string|false
+	 */
+	public static function register_hub_submenu( $page_title, $menu_title, $slug, $callback, $capability, $position = null ) {
+		$args = array(
+			'page_title' => $page_title,
+			'menu_title' => $menu_title,
+			'capability' => $capability,
+			'menu_slug'  => $slug,
+			'callback'   => $callback,
+		);
+		if ( null !== $position ) {
+			$args['position'] = $position;
+		}
+		if ( function_exists( 'rw_geo_register_admin_submenu' ) ) {
+			return rw_geo_register_admin_submenu( $args );
+		}
+		return add_submenu_page(
+			self::admin_menu_parent(),
+			$page_title,
+			$menu_title,
+			$capability,
+			$slug,
+			$callback,
+			$position
+		);
+	}
+
+	/**
+	 * Slugs hidden from wp-admin sidebar when under Geo Core (in-page nav only).
+	 *
+	 * @return array<int, string>
+	 */
+	public static function get_detail_submenu_slugs() {
+		$slugs = array(
+			'elementor-geo-popup',
+			'geo-elementor-rules',
+			'geo-content',
+			'geo-elementor-variants',
+			'egp-addons',
+			'geo-elementor-license',
+			'geo-templates',
+			'egp-city-settings',
+			'egp-time-settings',
+		);
+		/**
+		 * Filter Geo Elementor submenu slugs hidden under the Geo Core hub sidebar.
+		 *
+		 * @param array<int, string> $slugs Page slugs (hub slug `geo-elementor` is never hidden).
+		 */
+		return apply_filters( 'egp_hidden_hub_submenu_slugs', $slugs );
+	}
+
+	/**
+	 * Hide detail Geo Elementor links from wp-admin sidebar when under Geo Core.
+	 *
+	 * @return void
+	 */
+	public static function hide_detail_submenu_css() {
+		if ( ! self::uses_geo_core_menu_parent() ) {
+			return;
+		}
+		if ( ! current_user_can( 'manage_options' ) && ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
+		echo '<style id="egp-hide-detail-submenus">';
+		foreach ( self::get_detail_submenu_slugs() as $slug ) {
+			printf(
+				'#toplevel_page_rwgc-dashboard .wp-submenu li:has(> a[href*="page=%1$s"]) { display: none !important; }',
+				esc_attr( $slug )
+			);
+		}
+		echo '</style>';
+	}
+
 	public static function render_inner_nav($current = 'geo-elementor') {
 		$items = array(
 			'geo-elementor'          => __('Dashboard', 'elementor-geo-popup'),
@@ -277,6 +360,21 @@ class EGP_Admin_Menu {
 			'egp-addons'             => __('Add-Ons', 'elementor-geo-popup'),
 			'geo-elementor-license'  => __('License', 'elementor-geo-popup'),
 		);
+
+		if ( function_exists( 'rw_geo_render_inner_nav' ) ) {
+			rw_geo_render_inner_nav(
+				$items,
+				(string) $current,
+				array(
+					'filter'              => 'egp_inner_nav_items',
+					'aria_label'          => __( 'GeoElementor section navigation', 'elementor-geo-popup' ),
+					'show_hub_breadcrumb' => self::uses_geo_core_menu_parent(),
+					'hub_extension_label' => __( 'Geo Elementor', 'elementor-geo-popup' ),
+				)
+			);
+			return;
+		}
+
 		echo '<nav class="egp-inner-nav" aria-label="' . esc_attr__('GeoElementor section navigation', 'elementor-geo-popup') . '">';
 		foreach ($items as $slug => $label) {
 			$class = 'egp-inner-nav__link' . ($slug === $current ? ' is-active' : '');
@@ -287,6 +385,7 @@ class EGP_Admin_Menu {
 
 	public function __construct() {
 		add_action('admin_menu', array($this, 'register_menus'), 9);
+		add_action('admin_head', array('EGP_Admin_Menu', 'hide_detail_submenu_css'));
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_menu_icon_css'));
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_geo_suite_assets'), 15);
 		add_action('admin_notices', array($this, 'maybe_show_core_notice'));
@@ -340,51 +439,46 @@ class EGP_Admin_Menu {
 			);
 		}
 
-		add_submenu_page(
-			$parent,
+		self::register_hub_submenu(
 			__( 'Geo Elementor', 'elementor-geo-popup' ),
 			self::uses_geo_core_menu_parent() ? __( 'Elementor', 'elementor-geo-popup' ) : __( 'Dashboard', 'elementor-geo-popup' ),
-			$capability,
 			'geo-elementor',
-			array( $this, 'render_dashboard' )
+			array( $this, 'render_dashboard' ),
+			$capability
 		);
 
-		add_submenu_page(
-			$parent,
+		self::register_hub_submenu(
 			__( 'Rules', 'elementor-geo-popup' ),
 			__( 'Rules', 'elementor-geo-popup' ),
-			$capability,
 			'geo-elementor-rules',
-			array( $this, 'render_rules' )
+			array( $this, 'render_rules' ),
+			$capability
 		);
 
 		// Variant Groups submenu is registered in RW_Geo_Variant_Groups_Admin
 
-		add_submenu_page(
-			$parent,
+		self::register_hub_submenu(
 			__( 'Settings', 'elementor-geo-popup' ),
 			__( 'Settings', 'elementor-geo-popup' ),
-			$capability,
 			'elementor-geo-popup',
-			array( $this, 'render_settings' )
+			array( $this, 'render_settings' ),
+			$capability
 		);
 
-		add_submenu_page(
-			$parent,
+		self::register_hub_submenu(
 			__( 'Add-Ons', 'elementor-geo-popup' ),
 			__( 'Add-Ons', 'elementor-geo-popup' ),
-			$capability,
 			'egp-addons',
-			array( $this, 'render_addons' )
+			array( $this, 'render_addons' ),
+			$capability
 		);
 
-		add_submenu_page(
-			$parent,
+		self::register_hub_submenu(
 			__( 'License', 'elementor-geo-popup' ),
 			__( 'License', 'elementor-geo-popup' ),
-			$capability,
 			'geo-elementor-license',
-			array( $this, 'render_license' )
+			array( $this, 'render_license' ),
+			$capability
 		);
 
 		if (function_exists('egp_is_verbose_log_enabled') && egp_is_verbose_log_enabled()) {
@@ -445,7 +539,9 @@ class EGP_Admin_Menu {
 .egp-page-brand .egp-admin-logo-wrap img{display:block;height:40px;width:auto;max-width:100%;}
 .egp-page-title-wrap{flex:1;min-width:0;}
 .egp-page-title-wrap .egp-page-heading{margin:0;padding:0;line-height:1.25;font-size:23px;font-weight:400;letter-spacing:normal;}
-.egp-inner-nav{margin:0 0 12px;flex:0 0 auto;width:100%;}
+.egp-inner-nav,.egp-admin-header .rwgc-inner-nav{margin:0 0 12px;flex:0 0 auto;width:100%;}
+.egp-admin-header .rwgc-inner-nav__link{color:#2271b1;text-decoration:none;padding:6px 10px;border-radius:4px;}
+.egp-admin-header .rwgc-inner-nav__link.is-active{background:#f0f6fc;color:#1d4ed8;font-weight:600;}
 .egp-page-notices{clear:both;width:100%;max-width:100%;min-width:0;flex:0 0 auto;box-sizing:border-box;}
 .egp-page-notices .notice{margin:0 0 10px;}
 .egp-page-notices .notice:last-child{margin-bottom:0;}
