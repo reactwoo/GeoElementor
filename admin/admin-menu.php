@@ -42,9 +42,13 @@ class EGP_Admin_Menu {
 	 * @return string
 	 */
 	public static function admin_menu_parent() {
-		$parent = 'geo-elementor';
-		if ( function_exists( 'rwgc_is_geo_core_active' ) && rwgc_is_geo_core_active() ) {
-			$parent = 'rwgc-dashboard';
+		if ( function_exists( 'rwgc_admin_menu_parent' ) ) {
+			$parent = rwgc_admin_menu_parent();
+		} else {
+			$parent = 'geo-elementor';
+			if ( function_exists( 'rwgc_is_geo_core_active' ) && rwgc_is_geo_core_active() ) {
+				$parent = 'rwgc-dashboard';
+			}
 		}
 		/**
 		 * Filter the parent slug for Geo Elementor wp-admin submenus.
