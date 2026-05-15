@@ -3151,7 +3151,7 @@ class EGP_Geo_Rules {
         RWGC_Targeting_Rule_Builder_Assets::enqueue_admin();
         wp_add_inline_script(
             RWGC_Targeting_Rule_Builder_Assets::SCRIPT_HANDLE,
-            "(function(){function m(){var t=document.getElementById('egp_portable_targeting');if(!t||!window.ReactWooRuleBuilder||t.getAttribute('data-rwgc-rb-mounted'))return;window.ReactWooRuleBuilder.mount({textarea:t,getMode:function(){return 'show';}});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',m);else setTimeout(m,0);})();",
+            RWGC_Targeting_Rule_Builder_Assets::get_mount_inline( '#egp_portable_targeting' ),
             'after'
         );
     }
