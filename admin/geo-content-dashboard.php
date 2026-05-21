@@ -36,7 +36,12 @@ class EGP_Geo_Content_Dashboard {
                 __( 'Geo Content', 'elementor-geo-popup' ),
                 'geo-content',
                 array( $this, 'render_page' ),
-                'edit_posts'
+                'edit_posts',
+                null,
+                array(
+                    'route' => 'geo-content',
+                    'order' => 30,
+                )
             );
         } else {
             add_submenu_page(

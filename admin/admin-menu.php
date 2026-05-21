@@ -278,16 +278,34 @@ class EGP_Admin_Menu {
 	 * @param int|null $position    Optional menu position.
 	 * @return string|false
 	 */
-	public static function register_hub_submenu( $page_title, $menu_title, $slug, $callback, $capability, $position = null ) {
-		$args = array(
-			'page_title' => $page_title,
-			'menu_title' => $menu_title,
-			'capability' => $capability,
-			'menu_slug'  => $slug,
-			'callback'   => $callback,
+	public static function register_hub_submenu( $page_title, $menu_title, $slug, $callback, $capability, $position = null, $route_args = array() ) {
+		$slug = sanitize_key( (string) $slug );
+		$route_args = wp_parse_args(
+			is_array( $route_args ) ? $route_args : array(),
+			array(
+				'section'  => 'targeting',
+				'provider' => 'geo_elementor',
+				'module'   => 'elementor',
+				'route'    => $slug,
+				'order'    => 100,
+			)
+		);
+		$args = array_merge(
+			$route_args,
+			array(
+				'page_title' => $page_title,
+				'menu_title' => $menu_title,
+				'capability' => $capability,
+				'menu_slug'  => $slug,
+				'label'      => wp_strip_all_tags( (string) $menu_title ),
+				'callback'   => $callback,
+			)
 		);
 		if ( null !== $position ) {
 			$args['position'] = $position;
+		}
+		if ( function_exists( 'rw_geo_register_app_route' ) ) {
+			return rw_geo_register_app_route( $args );
 		}
 		if ( function_exists( 'rw_geo_register_admin_submenu' ) ) {
 			return rw_geo_register_admin_submenu( $args );
@@ -385,7 +403,6 @@ class EGP_Admin_Menu {
 
 	public function __construct() {
 		add_action('admin_menu', array($this, 'register_menus'), 9);
-		add_action('admin_head', array('EGP_Admin_Menu', 'hide_detail_submenu_css'));
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_menu_icon_css'));
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_geo_suite_assets'), 15);
 		add_action('admin_notices', array($this, 'maybe_show_core_notice'));
@@ -444,7 +461,12 @@ class EGP_Admin_Menu {
 			self::uses_geo_core_menu_parent() ? __( 'Elementor', 'elementor-geo-popup' ) : __( 'Dashboard', 'elementor-geo-popup' ),
 			'geo-elementor',
 			array( $this, 'render_dashboard' ),
-			$capability
+			$capability,
+			null,
+			array(
+				'route' => 'elementor-overview',
+				'order' => 10,
+			)
 		);
 
 		self::register_hub_submenu(
@@ -452,7 +474,12 @@ class EGP_Admin_Menu {
 			__( 'Rules', 'elementor-geo-popup' ),
 			'geo-elementor-rules',
 			array( $this, 'render_rules' ),
-			$capability
+			$capability,
+			null,
+			array(
+				'route' => 'elementor-rules',
+				'order' => 20,
+			)
 		);
 
 		// Variant Groups submenu is registered in RW_Geo_Variant_Groups_Admin
@@ -462,7 +489,13 @@ class EGP_Admin_Menu {
 			__( 'Settings', 'elementor-geo-popup' ),
 			'elementor-geo-popup',
 			array( $this, 'render_settings' ),
-			$capability
+			$capability,
+			null,
+			array(
+				'section' => 'settings',
+				'route'   => 'elementor-settings',
+				'order'   => 70,
+			)
 		);
 
 		self::register_hub_submenu(
@@ -470,7 +503,12 @@ class EGP_Admin_Menu {
 			__( 'Add-Ons', 'elementor-geo-popup' ),
 			'egp-addons',
 			array( $this, 'render_addons' ),
-			$capability
+			$capability,
+			null,
+			array(
+				'route' => 'elementor-addons',
+				'order' => 50,
+			)
 		);
 
 		self::register_hub_submenu(
@@ -478,7 +516,13 @@ class EGP_Admin_Menu {
 			__( 'License', 'elementor-geo-popup' ),
 			'geo-elementor-license',
 			array( $this, 'render_license' ),
-			$capability
+			$capability,
+			null,
+			array(
+				'section' => 'settings',
+				'route'   => 'elementor-license',
+				'order'   => 80,
+			)
 		);
 
 		if (function_exists('egp_is_verbose_log_enabled') && egp_is_verbose_log_enabled()) {

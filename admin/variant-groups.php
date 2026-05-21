@@ -68,7 +68,11 @@ class RW_Geo_Variant_Groups_Admin {
                 'geo-elementor-variants',
                 array( $this, 'render_admin_page' ),
                 $cap,
-                1
+                1,
+                array(
+                    'route' => 'elementor-variants',
+                    'order' => 40,
+                )
             );
         } else {
             add_submenu_page(
