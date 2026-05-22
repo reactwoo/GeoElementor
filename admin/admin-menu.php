@@ -402,7 +402,7 @@ class EGP_Admin_Menu {
 	}
 
 	public function __construct() {
-		add_action('admin_menu', array($this, 'register_menus'), 9);
+		add_action( 'admin_menu', array( $this, 'register_menus' ), 20 );
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_menu_icon_css'));
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_geo_suite_assets'), 15);
 		add_action('admin_notices', array($this, 'maybe_show_core_notice'));
@@ -421,10 +421,12 @@ class EGP_Admin_Menu {
 		$this->menus_registered = true;
 
 		$default_cap = 'manage_options';
-		if (!current_user_can('manage_options') && current_user_can('manage_woocommerce')) {
+		if ( class_exists( 'RWGC_Admin', false ) ) {
+			$default_cap = RWGC_Admin::required_capability();
+		} elseif ( ! current_user_can( 'manage_options' ) && current_user_can( 'manage_woocommerce' ) ) {
 			$default_cap = 'manage_woocommerce';
 		}
-		$capability = apply_filters('egp_required_capability', $default_cap);
+		$capability = apply_filters( 'egp_required_capability', $default_cap );
 		if (!is_string($capability) || $capability === '') {
 			$capability = $default_cap;
 		}

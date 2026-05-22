@@ -33,7 +33,7 @@ class RW_Geo_Variant_Groups_Admin {
      * Constructor
      */
     private function __construct() {
-        add_action('admin_menu', array($this, 'add_admin_page'));
+        add_action( 'admin_menu', array( $this, 'add_admin_page' ), 21 );
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
         add_action('wp_ajax_rw_geo_save_variant', array($this, 'ajax_save_variant'));
         add_action('wp_ajax_rw_geo_delete_variant', array($this, 'ajax_delete_variant'));
@@ -53,7 +53,9 @@ class RW_Geo_Variant_Groups_Admin {
         $cap    = 'manage_options';
         if ( class_exists( 'EGP_Admin_Menu', false ) ) {
             $default_cap = 'manage_options';
-            if ( ! current_user_can( 'manage_options' ) && current_user_can( 'manage_woocommerce' ) ) {
+            if ( class_exists( 'RWGC_Admin', false ) ) {
+                $default_cap = RWGC_Admin::required_capability();
+            } elseif ( ! current_user_can( 'manage_options' ) && current_user_can( 'manage_woocommerce' ) ) {
                 $default_cap = 'manage_woocommerce';
             }
             $cap = apply_filters( 'egp_required_capability', $default_cap );
