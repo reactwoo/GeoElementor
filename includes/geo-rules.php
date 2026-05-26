@@ -228,7 +228,7 @@ class EGP_Geo_Rules {
 
             <tr>
                 <th scope="row">
-                    <label for="egp_portable_targeting"><?php esc_html_e( 'Advanced visibility (Geo Core)', 'elementor-geo-popup' ); ?></label>
+                    <label for="egp_portable_targeting"><?php esc_html_e( 'Visibility rules (Geo Core)', 'elementor-geo-popup' ); ?></label>
                 </th>
                 <td>
                     <?php
@@ -236,9 +236,11 @@ class EGP_Geo_Rules {
                     $portable_raw = is_string( $portable_raw ) ? $portable_raw : '';
                     ?>
                     <p class="description" style="margin-bottom:8px;">
-                        <?php esc_html_e( 'Optional. When set, visitors must match this rule set and the country list above (either can be left empty only if the other defines the rule). Requires ReactWoo Geo Core; synced GA4 and Google Ads lists need GeoCore Pro.', 'elementor-geo-popup' ); ?>
+                        <?php esc_html_e( 'Optional portable rule set. When set, visitors must match these rules and the country list above. The visual builder loads below; open Advanced there for raw JSON. Requires ReactWoo Geo Core; synced GA4 and Google Ads lists need GeoCore Pro.', 'elementor-geo-popup' ); ?>
                     </p>
-                    <textarea name="egp_portable_targeting" id="egp_portable_targeting" rows="6" class="large-text code"><?php echo esc_textarea( $portable_raw ); ?></textarea>
+                    <div class="rwgc-rb-mount-wrap">
+                        <textarea name="egp_portable_targeting" id="egp_portable_targeting" rows="3" class="large-text code" aria-label="<?php esc_attr_e( 'Portable targeting rules', 'elementor-geo-popup' ); ?>"><?php echo esc_textarea( $portable_raw ); ?></textarea>
+                    </div>
                 </td>
             </tr>
             

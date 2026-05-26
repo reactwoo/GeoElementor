@@ -168,6 +168,25 @@ class EGP_Admin_Menu {
 	 * @param string $extra_notices_html Optional notices HTML (already escaped) appended after core plugin notices.
 	 */
 	public static function render_page_header( $title, $current = 'geo-elementor', $extra_notices_html = '' ) {
+		if ( self::uses_platform_shell() && class_exists( 'RWGC_Admin_UI', false ) ) {
+			$plain_title = wp_strip_all_tags( (string) $title );
+			$subtitle    = '';
+			if ( 'geo-elementor' === $current ) {
+				$subtitle = __( 'Elementor rules, geo content, and variant groups.', 'elementor-geo-popup' );
+			} elseif ( 'geo-elementor-rules' === $current ) {
+				$subtitle = __( 'Assign geo rules to pages and popups; portable visibility uses the shared rule builder.', 'elementor-geo-popup' );
+			}
+			RWGC_Admin_UI::render_page_header( $plain_title, $subtitle );
+			echo '<div class="egp-page-notices" role="region" aria-label="' . esc_attr__( 'Geo Elementor notices', 'elementor-geo-popup' ) . '">';
+			self::render_page_notices();
+			if ( is_string( $extra_notices_html ) && $extra_notices_html !== '' ) {
+				echo $extra_notices_html;
+			}
+			echo '</div>';
+			self::output_relocate_admin_notices_script();
+			return;
+		}
+
 		// UX: identity (logo + H1 on one row) → section nav → full-width notices.
 		// WordPress prints admin_notices before .wrap; see output_relocate_admin_notices_script().
 		echo '<div class="egp-admin-header">';
@@ -480,8 +499,9 @@ class EGP_Admin_Menu {
 			$capability,
 			null,
 			array(
-				'route' => 'elementor-overview',
-				'order' => 10,
+				'section' => 'targeting',
+				'route'   => 'elementor-overview',
+				'order'   => 10,
 			)
 		);
 
@@ -493,8 +513,9 @@ class EGP_Admin_Menu {
 			$capability,
 			null,
 			array(
-				'route' => 'elementor-rules',
-				'order' => 20,
+				'section' => 'targeting',
+				'route'   => 'elementor-rules',
+				'order'   => 18,
 			)
 		);
 
@@ -620,7 +641,10 @@ class EGP_Admin_Menu {
 
 	public function render_dashboard() {
 		echo '<div class="wrap egp-settings rwgc-wrap rwgc-suite">';
-		self::render_page_header(esc_html__('Geo Rules Dashboard', 'elementor-geo-popup'), 'geo-elementor');
+		$title = self::uses_platform_shell()
+			? esc_html__( 'Geo Elementor', 'elementor-geo-popup' )
+			: esc_html__( 'Geo Rules Dashboard', 'elementor-geo-popup' );
+		self::render_page_header( $title, 'geo-elementor' );
 		self::render_geo_suite_quick_links();
 		echo '<div class="notice notice-info" style="margin:14px 0;">';
 		echo '<p>';
