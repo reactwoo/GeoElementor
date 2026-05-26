@@ -68,6 +68,15 @@ class EGP_Admin_Menu {
 	}
 
 	/**
+	 * Whether the ReactWoo Geo unified app shell renders on this request.
+	 *
+	 * @return bool
+	 */
+	public static function uses_platform_shell() {
+		return function_exists( 'rwgc_uses_platform_shell' ) && rwgc_uses_platform_shell();
+	}
+
+	/**
 	 * Whether an admin_enqueue_scripts hook suffix is a Geo Elementor screen.
 	 *
 	 * @param string $hook_suffix Hook from admin_enqueue_scripts.
@@ -293,12 +302,13 @@ class EGP_Admin_Menu {
 		$args = array_merge(
 			$route_args,
 			array(
-				'page_title' => $page_title,
-				'menu_title' => $menu_title,
-				'capability' => $capability,
-				'menu_slug'  => $slug,
-				'label'      => wp_strip_all_tags( (string) $menu_title ),
-				'callback'   => $callback,
+				'page_title'          => $page_title,
+				'menu_title'          => $menu_title,
+				'capability'          => $capability,
+				'menu_slug'           => $slug,
+				'label'               => wp_strip_all_tags( (string) $menu_title ),
+				'callback'            => $callback,
+				'register_wp_submenu' => false,
 			)
 		);
 		if ( null !== $position ) {
@@ -352,7 +362,7 @@ class EGP_Admin_Menu {
 	 * @return void
 	 */
 	public static function hide_detail_submenu_css() {
-		if ( ! self::uses_geo_core_menu_parent() ) {
+		if ( ! self::uses_geo_core_menu_parent() || self::uses_platform_shell() ) {
 			return;
 		}
 		if ( ! current_user_can( 'manage_options' ) && ! current_user_can( 'manage_woocommerce' ) ) {
@@ -369,6 +379,10 @@ class EGP_Admin_Menu {
 	}
 
 	public static function render_inner_nav($current = 'geo-elementor') {
+		if ( self::uses_platform_shell() ) {
+			return;
+		}
+
 		$items = array(
 			'geo-elementor'          => __('Dashboard', 'elementor-geo-popup'),
 			'elementor-geo-popup'    => __('Settings', 'elementor-geo-popup'),
