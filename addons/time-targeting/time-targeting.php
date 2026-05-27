@@ -64,7 +64,13 @@ class EGP_Time_Targeting_Addon extends EGP_Base_Addon {
                 __( 'Time Settings', 'elementor-geo-popup' ),
                 'egp-time-settings',
                 array( $this, 'render_admin_settings' ),
-                'manage_options'
+                'manage_options',
+                null,
+                array(
+                    'section'        => 'targeting',
+                    'route'          => 'geo-conditions',
+                    'is_section_nav' => false,
+                )
             );
         } else {
             add_submenu_page(

@@ -39,6 +39,7 @@ class EGP_Geo_Content_Dashboard {
                 'edit_posts',
                 null,
                 array(
+                    'section' => 'experiences',
                     'route' => 'geo-content',
                     'order' => 30,
                 )

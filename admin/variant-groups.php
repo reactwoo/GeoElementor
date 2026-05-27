@@ -72,8 +72,10 @@ class RW_Geo_Variant_Groups_Admin {
                 $cap,
                 1,
                 array(
-                    'route' => 'elementor-variants',
+                    'section'        => 'experiences',
+                    'route'          => 'variants',
                     'order' => 40,
+                    'is_section_nav' => false,
                 )
             );
         } else {

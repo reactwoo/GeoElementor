@@ -311,7 +311,7 @@ class EGP_Admin_Menu {
 		$route_args = wp_parse_args(
 			is_array( $route_args ) ? $route_args : array(),
 			array(
-				'section'  => 'targeting',
+				'section'  => 'integrations',
 				'provider' => 'geo_elementor',
 				'module'   => 'elementor',
 				'route'    => $slug,
@@ -499,22 +499,22 @@ class EGP_Admin_Menu {
 			$capability,
 			null,
 			array(
-				'section' => 'targeting',
-				'route'   => 'elementor-overview',
+				'section' => 'integrations',
+				'route'   => 'elementor',
 				'order'   => 10,
 			)
 		);
 
 		self::register_hub_submenu(
-			__( 'Rules', 'elementor-geo-popup' ),
-			__( 'Rules', 'elementor-geo-popup' ),
+			__( 'Dynamic Content', 'elementor-geo-popup' ),
+			__( 'Dynamic Content', 'elementor-geo-popup' ),
 			'geo-elementor-rules',
 			array( $this, 'render_rules' ),
 			$capability,
 			null,
 			array(
-				'section' => 'targeting',
-				'route'   => 'elementor-rules',
+				'section' => 'experiences',
+				'route'   => 'dynamic-content',
 				'order'   => 18,
 			)
 		);
@@ -532,6 +532,7 @@ class EGP_Admin_Menu {
 				'section' => 'settings',
 				'route'   => 'elementor-settings',
 				'order'   => 70,
+				'is_section_nav' => false,
 			)
 		);
 
@@ -543,8 +544,10 @@ class EGP_Admin_Menu {
 			$capability,
 			null,
 			array(
+				'section' => 'settings',
 				'route' => 'elementor-addons',
 				'order' => 50,
+				'is_section_nav' => false,
 			)
 		);
 
@@ -559,6 +562,7 @@ class EGP_Admin_Menu {
 				'section' => 'settings',
 				'route'   => 'elementor-license',
 				'order'   => 80,
+				'is_section_nav' => false,
 			)
 		);
 
