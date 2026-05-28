@@ -127,9 +127,10 @@ class EGP_City_Targeting_Addon extends EGP_Base_Addon {
                 'manage_options',
                 null,
                 array(
-                    'section'        => 'integrations',
-                    'route'          => 'weather',
-                    'is_section_nav' => false,
+                    'section'              => 'integrations',
+                    'integration_category' => 'apis',
+                    'route'                => 'weather',
+                    'is_section_nav'         => false,
                 )
             );
         } else {

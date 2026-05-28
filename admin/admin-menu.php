@@ -499,9 +499,10 @@ class EGP_Admin_Menu {
 			$capability,
 			null,
 			array(
-				'section' => 'integrations',
-				'route'   => 'elementor',
-				'order'   => 10,
+				'section'              => 'integrations',
+				'integration_category' => 'content_builders',
+				'route'                => 'elementor',
+				'order'                => 10,
 			)
 		);
 
@@ -694,22 +695,29 @@ class EGP_Admin_Menu {
 
 	public function render_rules() {
 		echo '<div class="wrap egp-settings rwgc-wrap rwgc-suite">';
+		$rules_title = self::uses_platform_shell()
+			? esc_html__( 'Dynamic content', 'elementor-geo-popup' )
+			: esc_html__( 'Geo Rules', 'elementor-geo-popup' ) . ' <span class="dashicons dashicons-editor-help" title="Rules target a specific Page or Popup with selected countries. If an element is managed by a Group, avoid creating a duplicate Rule for the same element to prevent conflicts."></span>';
 		self::render_page_header(
-			esc_html__('Geo Rules', 'elementor-geo-popup') . ' <span class="dashicons dashicons-editor-help" title="Rules target a specific Page or Popup with selected countries. If an element is managed by a Group, avoid creating a duplicate Rule for the same element to prevent conflicts."></span>',
+			$rules_title,
 			'geo-elementor-rules'
 		);
-		self::render_geo_suite_quick_links( 'compact' );
-		echo '<div class="notice notice-info" style="margin:14px 0;">';
-		echo '<p>';
-		echo esc_html__( 'Geo Core (free) handles shared geo engine + page-level server-side routing (Master + one Secondary per master).', 'elementor-geo-popup' ) . '<br />';
-		echo esc_html__( 'GeoElementor Pro uses Rules/Groups for advanced element/page/popup targeting.', 'elementor-geo-popup' );
-		echo '</p>';
-		echo '<p>';
-		echo '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=rwgc-usage' ) ) . '">' . esc_html__( 'Free Routing Guide', 'elementor-geo-popup' ) . '</a> ';
-		echo '<a class="button" href="' . esc_url( self::get_sync_rules_url() ) . '">' . esc_html__( 'Run Sync Now', 'elementor-geo-popup' ) . '</a> ';
-		echo '<a class="button button-primary" href="' . esc_url( admin_url( 'admin.php?page=geo-elementor-variants' ) ) . '">' . esc_html__( 'Variant Groups', 'elementor-geo-popup' ) . '</a>';
-		echo '</p>';
-		echo '</div>';
+		if ( ! self::uses_platform_shell() ) {
+			self::render_geo_suite_quick_links( 'compact' );
+			echo '<div class="notice notice-info" style="margin:14px 0;">';
+			echo '<p>';
+			echo esc_html__( 'Geo Core (free) handles shared geo engine + page-level server-side routing (Master + one Secondary per master).', 'elementor-geo-popup' ) . '<br />';
+			echo esc_html__( 'GeoElementor Pro uses Rules/Groups for advanced element/page/popup targeting.', 'elementor-geo-popup' );
+			echo '</p>';
+			echo '<p>';
+			echo '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=rwgc-usage' ) ) . '">' . esc_html__( 'Free Routing Guide', 'elementor-geo-popup' ) . '</a> ';
+			echo '<a class="button" href="' . esc_url( self::get_sync_rules_url() ) . '">' . esc_html__( 'Run Sync Now', 'elementor-geo-popup' ) . '</a> ';
+			echo '<a class="button button-primary" href="' . esc_url( admin_url( 'admin.php?page=geo-elementor-variants' ) ) . '">' . esc_html__( 'Variant Groups', 'elementor-geo-popup' ) . '</a>';
+			echo '</p>';
+			echo '</div>';
+		} else {
+			echo '<p class="description">' . esc_html__( 'Rules are grouped by content type. Use Experiences for geo content blocks and Integrations → Content builders for Elementor settings.', 'elementor-geo-popup' ) . '</p>';
+		}
 		
 		// Add custom CSS for status indicators
 		echo '<style>
@@ -745,6 +753,35 @@ class EGP_Admin_Menu {
 			'orderby' => 'date',
 			'order' => 'DESC'
 		));
+
+		$group_labels = array(
+			'pages'     => __( 'Pages', 'elementor-geo-popup' ),
+			'sections'  => __( 'Sections', 'elementor-geo-popup' ),
+			'widgets'   => __( 'Widgets', 'elementor-geo-popup' ),
+			'templates' => __( 'Templates', 'elementor-geo-popup' ),
+			'popups'    => __( 'Popups', 'elementor-geo-popup' ),
+			'other'     => __( 'Other', 'elementor-geo-popup' ),
+		);
+		$grouped_rules = array_fill_keys( array_keys( $group_labels ), array() );
+		foreach ( $rules as $rule_post ) {
+			if ( ! $rule_post instanceof WP_Post ) {
+				continue;
+			}
+			$target_type = sanitize_key( (string) get_post_meta( (int) $rule_post->ID, 'egp_target_type', true ) );
+			$bucket      = 'other';
+			if ( in_array( $target_type, array( 'page' ), true ) ) {
+				$bucket = 'pages';
+			} elseif ( in_array( $target_type, array( 'section' ), true ) ) {
+				$bucket = 'sections';
+			} elseif ( in_array( $target_type, array( 'widget', 'elementor' ), true ) ) {
+				$bucket = 'widgets';
+			} elseif ( in_array( $target_type, array( 'template' ), true ) ) {
+				$bucket = 'templates';
+			} elseif ( in_array( $target_type, array( 'popup' ), true ) ) {
+				$bucket = 'popups';
+			}
+			$grouped_rules[ $bucket ][] = $rule_post;
+		}
 		
 		if (empty($rules)) {
 			echo '<div class="notice notice-info"><p>' . esc_html__('No geo rules found. Create your first rule to get started.', 'elementor-geo-popup') . '</p></div>';
@@ -775,7 +812,16 @@ class EGP_Admin_Menu {
 		echo '</thead>';
 		
 		echo '<tbody>';
-		foreach ($rules as $rule) {
+		$rule_loop_groups = self::uses_platform_shell() ? array_keys( $group_labels ) : array( 'all' );
+		foreach ( $rule_loop_groups as $group_key ) {
+			if ( 'all' !== $group_key && empty( $grouped_rules[ $group_key ] ) ) {
+				continue;
+			}
+			if ( 'all' !== $group_key && self::uses_platform_shell() ) {
+				echo '<tr class="egp-dynamic-group-row"><td colspan="9"><h3 class="egp-dynamic-group-title" style="margin:14px 0 6px;">' . esc_html( $group_labels[ $group_key ] ) . '</h3></td></tr>';
+			}
+			$group_rules = ( 'all' === $group_key ) ? $rules : $grouped_rules[ $group_key ];
+			foreach ( $group_rules as $rule ) {
 			$target_type = get_post_meta($rule->ID, 'egp_target_type', true);
 			$target_id = get_post_meta($rule->ID, 'egp_target_id', true);
 			$countries = get_post_meta($rule->ID, 'egp_countries', true);
@@ -877,6 +923,7 @@ class EGP_Admin_Menu {
 			echo '</span>';
 			echo '</td>';
 			echo '</tr>';
+			}
 		}
 		echo '</tbody>';
 		echo '</table>';

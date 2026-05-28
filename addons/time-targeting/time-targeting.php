@@ -67,8 +67,8 @@ class EGP_Time_Targeting_Addon extends EGP_Base_Addon {
                 'manage_options',
                 null,
                 array(
-                    'section'        => 'targeting',
-                    'route'          => 'geo-conditions',
+                    'section'        => 'settings',
+                    'route'          => 'time-targeting',
                     'is_section_nav' => false,
                 )
             );
