@@ -920,8 +920,9 @@ class EGP_Geo_Rules {
     private function get_or_create_element_rule($element, $settings, $element_type) {
         $element_id = $element->get_id();
         $element_title = $this->get_element_title($element, $element_type, $settings);
-        $countries = $this->get_element_countries_from_settings($settings);
-        $document_id = $this->get_element_document_id($element);
+        $countries     = $this->get_element_countries_from_settings($settings);
+        $portable_raw  = $this->get_element_portable_from_settings($settings);
+        $document_id   = $this->get_element_document_id($element);
 
         // Check if a rule already exists for this element
         $existing_rules = get_posts(array(
@@ -955,6 +956,10 @@ class EGP_Geo_Rules {
                 if (!empty($countries)) {
                     update_post_meta($rule_id, 'egp_countries', $countries);
                 }
+                $portable_raw = $this->get_element_portable_from_settings( $settings );
+                if ( '' !== $portable_raw ) {
+                    update_post_meta( $rule_id, $this->meta_prefix . 'portable_targeting', $portable_raw );
+                }
                 if ($document_id > 0) {
                     update_post_meta($rule_id, 'egp_elementor_document_id', $document_id);
                     update_post_meta($rule_id, 'egp_document_id', $document_id);
@@ -964,22 +969,26 @@ class EGP_Geo_Rules {
         }
 
         // Create a new rule for this element
+        $meta_input = array(
+            'egp_target_type'            => $element_type,
+            'egp_element_id'            => $element_id,
+            'egp_element_type'          => $element_type,
+            'egp_countries'             => $countries,
+            'egp_active'                => '1',
+            'egp_clicks'                => 0,
+            'egp_views'                 => 0,
+            'egp_impressions'           => 0,
+            'egp_elementor_document_id' => $document_id,
+            'egp_document_id'           => $document_id,
+        );
+        if ( '' !== $portable_raw ) {
+            $meta_input[ $this->meta_prefix . 'portable_targeting' ] = $portable_raw;
+        }
         $rule_data = array(
             'post_title' => $element_title,
-            'post_type' => 'geo_rule',
-            'post_status' => 'publish',
-            'meta_input' => array(
-                'egp_target_type' => $element_type,
-                'egp_element_id' => $element_id,
-                'egp_element_type' => $element_type,
-                'egp_countries' => $countries,
-                'egp_active' => '1',
-                'egp_clicks' => 0,
-                'egp_views' => 0,
-                'egp_impressions' => 0,
-                'egp_elementor_document_id' => $document_id,
-                'egp_document_id' => $document_id,
-            )
+            'post_type'  => 'geo_rule',
+            'post_status'=> 'publish',
+            'meta_input' => $meta_input,
         );
 
         $rule_id = wp_insert_post($rule_data);
@@ -1071,6 +1080,33 @@ class EGP_Geo_Rules {
         }
 
         return $this->normalize_country_codes_array( array_map( 'sanitize_text_field', $countries ) );
+    }
+
+    /**
+     * Portable targeting JSON stored on an Elementor element (editor settings).
+     *
+     * @param array<string, mixed> $settings Element settings.
+     * @return string Raw JSON or empty.
+     */
+    private function get_element_portable_from_settings( $settings ) {
+        if ( ! is_array( $settings ) ) {
+            return '';
+        }
+        $use = ! empty( $settings['egp_use_portable_geo_targeting'] ) && 'yes' === (string) $settings['egp_use_portable_geo_targeting'];
+        if ( ! $use ) {
+            return '';
+        }
+        $raw = isset( $settings['egp_portable_geo_targeting'] ) ? (string) $settings['egp_portable_geo_targeting'] : '';
+        $raw = trim( wp_unslash( $raw ) );
+        if ( '' === $raw || ! class_exists( 'RWGC_Targeting_Rule_Set_Schema', false ) ) {
+            return $raw;
+        }
+        $set = RWGC_Targeting_Rule_Set_Schema::sanitize( $raw );
+        if ( ! is_array( $set ) ) {
+            return '';
+        }
+        $encoded = wp_json_encode( $set );
+        return is_string( $encoded ) ? $encoded : '';
     }
 
     /**
@@ -2568,10 +2604,16 @@ class EGP_Geo_Rules {
         // Debug logging
         error_log('[EGP Debug] AJAX Save Rule - element_id: ' . $element_id . ', element_type: ' . $element_type . ', countries: ' . implode(',', $countries) . ', title: ' . $title);
         
-        if (empty($element_id) || empty($countries)) {
-            wp_send_json_error('Missing required fields: element_id and countries');
+        $portable_raw = isset( $_POST['portable_targeting'] ) ? wp_unslash( (string) $_POST['portable_targeting'] ) : '';
+        $use_portable = ! empty( $_POST['use_portable_targeting'] );
+
+        if ( empty( $element_id ) ) {
+            wp_send_json_error( 'Missing required field: element_id' );
         }
-        
+        if ( empty( $countries ) && ( ! $use_portable || '' === trim( $portable_raw ) ) ) {
+            wp_send_json_error( 'Missing targeting: select countries or enable visibility rules with at least one condition.' );
+        }
+
         // Determine the appropriate target type based on element type
         $target_type = in_array($element_type, array('section', 'container', 'widget', 'column')) ? $element_type : 'section';
         
@@ -2584,6 +2626,12 @@ class EGP_Geo_Rules {
             // Add enhanced metadata
             update_post_meta($rule_id, 'egp_element_id', $element_id);
             update_post_meta($rule_id, 'egp_element_type', $element_type);
+
+            if ( $use_portable && '' !== trim( $portable_raw ) ) {
+                update_post_meta( $rule_id, $this->meta_prefix . 'portable_targeting', $portable_raw );
+            } else {
+                delete_post_meta( $rule_id, $this->meta_prefix . 'portable_targeting' );
+            }
             
             if ($document_id > 0) {
                 update_post_meta($rule_id, 'egp_document_id', $document_id);
@@ -3153,7 +3201,7 @@ class EGP_Geo_Rules {
         RWGC_Targeting_Rule_Builder_Assets::enqueue_admin();
         wp_add_inline_script(
             RWGC_Targeting_Rule_Builder_Assets::SCRIPT_HANDLE,
-            RWGC_Targeting_Rule_Builder_Assets::get_mount_inline( '#egp_portable_targeting' ),
+            RWGC_Targeting_Rule_Builder_Assets::get_mount_inline( '#egp_portable_targeting', "'show'", 'allowAllConditionTypes:true' ),
             'after'
         );
     }

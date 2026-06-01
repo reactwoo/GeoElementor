@@ -89,6 +89,17 @@
             }
         });
 
+        $(document).on('change input', '.elementor-control-egp_portable_geo_targeting textarea', function() {
+            try {
+                var panelView = elementor.getPanelView().getCurrentPageView();
+                if (panelView && panelView.model) {
+                    setTimeout(function() {
+                        autoSaveRule(panelView);
+                    }, 800);
+                }
+            } catch (e) { /* ignore */ }
+        });
+
         // Also restore on initial panel load
         setTimeout(restoreCountrySelection, 500);
     }
@@ -130,6 +141,10 @@
             || (settingsObj && settingsObj.get && settingsObj.get('egp_geo_enabled') === 'yes')
             // For popups, also respect page-level key if present
             || (settingsObj && settingsObj.get && settingsObj.get('egp_enable_geo_targeting') === 'yes');
+        var usePortable = (model.getSetting && model.getSetting('egp_use_portable_geo_targeting') === 'yes')
+            || (settingsObj && settingsObj.get && settingsObj.get('egp_use_portable_geo_targeting') === 'yes');
+        var portableTargeting = (model.getSetting && model.getSetting('egp_portable_geo_targeting'))
+            || (settingsObj && settingsObj.get && settingsObj.get('egp_portable_geo_targeting')) || '';
         var countries = (Array.isArray(countriesOverride) && countriesOverride.length) ? countriesOverride
             : (model.getSetting && model.getSetting('egp_countries'))
             || (model.get && model.get('settings') && model.get('settings').get && model.get('settings').get('egp_countries')) || [];
@@ -138,10 +153,12 @@
             countries = countries ? [countries] : [];
         }
 
+        var hasPortable = usePortable && String(portableTargeting || '').trim().length > 0;
+
         // In popup editor, allow save when countries chosen even if toggle not yet reflected
         var isPopupDoc = !!(window.egpEditor && egpEditor.isPopup);
-        if ((!enabled && !isPopupDoc) || countries.length === 0) {
-            console.log('[EGP Sync] Not saving - enabled:', enabled, 'countries:', countries);
+        if ((!enabled && !isPopupDoc) || (countries.length === 0 && !hasPortable)) {
+            console.log('[EGP Sync] Not saving - enabled:', enabled, 'countries:', countries, 'portable:', hasPortable);
             return;
         }
 
@@ -169,6 +186,8 @@
             element_id: elementId,
             element_type: elementType,
             countries: countries,
+            use_portable_targeting: usePortable ? 1 : 0,
+            portable_targeting: portableTargeting || '',
             priority: priority,
             active: true,
             title: title

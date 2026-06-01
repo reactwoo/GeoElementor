@@ -156,8 +156,10 @@ class EGP_Admin_Menu {
 
 		$license_status = get_option('egp_license_status', '');
 		if ($license_status === 'invalid' || $license_status === 'expired') {
-			$message = __('Your Geo Elementor license is invalid or expired. Please <a href="%s">activate your license</a> to continue using all features.', 'elementor-geo-popup');
-			$license_page_url = admin_url('admin.php?page=geo-elementor-license');
+			$message = __('Your GeoCore Pro license is invalid or expired. Please <a href="%s">activate your license</a> to continue using advanced features.', 'elementor-geo-popup');
+			$license_page_url = class_exists( 'RWGCP_Admin', false )
+				? admin_url( 'admin.php?page=rwgcp-geocore-pro&rwgcp_tab=setup' )
+				: admin_url( 'admin.php?page=geo-elementor-license' );
 			echo '<div class="notice notice-error is-dismissible"><p>' . wp_kses_post(sprintf($message, esc_url($license_page_url))) . '</p></div>';
 		}
 	}
@@ -409,7 +411,6 @@ class EGP_Admin_Menu {
 			'geo-elementor-rules'    => __('Rules', 'elementor-geo-popup'),
 			'geo-elementor-variants' => __('Groups', 'elementor-geo-popup'),
 			'egp-addons'             => __('Add-Ons', 'elementor-geo-popup'),
-			'geo-elementor-license'  => __('License', 'elementor-geo-popup'),
 		);
 
 		if ( function_exists( 'rw_geo_render_inner_nav' ) ) {
@@ -420,7 +421,7 @@ class EGP_Admin_Menu {
 					'filter'              => 'egp_inner_nav_items',
 					'aria_label'          => __( 'GeoElementor section navigation', 'elementor-geo-popup' ),
 					'show_hub_breadcrumb' => self::uses_geo_core_menu_parent(),
-					'hub_extension_label' => __( 'Geo Elementor', 'elementor-geo-popup' ),
+					'hub_extension_label' => __( 'Elementor integration', 'elementor-geo-popup' ),
 				)
 			);
 			return;
@@ -552,20 +553,7 @@ class EGP_Admin_Menu {
 			)
 		);
 
-		self::register_hub_submenu(
-			__( 'License', 'elementor-geo-popup' ),
-			__( 'License', 'elementor-geo-popup' ),
-			'geo-elementor-license',
-			array( $this, 'render_license' ),
-			$capability,
-			null,
-			array(
-				'section' => 'settings',
-				'route'   => 'elementor-license',
-				'order'   => 80,
-				'is_section_nav' => false,
-			)
-		);
+		// Pro licence is managed under Settings → GeoCore Pro (rwgcp-geocore-pro).
 
 		if (function_exists('egp_is_verbose_log_enabled') && egp_is_verbose_log_enabled()) {
 			error_log('[EGP Menu] register_menus executed with capability: ' . $capability); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- gated.
@@ -1012,7 +1000,11 @@ class EGP_Admin_Menu {
 	}
 
 	public function render_license() {
-		do_action('egp_render_license_page');
+		if ( class_exists( 'RWGCP_Admin', false ) ) {
+			wp_safe_redirect( admin_url( 'admin.php?page=rwgcp-geocore-pro&rwgcp_tab=setup' ) );
+			exit;
+		}
+		do_action( 'egp_render_license_page' );
 	}
 }
 

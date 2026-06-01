@@ -3,7 +3,7 @@
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
  * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration via ReactWoo Geo Core and MaxMind GeoLite2 database.
- * Version: 1.0.5.53
+ * Version: 1.0.5.54
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
  * License: GPL v2 or later
@@ -24,7 +24,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('EGP_VERSION', '1.0.5.53');
+define('EGP_VERSION', '1.0.5.54');
 define('EGP_PLUGIN_FILE', __FILE__);
 define('EGP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EGP_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -33,6 +33,7 @@ define('EGP_PLUGIN_BASENAME', plugin_basename(__FILE__));
 require_once EGP_PLUGIN_DIR . 'includes/egp-debug.php';
 require_once EGP_PLUGIN_DIR . 'includes/egp-country-data.php';
 require_once EGP_PLUGIN_DIR . 'includes/class-egp-editor-context.php';
+require_once EGP_PLUGIN_DIR . 'includes/class-egp-geocore-bridge.php';
 // WordPress.org-style updates via ReactWoo API (api.reactwoo.com) — same contract as WHMCS Bridge.
 require_once EGP_PLUGIN_DIR . 'includes/plugin-updater.php';
 
@@ -698,12 +699,7 @@ class ElementorGeoPopup {
             return;
         }
 
-        // Determine Pro gating - check license status instead of WooCommerce capability
-        $is_pro = $this->is_license_valid() || apply_filters('egp_is_pro_user', false);
-
-        if (!$is_pro && $rwgc_basic_active) {
-            return;
-        }
+        $advanced_targeting = function_exists( 'rwgc_advanced_targeting_enabled' ) && rwgc_advanced_targeting_enabled();
 
         $element->start_controls_section(
             'egp_geo_tools',
@@ -750,86 +746,116 @@ class ElementorGeoPopup {
             );
         }
 
-        if ($is_pro) {
+        $element->add_control(
+            'egp_geo_enabled',
+            array(
+                'label'        => __('Enable Geo Targeting', 'elementor-geo-popup'),
+                'type'         => \Elementor\Controls_Manager::SWITCHER,
+                'label_on'     => __('On', 'elementor-geo-popup'),
+                'label_off'    => __('Off', 'elementor-geo-popup'),
+                'return_value' => 'yes',
+                'default'      => '',
+            )
+        );
+
+        $element->add_control(
+            'egp_countries_html',
+            array(
+                'type'        => \Elementor\Controls_Manager::RAW_HTML,
+                'raw'         => (function(){
+                    $opts = $this->get_country_options();
+                    $html = '<div class="egp-countries-native"><label class="elementor-control-title">'.esc_html__('Target Countries', 'elementor-geo-popup').'</label><div class="elementor-control-input-wrapper">';
+                    $html .= '<select id="egp_countries_native" class="egp-country-select" multiple size="12" style="width:100%;max-width:100%;min-height:220px;">';
+                    foreach ($opts as $code => $name) { $html .= '<option value="'.esc_attr($code).'">'.esc_html($name).'</option>'; }
+                    $html .= '</select><p class="description">'.esc_html__('Hold Ctrl/Cmd to select multiple countries. Included in GeoCore Free.', 'elementor-geo-popup').'</p></div></div>';
+                    return $html;
+                })(),
+                'condition'   => array(
+                    'egp_geo_enabled' => 'yes',
+                    'egp_use_portable_geo_targeting' => '',
+                ),
+            )
+        );
+        $element->add_control(
+            'egp_countries',
+            array(
+                'type'        => \Elementor\Controls_Manager::HIDDEN,
+                'default'     => '',
+                'condition'   => array(
+                    'egp_geo_enabled' => 'yes',
+                    'egp_use_portable_geo_targeting' => '',
+                ),
+            )
+        );
+
+        if ( $advanced_targeting ) {
             $element->add_control(
-                'egp_geo_enabled',
+                'egp_use_portable_geo_targeting',
                 array(
-                    'label'        => __('Enable Geo Targeting', 'elementor-geo-popup'),
+                    'label'        => __( 'Use visibility rule builder', 'elementor-geo-popup' ),
                     'type'         => \Elementor\Controls_Manager::SWITCHER,
-                    'label_on'     => __('On', 'elementor-geo-popup'),
-                    'label_off'    => __('Off', 'elementor-geo-popup'),
+                    'label_on'     => __( 'Yes', 'elementor-geo-popup' ),
+                    'label_off'    => __( 'No', 'elementor-geo-popup' ),
                     'return_value' => 'yes',
                     'default'      => '',
+                    'description'  => __( 'Advanced targeting via GeoCore Pro. Apply a saved rule from Targeting → Visibility rules or build conditions here.', 'elementor-geo-popup' ),
+                    'condition'    => array( 'egp_geo_enabled' => 'yes' ),
                 )
             );
 
-            // Use native SELECT control with multiple=true for better persistence
             $element->add_control(
-                'egp_countries_html',
+                'egp_portable_geo_targeting',
                 array(
-                    'type'        => \Elementor\Controls_Manager::RAW_HTML,
-                    'raw'         => (function(){
-                        $opts = $this->get_country_options();
-                        $html = '<div class="egp-countries-native"><label class="elementor-control-title">'.esc_html__('Target Countries', 'elementor-geo-popup').'</label><div class="elementor-control-input-wrapper">';
-                        $html .= '<select id="egp_countries_native" class="egp-country-select" multiple size="12" style="width:100%;max-width:100%;min-height:220px;">';
-                        foreach ($opts as $code => $name) { $html .= '<option value="'.esc_attr($code).'">'.esc_html($name).'</option>'; }                 
-                        $html .= '</select><p class="description">'.esc_html__('Hold Ctrl/Cmd to select multiple countries.', 'elementor-geo-popup').'</p></div></div>';
-                        return $html;
-                    })(),
-                    'condition'   => array('egp_geo_enabled' => 'yes'),    
+                    'label'       => __( 'Visibility rules', 'elementor-geo-popup' ),
+                    'type'        => \Elementor\Controls_Manager::TEXTAREA,
+                    'rows'        => 6,
+                    'label_block' => true,
+                    'classes'     => 'egp-portable-geo-targeting-textarea rwgc-rb-textarea-hidden',
+                    'condition'   => array(
+                        'egp_geo_enabled'                => 'yes',
+                        'egp_use_portable_geo_targeting' => 'yes',
+                    ),
                 )
             );
-            $element->add_control(
-                'egp_countries',
-                array(
-                    'type'        => \Elementor\Controls_Manager::HIDDEN,
-                    'default'     => '',
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                )
-            );
-
-            // Priority control
-            $element->add_control(
-                'egp_geo_priority',
-                array(
-                    'label'       => __('Priority', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::NUMBER,
-                    'min'         => 1,
-                    'max'         => 100,
-                    'step'        => 1,
-                    'default'     => 50,
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'description' => __('Higher numbers take precedence (1-100)', 'elementor-geo-popup'),
-                )
-            );
-
-            // Tracking ID
-            $element->add_control(
-                'egp_geo_tracking_id',
-                array(
-                    'label'       => __('Tracking ID', 'elementor-geo-popup'),
-                    'type'        => \Elementor\Controls_Manager::TEXT,
-                    'condition'   => array('egp_geo_enabled' => 'yes'),
-                    'description' => __('Used for analytics and tracking', 'elementor-geo-popup'),
-                    'placeholder' => __('Auto-generated if empty', 'elementor-geo-popup'),
-                )
-            );
-
-			// (Legacy UI replaced by native select above)
         } else {
-            // Free: show upgrade callout; do not expose controls
             $element->add_control(
-                'egp_geo_upgrade',
+                'egp_geocore_pro_upgrade',
                 array(
-                    'type' => \Elementor\Controls_Manager::RAW_HTML,
-                    'raw'  => '<div style="background:#fff3cd;border:1px solid #ffeaa7;color:#856404;padding:12px;border-radius:4px;margin-top:10px;">'
-                            . '<strong>' . esc_html__('Pro Feature', 'elementor-geo-popup') . '</strong><br>'
-                            . esc_html__('Upgrade to Pro to target Sections, Containers, Columns, Widgets, and Forms by country.', 'elementor-geo-popup')
-                            . '</div>',
+                    'type'            => \Elementor\Controls_Manager::RAW_HTML,
+                    'raw'             => '<div style="background:#f0f6fc;border:1px solid #c3dafe;color:#1e3a5f;padding:12px;border-radius:4px;margin-top:8px;">'
+                        . '<strong>' . esc_html__( 'GeoCore Pro', 'elementor-geo-popup' ) . '</strong><br>'
+                        . esc_html__( 'Upgrade to GeoCore Pro to unlock multi-condition visibility rules (device, UTM, audiences, page versions) in Elementor and Gutenberg.', 'elementor-geo-popup' )
+                        . '</div>',
                     'content_classes' => 'egp-upgrade-box',
+                    'condition'       => array( 'egp_geo_enabled' => 'yes' ),
                 )
             );
         }
+
+        $element->add_control(
+            'egp_geo_priority',
+            array(
+                'label'       => __('Priority', 'elementor-geo-popup'),
+                'type'        => \Elementor\Controls_Manager::NUMBER,
+                'min'         => 1,
+                'max'         => 100,
+                'step'        => 1,
+                'default'     => 50,
+                'condition'   => array('egp_geo_enabled' => 'yes'),
+                'description' => __('Higher numbers take precedence (1-100)', 'elementor-geo-popup'),
+            )
+        );
+
+        $element->add_control(
+            'egp_geo_tracking_id',
+            array(
+                'label'       => __('Tracking ID', 'elementor-geo-popup'),
+                'type'        => \Elementor\Controls_Manager::TEXT,
+                'condition'   => array('egp_geo_enabled' => 'yes'),
+                'description' => __('Used for analytics and tracking', 'elementor-geo-popup'),
+                'placeholder' => __('Auto-generated if empty', 'elementor-geo-popup'),
+            )
+        );
 
         $element->end_controls_section();
     }
@@ -992,8 +1018,19 @@ class ElementorGeoPopup {
     }
     
     /**
+     * @deprecated GeoElementor Pro is retired; use GeoCore Pro ({@see rwgc_advanced_targeting_enabled()}).
+     * @return bool
+     */
+    public function is_pro_licensed() {
+        if ( function_exists( 'rwgc_advanced_targeting_enabled' ) && rwgc_advanced_targeting_enabled() ) {
+            return true;
+        }
+        return $this->is_license_valid() || (bool) apply_filters( 'egp_is_pro_user', false );
+    }
+
+    /**
      * Check if plugin license is valid
-     * 
+     *
      * @return bool True if license is valid, false otherwise
      */
     private function is_license_valid() {

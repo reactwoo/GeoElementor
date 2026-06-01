@@ -529,9 +529,15 @@ class EGP_Centralized_License_Manager {
         if (isset($license_data['package']['name'])) {
             $formatted['product_name'] = $license_data['package']['name'];
         } elseif (isset($license_data['packageType'])) {
-            $formatted['product_name'] = 'Geo Elementor ' . ucfirst($license_data['packageType']);
+            $formatted['product_name'] = 'GeoCore Pro ' . ucfirst($license_data['packageType']);
         } else {
-            $formatted['product_name'] = 'Geo Elementor';
+            $formatted['product_name'] = 'GeoCore Pro';
+        }
+
+        $package_slug_early = $license_data['package']['slug'] ?? $license_data['packageType'] ?? '';
+        $is_free_early      = ( $package_slug_early === 'geo-free' || $package_slug_early === 'free' );
+        if ( ! $is_free_early && is_string( $formatted['product_name'] ) && preg_match( '/geo\s*elementor|geoelementor/i', $formatted['product_name'] ) ) {
+            $formatted['product_name'] = 'GeoCore Pro';
         }
         
         // Determine if it's a free plan based on package slug

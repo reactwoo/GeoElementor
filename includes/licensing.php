@@ -48,6 +48,26 @@ class EGP_Licensing {
         
         // Allow rendering the license page directly without redirects
         add_action('egp_render_license_page', array($this, 'render_license_page'));
+        add_action('admin_init', array($this, 'maybe_redirect_legacy_license_screen'));
+    }
+
+    /**
+     * Pro licences are managed under GeoCore Pro (Settings → GeoCore Pro).
+     *
+     * @return void
+     */
+    public function maybe_redirect_legacy_license_screen() {
+        if (!is_admin() || !isset($_GET['page'])) {
+            return;
+        }
+        if ('geo-elementor-license' !== sanitize_key((string) $_GET['page'])) {
+            return;
+        }
+        if (!class_exists('RWGCP_Admin', false)) {
+            return;
+        }
+        wp_safe_redirect(admin_url('admin.php?page=rwgcp-geocore-pro&rwgcp_tab=setup&rwgcp_legacy_license=1'));
+        exit;
     }
     
     /**
@@ -359,7 +379,8 @@ class EGP_Licensing {
                 </div>
             <?php endif; ?>
 
-            <?php if ( class_exists( 'EGP_Admin_Menu' ) ) { EGP_Admin_Menu::render_page_header( esc_html__( 'Geo Elementor License', 'elementor-geo-popup' ), 'geo-elementor-license' ); } ?>
+            <?php if ( class_exists( 'EGP_Admin_Menu' ) ) { EGP_Admin_Menu::render_page_header( esc_html__( 'GeoCore Pro License', 'elementor-geo-popup' ), 'geo-elementor-license' ); } ?>
+            <div class="notice notice-info"><p><?php esc_html_e( 'GeoCore Pro is the commercial product for advanced targeting, Google sync, and weather. Activate your licence here or under Settings → GeoCore Pro when ReactWoo Geo Core is active.', 'elementor-geo-popup' ); ?></p></div>
             
             <div class="egp-license-container">
                 <div class="egp-license-info">
@@ -397,10 +418,11 @@ class EGP_Licensing {
                                 $product_name = $license_data['product_name'] ?? '';
                                 $is_free_plan = $license_data['is_free_plan'] ?? false;
                                 
+                                $product_name = $this->normalize_license_product_label( $product_name, $is_free_plan );
                                 if ($product_name) {
                                     if ($is_free_plan) {
                                         echo '<strong>' . esc_html($product_name) . '</strong> <span style="color: #0073aa;">(Free)</span>';
-                                        echo '<br><a href="https://reactwoo.com/geo-elementor" target="_blank" class="button button-secondary" style="margin-top: 5px;">Upgrade to Pro</a>';
+                                        echo '<br><a href="https://reactwoo.com/geocore-pro" target="_blank" class="button button-secondary" style="margin-top: 5px;">' . esc_html__( 'Upgrade to GeoCore Pro', 'elementor-geo-popup' ) . '</a>';
                                     } else {
                                         echo '<strong>' . esc_html($product_name) . '</strong>';
                                     }
@@ -578,6 +600,24 @@ class EGP_Licensing {
     }
     
     /**
+     * Map legacy Geo Elementor product names to GeoCore Pro for display.
+     *
+     * @param string $product_name  Raw product name from licence server.
+     * @param bool   $is_free_plan Whether the package is free.
+     * @return string
+     */
+    private function normalize_license_product_label( $product_name, $is_free_plan ) {
+        $product_name = trim( (string) $product_name );
+        if ( '' === $product_name || $is_free_plan ) {
+            return $product_name;
+        }
+        if ( preg_match( '/geo\s*elementor|geoelementor/i', $product_name ) ) {
+            return __( 'GeoCore Pro', 'elementor-geo-popup' );
+        }
+        return $product_name;
+    }
+
+    /**
      * Get license status text
      */
     private function get_license_status_text($status) {
@@ -609,8 +649,10 @@ class EGP_Licensing {
         $license_status = get_option('egp_license_status', '');
         
         if ($license_status === 'invalid' || $license_status === 'expired') {
-            $message = __('Your Geo Elementor license is invalid or expired. Please <a href="%s">activate your license</a> to continue using all features.', 'elementor-geo-popup');
-            $license_page_url = admin_url('admin.php?page=geo-elementor-license');
+            $message = __('Your GeoCore Pro license is invalid or expired. Please <a href="%s">activate your license</a> to continue using advanced features.', 'elementor-geo-popup');
+            $license_page_url = class_exists('RWGCP_Admin', false)
+                ? admin_url('admin.php?page=rwgcp-geocore-pro&rwgcp_tab=setup')
+                : admin_url('admin.php?page=geo-elementor-license');
             
             echo '<div class="notice notice-error is-dismissible">';
             echo '<p>' . sprintf($message, $license_page_url) . '</p>';
