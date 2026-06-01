@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
- * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration via ReactWoo Geo Core and MaxMind GeoLite2 database.
+ * Description: Compatibility layer for sites that still have this plugin installed. Elementor and Gutenberg geo targeting now live in ReactWoo Geo Core (free) and GeoCore Pro (advanced). Requires Geo Core; defers duplicate controls when Core integrations are active.
  * Version: 1.0.5.55
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
