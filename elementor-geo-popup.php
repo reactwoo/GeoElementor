@@ -3,7 +3,7 @@
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
  * Description: Advanced geo-targeting solution for Elementor. Create location-based rules for popups, pages, and content. Features include country-based targeting, geo rules management, and seamless Elementor integration via ReactWoo Geo Core and MaxMind GeoLite2 database.
- * Version: 1.0.5.54
+ * Version: 1.0.5.55
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
  * License: GPL v2 or later
@@ -24,7 +24,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('EGP_VERSION', '1.0.5.54');
+define('EGP_VERSION', '1.0.5.55');
 define('EGP_PLUGIN_FILE', __FILE__);
 define('EGP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EGP_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -34,6 +34,7 @@ require_once EGP_PLUGIN_DIR . 'includes/egp-debug.php';
 require_once EGP_PLUGIN_DIR . 'includes/egp-country-data.php';
 require_once EGP_PLUGIN_DIR . 'includes/class-egp-editor-context.php';
 require_once EGP_PLUGIN_DIR . 'includes/class-egp-geocore-bridge.php';
+require_once EGP_PLUGIN_DIR . 'includes/class-egp-migration-shim.php';
 // WordPress.org-style updates via ReactWoo API (api.reactwoo.com) — same contract as WHMCS Bridge.
 require_once EGP_PLUGIN_DIR . 'includes/plugin-updater.php';
 
@@ -659,6 +660,11 @@ class ElementorGeoPopup {
             return;
         }
 
+        if ( apply_filters( 'rwgc_elementor_native_elements_active', class_exists( 'RWGC_Integrations_Loader', false ) && RWGC_Integrations_Loader::elementor_elements_active() ) ) {
+            $controls_registered = true;
+            return;
+        }
+
         if ($this->should_log_info()) { error_log('[EGP] Registering Elementor geo controls using if-so pattern'); }
 
         // KEY FIX: Use 'common/_section_style' hook for ALL widgets (this is what if-so does)
@@ -689,9 +695,9 @@ class ElementorGeoPopup {
      * This method is called by the registered hooks for each element type
      */
     public function add_geo_targeting_controls($element, $args = null) {
-        // Geo Core now provides baseline Elementor controls in free mode.
-        // Avoid duplicate/conflicting control sections when Geo Core is active.
-        $rwgc_basic_active = class_exists('RWGC_Elementor') || function_exists('rwgc_is_ready');
+        if ( apply_filters( 'rwgc_elementor_native_elements_active', class_exists( 'RWGC_Integrations_Loader', false ) && RWGC_Integrations_Loader::elementor_elements_active() ) ) {
+            return;
+        }
 
         // Check if geo controls already exist to prevent duplicates
         $controls = $element->get_controls();
