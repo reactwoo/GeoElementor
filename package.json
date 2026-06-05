@@ -6,6 +6,7 @@
   "reactwooBuild": {
     "pluginFolder": "geo-elementor",
     "zipFile": "geo-elementor.zip",
+    "mainPhp": "elementor-geo-popup.php",
     "geoCoreDependencySlug": "reactwoo-geocore"
   },
   "scripts": {

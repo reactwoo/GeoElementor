@@ -138,6 +138,14 @@ class EGP_Popup_Hooks {
         if (!$popup_id) { return $should_show; }
         // If popup shouldn't show for other reasons and we're not in editor, honor it
         if (!$should_show) { return false; }
+
+        // Geo Core owns portable/advanced popup targeting when it returns a decision.
+        if (class_exists('RWGC_Elementor_Popups', false)) {
+            $rwgc_decision = RWGC_Elementor_Popups::popup_should_display($popup_id);
+            if (null !== $rwgc_decision) {
+                return (bool) $rwgc_decision;
+            }
+        }
         
         // Check if this popup has geo targeting enabled
         $geo_settings = $this->get_popup_geo_settings($popup_id);

@@ -513,6 +513,17 @@ class EGP_Geo_Detect {
             if (!isset($rule['enabled']) || !$rule['enabled']) {
                 continue;
             }
+            // Geo Core portable/visibility decisions override legacy EGP country lists.
+            if (class_exists('RWGC_Elementor_Popups', false)) {
+                $rwgc_decision = RWGC_Elementor_Popups::popup_should_display((int) $pid);
+                if (true === $rwgc_decision) {
+                    continue;
+                }
+                if (false === $rwgc_decision) {
+                    $disallowed[] = (int) $pid;
+                    continue;
+                }
+            }
             $countries = isset($rule['countries']) && is_array($rule['countries']) ? array_map('strtoupper', $rule['countries']) : array();
             if (!in_array($country, $countries, true)) {
                 $disallowed[] = (int) $pid;
@@ -539,6 +550,13 @@ class EGP_Geo_Detect {
             var egpElementRules = <?php echo $json_element_rules ? $json_element_rules : '{}'; ?>;
             function isAllowed(id){
                 try { id = parseInt(id,10); } catch(e){}
+                try {
+                    if (window.popupData) {
+                        var m = window.popupData[id] || window.popupData[String(id)];
+                        if (m && m.rwgc_show === true) { return true; }
+                        if (m && m.rwgc_show === false) { return false; }
+                    }
+                } catch(e){}
                 var r = egpRules && egpRules[id];
                 if (!r || !r.enabled) { return true; }
                 var t = String(<?php echo json_encode(strtoupper($country)); ?>);

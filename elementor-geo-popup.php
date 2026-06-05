@@ -3,7 +3,7 @@
  * Plugin Name: Geo Elementor
  * Plugin URI: https://reactwoo.com
  * Description: Compatibility layer for sites that still have this plugin installed. Elementor and Gutenberg geo targeting now live in ReactWoo Geo Core (free) and GeoCore Pro (advanced). Requires Geo Core; defers duplicate controls when Core integrations are active.
- * Version: 1.0.5.55
+ * Version: 1.0.5.56
  * Author: ReactWoo
  * Author URI: https://reactwoo.com
  * License: GPL v2 or later
@@ -24,7 +24,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('EGP_VERSION', '1.0.5.55');
+define('EGP_VERSION', '1.0.5.56');
 define('EGP_PLUGIN_FILE', __FILE__);
 define('EGP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EGP_PLUGIN_URL', plugin_dir_url(__FILE__));
