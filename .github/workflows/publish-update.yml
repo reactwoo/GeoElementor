@@ -125,8 +125,16 @@ jobs:
 
       - name: Publish release metadata to API
         shell: bash
+        env:
+          UPDATES_PUBLISH_TOKEN: ${{ secrets.UPDATES_PUBLISH_TOKEN }}
         run: |
           set -euo pipefail
+          if [[ -z "${UPDATES_PUBLISH_TOKEN}" ]]; then
+            echo "::error::GitHub secret UPDATES_PUBLISH_TOKEN is empty."
+            echo "Set it to the same value as UPDATES_PUBLISH_TOKEN in api.reactwoo.com .env (not a WordPress application password or GitHub PAT)."
+            exit 1
+          fi
+
           PAYLOAD="$(cat <<EOF
           {
             "slug": "${PLUGIN_SLUG}",
@@ -141,9 +149,25 @@ jobs:
           EOF
           )"
 
-          # Retry: transient 502/503 from proxy or brief Node restarts (curl retries 5xx by default).
-          curl --fail-with-body -sS -X POST "${API_PUBLISH_URL}" \
+          # Bearer UPDATES_PUBLISH_TOKEN only — see reactwoo-api docs/PRODUCTION-SERVER.md
+          RESPONSE_FILE="${RUNNER_TEMP}/updates-publish-response.txt"
+          HTTP_CODE="$(curl -sS -o "${RESPONSE_FILE}" -w "%{http_code}" -X POST "${API_PUBLISH_URL}" \
             --retry 8 --retry-delay 15 \
-            -H "Authorization: Bearer ${{ secrets.UPDATES_PUBLISH_TOKEN }}" \
+            -H "Authorization: Bearer ${UPDATES_PUBLISH_TOKEN}" \
             -H "Content-Type: application/json" \
-            --data "${PAYLOAD}"
+            -H "Accept: application/json" \
+            -H "User-Agent: ReactWoo-CI-Publish/geo-elementor" \
+            --data "${PAYLOAD}")"
+
+          if [[ "${HTTP_CODE}" =~ ^2 ]]; then
+            cat "${RESPONSE_FILE}"
+            exit 0
+          fi
+
+          cat "${RESPONSE_FILE}"
+          if grep -qi 'Imunify360' "${RESPONSE_FILE}" 2>/dev/null; then
+            echo "::error::Imunify360 blocked this GitHub Actions runner. Whitelist GitHub Actions IP ranges for api.reactwoo.com (see reactwoo-api docs/PRODUCTION-SERVER.md)."
+          elif [[ "${HTTP_CODE}" == "401" ]]; then
+            echo "::error::401 Unauthorized — sync GitHub secret UPDATES_PUBLISH_TOKEN with api.reactwoo.com .env (not a WP application password)."
+          fi
+          exit 1
